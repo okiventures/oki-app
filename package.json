@@ -45,7 +45,7 @@
     "prettier-plugin-tailwindcss": "^0.6.14",
     "typescript": "~5.9.2"
   },
-  "main": "node_modules/expo/AppEntry.js",
+  "main": "expo-router/entry",
   "overrides": {
     "lightningcss": "1.30.1"
   },
