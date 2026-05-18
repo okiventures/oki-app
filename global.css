@@ -4,6 +4,15 @@
 @import 'nativewind/theme';
 
 @theme {
+  --font-sans: 'Inter';
+  --font-heading: 'NunitoBold';
+  --font-inter: 'Inter';
+  --font-inter-medium: 'InterMedium';
+  --font-inter-semibold: 'InterSemiBold';
+  --font-inter-bold: 'InterBold';
+  --font-nunito: 'NunitoBold';
+  --font-nunito-extrabold: 'NunitoExtraBold';
+
   --color-primary-50: var(--primary-50);
   --color-primary-100: var(--primary-100);
   --color-primary-200: var(--primary-200);

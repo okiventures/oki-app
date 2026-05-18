@@ -48,6 +48,7 @@ export function Input({
           }}
           className="flex-1 py-3 text-[15px] text-gray-900"
           placeholderTextColor="#9CA3AF"
+          style={rest.multiline ? { textAlignVertical: 'top' } : undefined}
         />
         {secureToggle && (
           <TouchableOpacity
