@@ -34,8 +34,8 @@ export function UserProfileHeader({
   const avatarSize = large ? 88 : 60;
 
   return (
-    <View className={`py-4 ${large ? 'items-center' : 'items-start'}`}>
-      <View className="relative mb-3">
+    <View className={`py-3 ${large ? 'items-center' : 'items-start'}`}>
+      <View className="relative mb-2">
         <Avatar
           name={name}
           photoUrl={photoUrl}
@@ -52,12 +52,12 @@ export function UserProfileHeader({
       </View>
 
       <Text
-        className={`font-bold text-gray-900 ${large ? 'text-center text-2xl' : 'text-left text-lg'}`}>
+        className={`font-bold text-gray-900 ${large ? 'text-center text-xl' : 'text-left text-base'}`}>
         {name}
       </Text>
 
       {subtitle && (
-        <Text className={`mt-0.5 text-sm text-gray-500 ${large ? 'text-center' : 'text-left'}`}>
+        <Text className={`mt-0.5 text-[13px] text-gray-500 ${large ? 'text-center' : 'text-left'}`}>
           {subtitle}
         </Text>
       )}
@@ -79,7 +79,7 @@ export function UserProfileHeader({
           <RatingDisplay rating={rating} reviewCount={reviewCount} size="md" />
         )}
         {jobsCompleted !== undefined && (
-          <Text className="text-sm text-gray-500">
+          <Text className="text-[13px] text-gray-500">
             <Text className="font-bold text-gray-700">{jobsCompleted}</Text> jobs
           </Text>
         )}

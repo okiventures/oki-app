@@ -11,7 +11,7 @@ interface RatingDisplayProps {
 
 export function RatingDisplay({ rating, reviewCount, size = 'md', showCount = true }: RatingDisplayProps) {
   const starSize = { sm: 12, md: 15, lg: 18 }[size];
-  const fontSizeClass = { sm: 'text-xs', md: 'text-sm', lg: 'text-base' }[size];
+  const fontSizeClass = { sm: 'text-[11px]', md: 'text-[13px]', lg: 'text-sm' }[size];
   
   const stars = Array.from({ length: 5 }, (_, i) => {
     if (i + 1 <= Math.floor(rating)) return 'star';
@@ -30,7 +30,7 @@ export function RatingDisplay({ rating, reviewCount, size = 'md', showCount = tr
         {rating.toFixed(1)}
       </Text>
       {showCount && reviewCount !== undefined && (
-        <Text className="text-xs text-gray-400">({reviewCount})</Text>
+        <Text className="text-[11px] text-gray-400">({reviewCount})</Text>
       )}
     </View>
   );

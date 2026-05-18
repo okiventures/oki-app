@@ -13,7 +13,7 @@ export default function HandymanRequests() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16 }}
         ListHeaderComponent={
-          <Text className="text-sm text-gray-500 mb-4 px-1">
+          <Text className="text-[13px] text-gray-500 mb-3 px-1">
             These jobs have been matched to you based on your active status and skills.
           </Text>
         }

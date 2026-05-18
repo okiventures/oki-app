@@ -18,8 +18,8 @@ export const MOCK_DISPUTES = [
   {
     id: 'd1',
     bookingId: 'b45',
-    clientName: 'Alice W.',
-    handymanName: 'Tom K.',
+    clientName: 'Princess Jaena',
+    handymanName: 'Kyle Lee',
     reason: 'Poor quality of work',
     status: 'Open',
     createdAt: new Date(Date.now() - 86400000).toISOString(),
@@ -27,8 +27,8 @@ export const MOCK_DISPUTES = [
   {
     id: 'd2',
     bookingId: 'b88',
-    clientName: 'Robert B.',
-    handymanName: 'Mike Torres',
+    clientName: 'Kyle Lee',
+    handymanName: 'Ceferino Jumaoas',
     reason: 'No show',
     status: 'Investigating',
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
@@ -38,7 +38,7 @@ export const MOCK_DISPUTES = [
 export const MOCK_KYC_REQUESTS = [
   {
     id: 'kyc1',
-    handymanName: 'Jake S.',
+    handymanName: 'James Ty',
     serviceCategory: 'Roofing',
     submittedAt: new Date(Date.now() - 3600000 * 4).toISOString(),
     status: 'Pending',
@@ -46,7 +46,7 @@ export const MOCK_KYC_REQUESTS = [
   },
   {
     id: 'kyc2',
-    handymanName: 'Maria L.',
+    handymanName: 'Princess Jaena',
     serviceCategory: 'Cleaning',
     submittedAt: new Date(Date.now() - 86400000).toISOString(),
     status: 'Pending',

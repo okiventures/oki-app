@@ -9,7 +9,7 @@ interface CardProps {
 }
 
 export function Card({ children, style, elevated = true, className = '' }: CardProps) {
-  const shadowClass = elevated ? 'shadow-sm elevation-2' : 'border border-gray-100';
+  const shadowClass = elevated ? 'border border-gray-200' : 'bg-gray-50';
   
   return (
     <View

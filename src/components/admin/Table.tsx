@@ -17,14 +17,14 @@ interface TableProps<T> {
 
 export function Table<T>({ columns, data, onRowPress, keyExtractor }: TableProps<T>) {
   return (
-    <View className="bg-white rounded-xl overflow-hidden border border-gray-100">
+    <View className="bg-white rounded-lg overflow-hidden border border-gray-100">
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View>
           {/* Header Row */}
           <View className="flex-row bg-gray-50 border-b border-gray-200">
             {columns.map((col) => (
-              <View key={col.key} style={{ width: col.width || 120 }} className="p-3 justify-center">
-                <Text className="text-xs font-bold text-gray-500 uppercase">
+              <View key={col.key} style={{ width: col.width || 120 }} className="p-2 justify-center">
+                <Text className="text-[11px] font-bold text-gray-500 uppercase">
                   {col.title}
                 </Text>
               </View>
@@ -40,11 +40,11 @@ export function Table<T>({ columns, data, onRowPress, keyExtractor }: TableProps
               className={`flex-row border-b ${i === data.length - 1 ? 'border-b-0' : 'border-gray-100'} bg-white`}
             >
               {columns.map((col) => (
-                <View key={col.key} style={{ width: col.width || 120 }} className="p-3 justify-center">
+                <View key={col.key} style={{ width: col.width || 120 }} className="p-2 justify-center">
                   {col.render ? (
                     col.render(row)
                   ) : (
-                    <Text className="text-sm text-gray-900" numberOfLines={1}>
+                    <Text className="text-[13px] text-gray-900" numberOfLines={1}>
                       {String((row as any)[col.key] ?? '')}
                     </Text>
                   )}
@@ -55,8 +55,8 @@ export function Table<T>({ columns, data, onRowPress, keyExtractor }: TableProps
           
           {/* Empty State */}
           {data.length === 0 && (
-            <View className="p-6 items-center">
-              <Text className="text-sm text-gray-400">No data available</Text>
+            <View className="p-4 items-center">
+              <Text className="text-[13px] text-gray-400">No data available</Text>
             </View>
           )}
         </View>

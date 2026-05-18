@@ -38,7 +38,7 @@ export function Select({
       <TouchableOpacity
         onPress={() => setOpen(true)}
         accessibilityLabel={label ?? 'Select option'}
-        className={`flex-row items-center justify-between border ${error ? 'border-red-500' : 'border-gray-200'} rounded-xl bg-gray-50 px-3 py-3.5`}>
+        className={`flex-row items-center justify-between border ${error ? 'border-red-500' : 'border-gray-200'} rounded-lg bg-gray-50 px-2 py-2`}>
         <Text className={`text-[15px] ${selected ? 'text-gray-900' : 'text-gray-400'}`}>
           {selected ? selected.label : placeholder}
         </Text>
@@ -55,8 +55,8 @@ export function Select({
           className="flex-1 justify-end bg-black/40"
           activeOpacity={1}
           onPress={() => setOpen(false)}>
-          <View className="rounded-t-3xl bg-white pt-2 pb-8">
-            <View className="mb-3 h-1 w-10 self-center rounded-full bg-gray-200" />
+          <View className="rounded-t-3xl bg-white pt-2 pb-5">
+            <View className="mb-2 h-1 w-8 self-center rounded-full bg-gray-200" />
             <FlatList
               data={options}
               keyExtractor={(item) => item.value}
@@ -66,7 +66,7 @@ export function Select({
                     onChange(item.value);
                     setOpen(false);
                   }}
-                  className={`px-5 py-3.5 ${item.value === value ? 'bg-primary-50' : 'transparent'}`}>
+                  className={`px-3 py-2 ${item.value === value ? 'bg-primary-50' : 'transparent'}`}>
                   <Text
                     className={`text-[15px] ${item.value === value ? 'text-primary-700 font-semibold' : 'text-gray-900'}`}>
                     {item.label}

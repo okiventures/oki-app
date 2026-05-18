@@ -30,13 +30,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   render() {
     if (this.state.hasError) {
       return (
-        <View className="flex-1 items-center justify-center p-6">
+        <View className="flex-1 items-center justify-center p-4">
           <Ionicons name="alert-circle-outline" size={56} color="#EF4444" />
-          <Text className="text-lg font-bold text-gray-900 mt-4 text-center">Something went wrong</Text>
-          <Text className="text-sm text-gray-500 mt-2 text-center leading-5">
+          <Text className="text-base font-bold text-gray-900 mt-3 text-center">Something went wrong</Text>
+          <Text className="text-[13px] text-gray-500 mt-2 text-center leading-5">
             {this.props.fallbackMessage ?? 'An unexpected error occurred. Please try again.'}
           </Text>
-          <TouchableOpacity onPress={this.handleRetry} className="mt-6 bg-blue-500 px-6 py-3 rounded-xl">
+          <TouchableOpacity onPress={this.handleRetry} className="mt-4 bg-blue-500 px-4 py-2 rounded-lg">
             <Text className="text-white text-[15px] font-semibold">Try Again</Text>
           </TouchableOpacity>
         </View>

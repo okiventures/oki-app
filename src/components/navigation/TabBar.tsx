@@ -22,9 +22,9 @@ export function TabBar({ tabs, activeKey, onTabPress, scrollable = false }: TabB
         onPress={() => onTabPress(tab.key)}
         accessibilityRole="tab"
         accessibilityState={{ selected: isActive }}
-        className={`py-2.5 ${scrollable ? 'px-4 flex-none' : 'flex-1'} items-center border-b-2 ${isActive ? 'border-primary-600' : 'border-transparent'}`}
+        className={`py-2.5 ${scrollable ? 'px-3 flex-none' : 'flex-1'} items-center border-b-2 ${isActive ? 'border-primary-600' : 'border-transparent'}`}
       >
-        <Text className={`text-sm ${isActive ? 'font-bold text-primary-600' : 'font-medium text-gray-500'}`}>
+        <Text className={`text-[13px] ${isActive ? 'font-bold text-primary-600' : 'font-medium text-gray-500'}`}>
           {tab.label}
         </Text>
       </TouchableOpacity>

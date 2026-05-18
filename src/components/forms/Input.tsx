@@ -33,7 +33,7 @@ export function Input({
   return (
     <View className="mb-2">
       {label && <FormLabel label={label} required={required} />}
-      <View className={`flex-row items-center border ${borderClass} rounded-xl bg-gray-50 px-3`}>
+      <View className={`flex-row items-center border ${borderClass} rounded-2xl bg-gray-50 px-4 py-0.5`}>
         {leftIcon && <View className="mr-2">{leftIcon}</View>}
         <TextInput
           {...rest}
@@ -46,7 +46,7 @@ export function Input({
             setFocused(false);
             rest.onBlur?.(e);
           }}
-          className="flex-1 py-3 text-[15px] text-gray-900"
+          className="flex-1 py-2 text-[15px] text-gray-900"
           placeholderTextColor="#9CA3AF"
           style={rest.multiline ? { textAlignVertical: 'top' } : undefined}
         />
@@ -54,7 +54,7 @@ export function Input({
           <TouchableOpacity
             onPress={() => setSecure((s) => !s)}
             accessibilityLabel="Toggle password visibility">
-            <Ionicons name={secure ? 'eye-off-outline' : 'eye-outline'} size={20} color="#9CA3AF" />
+            <Ionicons name={secure ? 'eye-off-outline' : 'eye-outline'} size={18} color="#9CA3AF" />
           </TouchableOpacity>
         )}
         {rightIcon && !secureToggle && <View className="ml-2">{rightIcon}</View>}
@@ -62,7 +62,7 @@ export function Input({
       {error ? (
         <FormError error={error} />
       ) : helperText ? (
-        <Text className="mt-1 text-xs text-gray-500">{helperText}</Text>
+        <Text className="mt-1 text-[11px] text-gray-500">{helperText}</Text>
       ) : null}
     </View>
   );

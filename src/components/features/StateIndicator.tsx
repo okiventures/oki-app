@@ -20,15 +20,15 @@ export function StateIndicator({ currentStatus }: StateIndicatorProps) {
 
   if (currentStatus === BookingStatus.Cancelled) {
     return (
-      <View className="flex-row items-center gap-2 rounded-xl bg-red-50 p-3">
-        <Ionicons name="close-circle" size={20} color="#DC2626" />
-        <Text className="text-sm font-semibold text-red-700">Booking Cancelled</Text>
+      <View className="flex-row items-center gap-2 rounded-lg bg-red-50 p-2">
+        <Ionicons name="close-circle" size={18} color="#DC2626" />
+        <Text className="text-[13px] font-semibold text-red-700">Booking Cancelled</Text>
       </View>
     );
   }
 
   return (
-    <View className="py-4">
+    <View className="py-3">
       <View className="flex-row items-center justify-between">
         {STEPS.map((step, index) => {
           const isCompleted = index < currentIndex;

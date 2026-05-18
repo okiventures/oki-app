@@ -24,7 +24,7 @@ export function SearchBar({
   return (
     <View className="flex-row items-center gap-2">
       <View
-        className={`flex-1 flex-row items-center rounded-xl border bg-gray-50 ${focused ? 'border-primary-400' : 'border-gray-200'} px-3 py-2.5`}>
+        className={`flex-1 flex-row items-center rounded-full border ${focused ? 'border-primary-400' : 'border-transparent'} bg-gray-100 px-4 py-2`}>
         <Ionicons name="search-outline" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
         <TextInput
           value={value}
@@ -46,7 +46,7 @@ export function SearchBar({
         <TouchableOpacity
           onPress={onFilterPress}
           accessibilityLabel="Open filters"
-          className="bg-primary-600 rounded-xl p-3">
+          className="bg-primary-600 rounded-full p-2.5 shadow-sm">
           <Ionicons name="options-outline" size={18} color="#FFF" />
         </TouchableOpacity>
       )}

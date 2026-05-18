@@ -28,9 +28,9 @@ export function Toast({ toast, onDismiss }: ToastProps) {
   }, [toast.id, opacity, onDismiss]);
 
   return (
-    <Animated.View style={{ opacity }} className={`flex-row items-center ${config.bg} rounded-xl px-4 py-3 gap-2.5 shadow-sm mb-2`}>
-      <Ionicons name={config.icon} size={20} color={config.iconColor} />
-      <Text className={`flex-1 text-sm font-medium ${config.text} leading-5`}>{toast.message}</Text>
+    <Animated.View style={{ opacity }} className={`flex-row items-center ${config.bg} rounded-lg px-3 py-2 gap-2.5 shadow-sm mb-2`}>
+      <Ionicons name={config.icon} size={18} color={config.iconColor} />
+      <Text className={`flex-1 text-[13px] font-medium ${config.text} leading-5`}>{toast.message}</Text>
     </Animated.View>
   );
 }

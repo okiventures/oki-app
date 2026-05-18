@@ -13,8 +13,8 @@ export function Chart({ title, data, labels, type = 'bar', height = 200 }: Chart
   const max = Math.max(...data, 1);
 
   return (
-    <View className="bg-white rounded-2xl p-4 border border-gray-100">
-      <Text className="text-base font-semibold text-gray-900 mb-4">
+    <View className="bg-white rounded-xl p-3 border border-gray-100">
+      <Text className="text-sm font-semibold text-gray-900 mb-3">
         {title}
       </Text>
       

@@ -31,9 +31,9 @@ export function Button({
   const { colors } = useTheme();
 
   const sizeClasses = {
-    sm: 'px-3 py-2 text-xs rounded-lg',
-    md: 'px-5 py-3 text-sm rounded-xl',
-    lg: 'px-7 py-4 text-base rounded-2xl',
+    sm: 'px-4 py-2 text-[11px] rounded-full',
+    md: 'px-5 py-3 text-[13px] rounded-full',
+    lg: 'px-8 py-4 text-sm rounded-full',
   };
 
   const variantClasses = {
@@ -57,6 +57,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={label}
       className={`flex-row items-center justify-center ${sizeClasses[size]} ${variantClasses[variant]} ${fullWidth ? 'w-full' : 'self-auto'} ${disabled ? 'opacity-50 bg-gray-300 border-gray-300' : 'opacity-100'}`}
+      style={!disabled && variant === 'primary' ? { backgroundColor: colors.primary['600'], borderColor: colors.primary['600'] } : {}}
     >
       {loading ? (
         <ActivityIndicator size="small" color={variant === 'tertiary' ? colors.primary['600'] : '#FFFFFF'} />

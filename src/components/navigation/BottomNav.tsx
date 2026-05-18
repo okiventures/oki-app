@@ -39,7 +39,10 @@ export function BottomNav({ items }: BottomNavProps) {
               size={22} 
               color={isActive ? colors.primary['600'] : '#9CA3AF'} 
             />
-            <Text className={`text-[11px] mt-1 ${isActive ? 'font-semibold text-primary-600' : 'font-normal text-gray-400'}`}>
+            <Text 
+              style={{ color: isActive ? colors.primary['600'] : '#9CA3AF' }}
+              className={`text-[11px] mt-1 ${isActive ? 'font-semibold' : 'font-normal'}`}
+            >
               {item.label}
             </Text>
           </TouchableOpacity>
