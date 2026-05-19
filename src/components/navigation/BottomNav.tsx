@@ -21,10 +21,28 @@ export function BottomNav({ items }: BottomNavProps) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const normalize = (path: string) => {
+    let clean = path.replace(/\/\([^)]+\)/g, '');
+    if (!clean.startsWith('/')) {
+      clean = '/' + clean;
+    }
+    if (clean.length > 1 && clean.endsWith('/')) {
+      clean = clean.slice(0, -1);
+    }
+    return clean;
+  };
+
+  const normalizedPath = normalize(pathname);
+
   return (
-    <View className="flex-row bg-white border-t border-gray-100 pb-1 shadow-sm elevation-10">
+    <View className="elevation-10 flex-row border-t border-gray-100 bg-white pb-1 shadow-sm">
       {items.map((item) => {
-        const isActive = pathname.includes(item.key);
+        const normalizedRoute = normalize(item.route);
+        const isActive =
+          item.key === 'index'
+            ? normalizedPath === '/'
+            : normalizedPath === normalizedRoute ||
+              normalizedPath.startsWith(normalizedRoute + '/');
         return (
           <TouchableOpacity
             key={item.key}
@@ -32,17 +50,15 @@ export function BottomNav({ items }: BottomNavProps) {
             accessibilityRole="tab"
             accessibilityLabel={item.label}
             accessibilityState={{ selected: isActive }}
-            className="flex-1 items-center pt-2.5 pb-1"
-          >
-            <Ionicons 
-              name={(isActive ? item.activeIcon : item.icon) as never} 
-              size={22} 
-              color={isActive ? colors.primary['600'] : '#9CA3AF'} 
+            className="flex-1 items-center pt-2.5 pb-1">
+            <Ionicons
+              name={(isActive ? item.activeIcon : item.icon) as never}
+              size={22}
+              color={isActive ? colors.primary['600'] : '#9CA3AF'}
             />
-            <Text 
+            <Text
               style={{ color: isActive ? colors.primary['600'] : '#9CA3AF' }}
-              className={`text-[11px] mt-1 ${isActive ? 'font-semibold' : 'font-normal'}`}
-            >
+              className={`mt-1 text-[11px] ${isActive ? 'font-semibold' : 'font-normal'}`}>
               {item.label}
             </Text>
           </TouchableOpacity>
