@@ -104,7 +104,7 @@ export default function ClientKycLite() {
         })}
       </ScrollView>
 
-      <View className="absolute bottom-0 left-0 right-0 border-t border-gray-200 bg-white p-4">
+      <View className="absolute bottom-0 left-0 right-0 p-4">
         <Button
           label="Finish and go to Home"
           onPress={() => router.replace('/(client)')}
