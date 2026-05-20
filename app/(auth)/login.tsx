@@ -65,7 +65,7 @@ export default function ClientLogin() {
 
           <Button
             label="Continue"
-            onPress={() => router.replace('/(client)/onboarding')}
+            onPress={() => router.replace('/(auth)/onboarding')}
             fullWidth
             disabled={!canContinue}
           />

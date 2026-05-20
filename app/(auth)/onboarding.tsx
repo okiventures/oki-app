@@ -96,10 +96,10 @@ export default function ClientOnboarding() {
         </View>
       </ScrollView>
 
-      <View className="absolute bottom-0 left-0 right-0 p-4">
+      <View className="absolute bottom-16 left-0 right-0 p-4">
         <Button
         label="Continue to KYC-lite"
-        onPress={() => router.replace('/(client)/kyc-lite')}
+        onPress={() => router.replace('/(auth)/kyc-lite')}
         fullWidth
         disabled={!canContinue}
         />
