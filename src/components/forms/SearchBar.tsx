@@ -34,6 +34,8 @@ export function SearchBar({
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           className="flex-1 text-[15px] text-gray-900"
+          underlineColorAndroid="transparent"
+          style={{ backgroundColor: 'transparent', borderWidth: 0, outlineWidth: 0 }}
           returnKeyType="search"
         />
         {onLocationPress && (
