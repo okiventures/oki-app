@@ -12,6 +12,7 @@ interface InputProps extends Omit<TextInputProps, 'style'> {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   secureToggle?: boolean;
+  fillColor?: string;
 }
 
 export function Input({
@@ -23,6 +24,7 @@ export function Input({
   rightIcon,
   secureToggle,
   secureTextEntry,
+  fillColor,
   ...rest
 }: InputProps) {
   const [secure, setSecure] = useState(secureTextEntry ?? false);
@@ -30,10 +32,14 @@ export function Input({
 
   const borderClass = error ? 'border-red-500' : focused ? 'border-primary-500' : 'border-gray-200';
 
+  const containerBgClass = fillColor ? '' : 'bg-gray-50';
+
   return (
     <View className="mb-2">
       {label && <FormLabel label={label} required={required} />}
-      <View className={`flex-row items-center border ${borderClass} rounded-2xl bg-gray-50 px-4 py-0.5`}>
+      <View
+        className={`flex-row items-center border ${borderClass} rounded-2xl ${containerBgClass} px-4 py-0.5`}
+        style={fillColor ? { backgroundColor: fillColor } : undefined}>
         {leftIcon && <View className="mr-2">{leftIcon}</View>}
         <TextInput
           {...rest}

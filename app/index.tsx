@@ -50,6 +50,15 @@ export default function LandingPage() {
         <Text className="font-heading mb-1 text-[13px] tracking-wider text-gray-700 uppercase">
           Client Flow
         </Text>
+        <Link href="/(client)/login" asChild>
+          <TouchableOpacity
+            style={{ backgroundColor: colors.primary['50'] }}
+            className="w-full items-center rounded-lg py-2">
+            <Text style={{ color: colors.primary['700'] }} className="font-semibold">
+              Onboarding / KYC
+            </Text>
+          </TouchableOpacity>
+        </Link>
         <Link href="/(client)" asChild>
           <TouchableOpacity
             style={{ backgroundColor: colors.primary['600'] }}
