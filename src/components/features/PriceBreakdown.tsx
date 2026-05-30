@@ -29,7 +29,9 @@ export function PriceBreakdown({ basePrice, tax, platformFee, discount = 0 }: Pr
       {discount > 0 && (
         <View className="flex-row justify-between">
           <Text className="text-[13px] text-green-600">Discount</Text>
-          <Text className="text-[13px] font-medium text-green-600">-{formatCurrency(discount)}</Text>
+          <Text className="text-[13px] font-medium text-green-600">
+            -{formatCurrency(discount)}
+          </Text>
         </View>
       )}
       <View className="my-1 h-px bg-gray-200" />

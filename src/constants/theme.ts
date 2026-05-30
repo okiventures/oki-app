@@ -3,6 +3,14 @@ import { ColorScheme } from '../types';
 export const COLOR_SCHEMES: Record<ColorScheme, {
   primary: Record<string, string>;
   secondary: Record<string, string>;
+  ui: {
+    background: string;
+    surface: string;
+    border: string;
+    text: string;
+    textMuted: string;
+    textLight: string;
+  };
   label: string;
 }> = {
   crimson: {
@@ -31,6 +39,14 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
       '800': '#735410',
       '900': '#5f4512',
     },
+    ui: {
+      background: '#FAFAFA',
+      surface: '#FFFFFF',
+      border: '#E5E7EB',
+      text: '#1C1917',
+      textMuted: '#6B7280',
+      textLight: '#8A8780',
+    },
   },
   teal: {
     label: 'Deep Teal & Coral',
@@ -58,6 +74,14 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
       '800': '#8a4b32',
       '900': '#714029',
     },
+    ui: {
+      background: '#FAFAFA',
+      surface: '#FFFFFF',
+      border: '#E5E7EB',
+      text: '#1C1917',
+      textMuted: '#6B7280',
+      textLight: '#8A8780',
+    },
   },
   indigo: {
     label: 'Indigo & Amber',
@@ -84,6 +108,14 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
       '700': '#8B6914',
       '800': '#735410',
       '900': '#5f4512',
+    },
+    ui: {
+      background: '#FAFAFA',
+      surface: '#FFFFFF',
+      border: '#E5E7EB',
+      text: '#1C1917',
+      textMuted: '#6B7280',
+      textLight: '#8A8780',
     },
   },
 };

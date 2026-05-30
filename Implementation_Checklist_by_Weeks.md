@@ -1,4 +1,4 @@
-#  **Implementation Checklist — Handyman Platform**
+# **Implementation Checklist — Handyman Platform**
 
 **Project Window:** May 6, 2026 → November 18, 2026 (\~28 weeks) **Approach:** Code-first prototyping → Iterative implementation **Cadence:** Team standups every 2 weeks (marked with [STANDUP])
 
@@ -32,6 +32,7 @@
   - [x] ~~Spacing scale: 4pt grid system (xs/sm/md/lg/xl)~~
 
 ### [PASS] Week 1 Success Criteria
+
 - Project runs on both iOS Simulator and Android Emulator from a fresh clone
 - All developers can install, build, and hot-reload the app locally without manual config
 - Personas and journeys documented and signed off by stakeholders
@@ -68,6 +69,7 @@
   - [x] ~~Feedback logged as issues for Week 4 polish~~
 
 ### [PASS] Week 2 Success Criteria
+
 - All Client screens navigable end-to-end using mock data from `src/mocks/`
 - Search screen renders filtered results without crash or layout overflow
 - Booking flow transitions correctly between On-Demand and Scheduled modes without state leak
@@ -108,6 +110,7 @@
   - [ ] Identify and scope polish items for Week 4
 
 ### [PASS] Week 3 Success Criteria
+
 - Handyman app fully navigable: onboarding → online toggle → job acceptance → state-driven job completion
 - Admin can navigate Dashboard, KYC Queue, Disputes, and Users without any broken routes
 - Online/Offline toggle visually reflects state immediately (no perceptible lag)
@@ -147,6 +150,7 @@
   - [ ] Manual test pass: Admin KYC approval and dispute navigation
 
 ### [PASS] Week 4 Success Criteria
+
 - All `src/components/ui/` components render correctly for all documented prop variants
 - Zero hardcoded hex or color values in any screen file — all colors reference `theme.ts` via NativeWind
 - Every screen has a visible empty state, loading skeleton, and error state
@@ -184,6 +188,7 @@
 - [ ] [MILESTONE] **Milestone:** All role screens implemented + database architecture approved
 
 ### [PASS] Week 5 Success Criteria
+
 - ER diagram reviewed and approved by all stakeholders with no unresolved ambiguities
 - All booking lifecycle states and guard conditions documented, agreed, and published
 - OpenAPI spec covers 100% of planned Phase 2 endpoints with schema definitions
@@ -217,6 +222,7 @@
   - [ ] Seed script with representative test data for each role
 
 ### [PASS] Week 6 Success Criteria
+
 - CI pipeline runs end-to-end on a sample PR and correctly blocks on lint/type errors
 - A new user can sign up, verify via OTP, and receive a valid JWT in under 60 seconds
 - JWT refresh works silently without requiring re-login
@@ -248,6 +254,7 @@
   - [ ] RBAC: each role correctly permitted and rejected on guarded routes
 
 ### [PASS] Week 7 Success Criteria
+
 - Profile updates persist and return updated data; stale cache invalidated
 - KYC documents stored in private bucket — direct URL returns 403 without signed token
 - Signed URL expires after configured TTL (e.g., 15 minutes)
@@ -277,6 +284,7 @@
   - [ ] Booking created in `PENDING` state; handyman notified at configured lead time
 
 ### [PASS] Week 8 Success Criteria
+
 - Booking creation assigns `PENDING` state and creates an audit event record
 - PostGIS radius query returns only `is_online` handymen in the correct category, sorted by distance
 - GiST index confirmed on `handymen.location` via `EXPLAIN ANALYZE`
@@ -308,6 +316,7 @@
   - [ ] Cancellation path: create → cancel; attempt cancel on `ACCEPTED` returns 422
 
 ### [PASS] Week 9 Success Criteria
+
 - Handyman acceptance transitions booking state and notifies Client in real time (< 3 s)
 - Booking detail screen renders all required fields for both Client and Handyman views
 - Pre-acceptance cancellation succeeds; post-acceptance cancellation returns 422
@@ -336,6 +345,7 @@
   - [ ] Ranking logic isolated in a reusable service function for easy extension in Phase 3
 
 ### [PASS] Week 10 Success Criteria
+
 - Offline handyman disappears from search results within 30 seconds of toggling off
 - Handyman with 3 service categories at different prices all appear correctly in search
 - Scheduling a booking that overlaps an existing one returns 409 Conflict
@@ -365,6 +375,7 @@
   - [ ] Log entries are immutable (no UPDATE/DELETE RLS on `booking_events`)
 
 ### [PASS] Week 11 Success Criteria
+
 - Every valid transition succeeds via API and creates a `booking_events` record
 - Every invalid transition returns 422 with `from_state` and `to_state` in the error body
 - Handyman UI CTA updates correctly after each successful transition
@@ -394,6 +405,7 @@
   - [ ] Revenue summary: total platform fees collected (mocked until payment integration in Week 15)
 
 ### [PASS] Week 12 Success Criteria
+
 - Admin can review, approve, and reject a KYC submission in under 3 clicks
 - Approved handyman is searchable by clients within 30 seconds of approval
 - Rejected handyman receives in-app and email notification with the rejection reason
@@ -424,6 +436,7 @@
   - [ ] Admin review queue shows flagged reviews with flag reason and original content
 
 ### [PASS] Week 13 Success Criteria
+
 - Rating prompt appears exactly once per completed booking per actor (no repeat prompts)
 - Trust Score updates within 5 seconds of a new review being submitted
 - Attempting to rate the same booking twice returns 409 Conflict
@@ -450,6 +463,7 @@
 - [ ] [MILESTONE] **Milestone:** Functional booking, worker workflow, admin verification, rating loop
 
 ### [PASS] Week 14 Success Criteria
+
 - Zero P0 bugs; fewer than 5 P1 bugs remaining with owners assigned
 - Full booking lifecycle completes without crash on both iOS and Android physical devices
 - Top 5 queries execute in < 200 ms on a staging dataset (verified via EXPLAIN ANALYZE)
@@ -482,6 +496,7 @@
   - [ ] Auto-cancel booking after 3 failed payment attempts; notify Handyman
 
 ### [PASS] Week 15 Success Criteria
+
 - `PaymentIntent` created in Stripe sandbox within 2 s of booking acceptance
 - Funds held correctly: Handyman wallet does not credit until after 24 h escrow window
 - Each webhook event processed exactly once (duplicate delivery handled idempotently)
@@ -512,6 +527,7 @@
   - [ ] Accessible to Admin only; generated on-demand or on a weekly schedule
 
 ### [PASS] Week 16 Success Criteria
+
 - Every completed booking creates a matching `wallet_transactions` CREDIT entry
 - Platform fee deducted correctly on every credit (verified by reconciliation)
 - Payout request updates `available_balance` atomically — no race condition under concurrent requests
@@ -543,6 +559,7 @@
   - [ ] Configurable radius per booking type (default: 200 m)
 
 ### [PASS] Week 17 Success Criteria
+
 - Client map marker updates within 3 s of Handyman moving on a real device test
 - Background location continues publishing with app minimized (verified on physical device)
 - A third-party user cannot subscribe to another booking's location channel (RLS verified)
@@ -573,6 +590,7 @@
   - [ ] Map renders at 60 fps on a mid-range Android device (Pixel 6 baseline)
 
 ### [PASS] Week 18 Success Criteria
+
 - Battery drain in background tracking mode < 5% per hour (measured over 1 h on test device)
 - Saved address geocodes correctly and surfaces as a quick-select option in booking flow
 - ETA display updates every 30 s without full screen re-render
@@ -603,6 +621,7 @@
   - [ ] All templates reviewed for tone consistency and localization readiness
 
 ### [PASS] Week 19 Success Criteria
+
 - Push notification delivered within 5 s of trigger event in staging
 - Email fallback fires when push token is invalid (verified with invalidated test token)
 - In-app message sent by Handyman does not expose their phone number or email to Client
@@ -635,6 +654,7 @@
   - [ ] Admin can download photos as evidence package for formal disputes
 
 ### [PASS] Week 20 Success Criteria
+
 - `WORK_STARTED` transition returns 422 if before-photo not uploaded
 - SOS alert appears in Admin dashboard within 10 s of trigger on a real device
 - Masked call connects both parties without Twilio logs showing real phone numbers
@@ -667,6 +687,7 @@
   - [ ] Audit log records who created/modified each pricing rule and when
 
 ### [PASS] Week 21 Success Criteria
+
 - Surge multiplier is correctly applied and stored on bookings created during an active rule window
 - Multiplier cannot exceed 3.0× without an explicit Admin override flag
 - Cancellation fee correctly calculated per tier and captured from the held PaymentIntent
@@ -699,6 +720,7 @@
   - [ ] Notification deep-links directly into the booking flow for the relevant service category
 
 ### [PASS] Week 22 Success Criteria
+
 - Gold Status auto-granted at the 10th completed booking without manual Admin action
 - Reduced fee tier correctly applied on the next booking after Gold Status is granted
 - Geofenced notification fires within 30 min of a weather trigger for the correct zone
@@ -728,6 +750,7 @@
 - [ ] [MILESTONE] **Milestone:** Escrow, real-time logistics, notifications, dynamic pricing live
 
 ### [PASS] Week 23 Success Criteria
+
 - All 5 E2E critical paths pass green on CI against staging
 - No cross-feature regression: payment, tracking, and notifications work together without conflict
 - Error rate < 0.1% on critical paths under normal staging load
@@ -763,6 +786,7 @@
   - [ ] Privacy policy published and linked in app; consent captured at signup
 
 ### [PASS] Week 24 Success Criteria
+
 - Zero OWASP Top 10 Critical or High vulnerabilities remaining after remediation pass
 - Pen test report produced; all High findings have documented fixes with verification
 - Gitleaks scan returns zero findings on the full commit history
@@ -797,6 +821,7 @@
   - [ ] All budgets signed off by tech lead in a documented performance review
 
 ### [PASS] Week 25 Success Criteria
+
 - System sustains 500 concurrent bookings with error rate < 0.1%
 - PostGIS radius query P95 < 100 ms at 100K handyman record dataset (GiST index confirmed active)
 - DB failover completes in < 60 s with zero committed data loss
@@ -827,6 +852,7 @@
   - [ ] Beta sign-off: all P0 and P1 bugs resolved before proceeding to Week 27
 
 ### [PASS] Week 26 Success Criteria
+
 - Beta builds distributed to ≥ 20 testers on both platforms with zero install failures
 - Crash-free rate ≥ 98% after 48 h of active beta use
 - All P0 bugs patched and verified within the beta window
@@ -859,6 +885,7 @@
   - [ ] Support email/chat configured; first-response SLA defined (< 24 h)
 
 ### [PASS] Week 27 Success Criteria
+
 - App Store submission passed metadata review (no rejection for incomplete information)
 - Play Store submission enters review within 3 business days of upload
 - Landing page live, indexed, and accessible; App Store badges link to correct store pages once approved
@@ -889,6 +916,7 @@
 - [ ] [MILESTONE] **Milestone:** Public launch on App Store & Play Store
 
 ### [PASS] Week 28 Success Criteria
+
 - App live and downloadable on both App Store and Play Store
 - Zero P0 incidents in the first 48 h post-launch
 - Crash-free rate ≥ 99% in the first 24 h of production traffic
@@ -900,19 +928,18 @@
 
 ## **Standup Quick Index**
 
-| \# | Date | Phase |
-| :---- | :---- | :---- |
-| 1 | May 19, 2026 | Phase 1 |
-| 2 | June 2, 2026 | Phase 1 |
-| 3 | June 16, 2026 | Phase 2 |
-| 4 | June 30, 2026 | Phase 2 |
-| 5 | July 14, 2026 | Phase 2 |
-| 6 | July 28, 2026 | Phase 2 |
-| 7 | August 11, 2026 | Phase 3 |
-| 8 | August 25, 2026 | Phase 3 |
-| 9 | September 8, 2026 | Phase 3 |
-| 10 | September 22, 2026 | Phase 3 |
-| 11 | October 6, 2026 | Phase 3 |
-| 12 | October 20, 2026 | Phase 4 |
-| 13 | November 3, 2026 | Phase 4 |
-
+| \#  | Date               | Phase   |
+| :-- | :----------------- | :------ |
+| 1   | May 19, 2026       | Phase 1 |
+| 2   | June 2, 2026       | Phase 1 |
+| 3   | June 16, 2026      | Phase 2 |
+| 4   | June 30, 2026      | Phase 2 |
+| 5   | July 14, 2026      | Phase 2 |
+| 6   | July 28, 2026      | Phase 2 |
+| 7   | August 11, 2026    | Phase 3 |
+| 8   | August 25, 2026    | Phase 3 |
+| 9   | September 8, 2026  | Phase 3 |
+| 10  | September 22, 2026 | Phase 3 |
+| 11  | October 6, 2026    | Phase 3 |
+| 12  | October 20, 2026   | Phase 4 |
+| 13  | November 3, 2026   | Phase 4 |

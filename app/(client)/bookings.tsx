@@ -1,91 +1,131 @@
 import React, { useState } from 'react';
-import { View, FlatList, Text, TouchableOpacity } from 'react-native';
-import { Navbar } from '../../src/components/navigation/Navbar';
-import { TabBar } from '../../src/components/navigation/TabBar';
+import { View, ScrollView, Text, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useTheme } from '../../src/context/ThemeContext';
+import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { BookingCard } from '../../src/components/cards/BookingCard';
+import { ActiveBookingCard } from '../../src/components/cards/ActiveBookingCard';
 import { MOCK_BOOKINGS } from '../../src/mocks';
 import { SearchBar } from '../../src/components/forms/SearchBar';
+import { BookingStatus } from '../../src/types';
+import { EmptyState } from '../../src/components/ui/EmptyState';
+import { BookingListSection } from '../../src/components/bookings/BookingListSection';
 
 export default function ClientBookings() {
-  const [activeTab, setActiveTab] = useState('upcoming');
+  const { colors } = useTheme();
+  const router = useRouter();
   const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
-  const [showFilters, setShowFilters] = useState(false);
 
+  // Filter bookings by search text
   const filteredBookings = MOCK_BOOKINGS.filter((b) => {
-    if (activeTab === 'upcoming')
-      return b.status !== 'Completed' && b.status !== 'Paid' && b.status !== 'Cancelled';
-    return b.status === 'Paid' || b.status === 'Completed' || b.status === 'Cancelled';
+    if (!searchText) return true;
+    const s = searchText.toLowerCase();
+    return (
+      b.description?.toLowerCase().includes(s) ||
+      b.handymanName?.toLowerCase().includes(s) ||
+      b.clientName?.toLowerCase().includes(s) ||
+      String(b.serviceCategory).toLowerCase().includes(s)
+    );
   });
 
-  const visibleBookings = filteredBookings
-    .filter((b) => {
-      if (!searchText) return true;
-      const s = searchText.toLowerCase();
-      return (
-        b.description?.toLowerCase().includes(s) ||
-        b.handymanName?.toLowerCase().includes(s) ||
-        b.clientName?.toLowerCase().includes(s) ||
-        String(b.serviceCategory).toLowerCase().includes(s)
-      );
-    })
-    .filter((b) => {
-      if (statusFilter === 'all') return true;
-      if (statusFilter === 'pending') return b.status !== 'Completed' && b.status !== 'Paid' && b.status !== 'Cancelled';
-      return b.status === 'Paid' || b.status === 'Completed' || b.status === 'Cancelled';
-    });
+  // Segment bookings
+  const activeBookings = filteredBookings.filter(
+    (b) =>
+      b.status === BookingStatus.InTransit ||
+      b.status === BookingStatus.Arrived ||
+      b.status === BookingStatus.WorkStarted
+  );
+
+  const upcomingBookings = filteredBookings.filter(
+    (b) => b.status === BookingStatus.Pending || b.status === BookingStatus.Accepted
+  );
+
+  const historyBookings = filteredBookings.filter(
+    (b) =>
+      b.status === BookingStatus.Completed ||
+      b.status === BookingStatus.Paid ||
+      b.status === BookingStatus.Cancelled
+  );
+
+  const hasAnyBookings = filteredBookings.length > 0;
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <Navbar title="My Bookings" />
-      <View className="bg-white">
-        <TabBar
-          tabs={[
-            { key: 'upcoming', label: 'Active & Upcoming' },
-            { key: 'history', label: 'History' },
-          ]}
-          activeKey={activeTab}
-          onTabPress={setActiveTab}
-        />
-        <View className="px-4 py-3">
-          <SearchBar
-            value={searchText}
-            onChangeText={setSearchText}
-            placeholder="Search bookings, services or provider…"
-            onFilterPress={() => setShowFilters((s) => !s)}
-          />
+    <SafeAreaView className="flex-1" style={{ backgroundColor: colors.primary['600'] }}>
+      <ScreenHeader title="My Bookings" showNotifications onNotificationsPress={() => {}} />
 
-          {showFilters && (
-            <View className="flex-row items-center gap-2 mt-3">
-              {[
-                { key: 'all', label: 'All' },
-                { key: 'pending', label: 'Pending' },
-                { key: 'completed', label: 'Completed' },
-              ].map((f) => (
-                <TouchableOpacity
-                  key={f.key}
-                  onPress={() => setStatusFilter(f.key as any)}
-                  className={`px-3 py-1 rounded-full ${statusFilter === f.key ? 'bg-primary-600' : 'bg-gray-200'}`}>
-                  <Text className={`${statusFilter === f.key ? 'text-white' : 'text-gray-800'}`}>{f.label}</Text>
-                </TouchableOpacity>
-              ))}
+      <View
+        className="flex-1 overflow-hidden rounded-t-[32px]"
+        style={{ backgroundColor: colors.ui.background, marginTop: -32 }}>
+        <ScrollView
+          className="mt-5 flex-1 rounded-xl"
+          contentContainerStyle={{ paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          style={{ backgroundColor: colors.ui.background }}>
+          <View className="px-5 py-4">
+            <SearchBar
+              value={searchText}
+              onChangeText={setSearchText}
+              placeholder="Search bookings, services or provider…"
+            />
+          </View>
+
+          {hasAnyBookings ? (
+            <View>
+              {activeBookings.length > 0 && (
+                <BookingListSection title="Active Bookings" noHorizontalPadding>
+                  {activeBookings.map((item) => (
+                    <ActiveBookingCard
+                      key={item.id}
+                      booking={item}
+                      onTrackPress={() => {}}
+                      onViewDetailsPress={() => router.push(`/booking/${item.id}`)}
+                    />
+                  ))}
+                </BookingListSection>
+              )}
+
+              {upcomingBookings.length > 0 && (
+                <BookingListSection title="Upcoming Bookings">
+                  {upcomingBookings.map((item) => (
+                    <BookingCard
+                      key={item.id}
+                      booking={item}
+                      userType="client"
+                      onPress={() => router.push(`/booking/${item.id}`)}
+                    />
+                  ))}
+                </BookingListSection>
+              )}
+
+              {historyBookings.length > 0 && (
+                <BookingListSection title="Previous Activity">
+                  {historyBookings.map((item) => (
+                    <BookingCard
+                      key={item.id}
+                      booking={item}
+                      userType="client"
+                      onPress={() => router.push(`/booking/${item.id}`)}
+                      onRebook={() => {}}
+                      onReport={() => {}}
+                    />
+                  ))}
+                </BookingListSection>
+              )}
             </View>
+          ) : (
+            <EmptyState
+              icon="clipboard-outline"
+              title={searchText ? 'No matches found' : 'No bookings yet'}
+              message={
+                searchText
+                  ? 'Try refining your search keyword or service category.'
+                  : 'Your active and past appointments will show up here.'
+              }
+            />
           )}
-        </View>
+        </ScrollView>
       </View>
-      <FlatList
-        data={visibleBookings}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 16 }}
-        renderItem={({ item }) => (
-          <BookingCard
-            booking={item}
-            userType="client"
-            onPress={() => { }}
-            onRebook={activeTab === 'history' ? () => { } : undefined}
-          />
-        )}
-      />
-    </View>
+    </SafeAreaView>
   );
 }
