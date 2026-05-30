@@ -7,7 +7,7 @@ directories = [
 ]
 
 replacements = {
-    'Mike Torres': 'Ceferino Jumaoas',
+    'Mike Torres': 'Ceferino Jumao-as V',
     'Sarah Jenkins': 'Ishah Bautista',
     'Alice W.': 'Princess Jaena',
     'Robert B.': 'Kyle Lee',

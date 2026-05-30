@@ -57,7 +57,11 @@ export default function ClientHome() {
           />
 
           {MOCK_ACTIVE_BOOKING && (
-            <ActiveBookingCard booking={MOCK_ACTIVE_BOOKING} onTrackPress={() => {}} />
+            <ActiveBookingCard
+              booking={MOCK_ACTIVE_BOOKING}
+              onTrackPress={() => {}}
+              onViewDetailsPress={() => router.push('/booking/b1')}
+            />
           )}
 
           <CategoryGrid categories={filteredCategories} />
@@ -66,8 +70,8 @@ export default function ClientHome() {
 
           <PromoCard promo={MOCK_PROMO} />
 
-          <RecentActivity 
-            rows={MOCK_RECENT_ACTIVITY_ROWS.slice(0, 2)} 
+          <RecentActivity
+            rows={MOCK_RECENT_ACTIVITY_ROWS.slice(0, 2)}
             onViewHistory={() => router.push('/bookings')}
           />
         </ScrollView>

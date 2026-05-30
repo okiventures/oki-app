@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, ScrollView, Text, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { BookingCard } from '../../src/components/cards/BookingCard';
@@ -13,6 +14,7 @@ import { BookingListSection } from '../../src/components/bookings/BookingListSec
 
 export default function ClientBookings() {
   const { colors } = useTheme();
+  const router = useRouter();
   const [searchText, setSearchText] = useState('');
 
   // Filter bookings by search text
@@ -77,7 +79,7 @@ export default function ClientBookings() {
                       key={item.id}
                       booking={item}
                       onTrackPress={() => {}}
-                      onViewDetailsPress={() => {}}
+                      onViewDetailsPress={() => router.push(`/booking/${item.id}`)}
                     />
                   ))}
                 </BookingListSection>
@@ -90,7 +92,7 @@ export default function ClientBookings() {
                       key={item.id}
                       booking={item}
                       userType="client"
-                      onPress={() => {}}
+                      onPress={() => router.push(`/booking/${item.id}`)}
                     />
                   ))}
                 </BookingListSection>
@@ -103,7 +105,7 @@ export default function ClientBookings() {
                       key={item.id}
                       booking={item}
                       userType="client"
-                      onPress={() => {}}
+                      onPress={() => router.push(`/booking/${item.id}`)}
                       onRebook={() => {}}
                       onReport={() => {}}
                     />

@@ -13,7 +13,7 @@ export const MOCK_CLIENT = {
 
 export const MOCK_HANDYMAN = {
   id: 'h1',
-  name: 'Ceferino Jumaoas',
+  name: 'Ceferino Jumao-as V',
   type: 'handyman' as UserType,
   photoUrl: 'https://api.dicebear.com/7.x/shapes/png?seed=Ceferino',
   rating: 4.9,

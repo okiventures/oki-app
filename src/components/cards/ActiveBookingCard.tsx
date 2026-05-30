@@ -9,50 +9,6 @@ import { Button } from '../ui/Button';
 
 const BOOKING_STEPS: string[] = ['Confirmed', 'On the way', 'Working', 'Done'];
 
-interface PulsingBadgeProps {
-  primaryColor: string;
-}
-
-function PulsingBadge({ primaryColor }: PulsingBadgeProps) {
-  const opacity = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 0.3,
-          duration: 700,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 700,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [opacity]);
-
-  return (
-    <View className="flex-row items-center gap-1.5">
-      <Animated.View
-        style={{
-          opacity,
-          width: 7,
-          height: 7,
-          borderRadius: 4,
-          backgroundColor: primaryColor,
-        }}
-      />
-      <Text className="text-xs font-medium" style={{ color: primaryColor }}>
-        In progress
-      </Text>
-    </View>
-  );
-}
-
 interface ActiveBookingCardProps {
   booking: ActiveBooking | Booking;
   onTrackPress?: () => void;
@@ -126,17 +82,15 @@ export function ActiveBookingCard({
         shadowRadius: 3,
         elevation: 2,
       }}>
-      {/* Header band */}
       <View className="px-3.5 pt-3 pb-2.5" style={{ backgroundColor: colors.primary['50'] }}>
-        <View className="mb-1 flex-row items-center justify-between">
-          <PulsingBadge primaryColor={primaryColor} />
-          <Text className="text-xs font-normal" style={{ color: colors.ui.textMuted }}>
+        <View className="flex flex-row justify-between">
+          <Text className="text-[15px] font-medium" style={{ color: colors.ui.text }}>
+            {serviceName}
+          </Text>
+          <Text className="text-xs font-normal italic" style={{ color: colors.ui.textMuted }}>
             {reference}
           </Text>
         </View>
-        <Text className="text-[15px] font-medium" style={{ color: colors.ui.text }}>
-          {serviceName}
-        </Text>
         <Text className="mt-0.5 text-xs font-normal" style={{ color: colors.ui.textLight }}>
           Est. completion: {estimatedCompletion}
         </Text>

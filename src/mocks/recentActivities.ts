@@ -10,7 +10,7 @@ export const MOCK_RECENT_ACTIVITIES: RecentActivity[] = [
   {
     id: '1',
     serviceName: 'Plumbing Service',
-    providerName: 'Ceferino Jumaoas',
+    providerName: 'Ceferino Jumao-as V',
     status: 'in_progress',
     time: '2 hours ago',
   },

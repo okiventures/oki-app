@@ -30,7 +30,7 @@ export const MOCK_ACTIVE_BOOKING: ActiveBooking | null = {
   estimatedCompletion: '~30 min',
   currentStep: 'Working',
   workerInitials: 'CJ',
-  workerName: 'Ceferino Jumaoas',
+  workerName: 'Ceferino Jumao-as V',
   workerRole: 'Licensed Plumber',
 };
 
@@ -139,7 +139,7 @@ export const MOCK_RECENT_ACTIVITY_ROWS: RecentActivityRow[] = [
     categoryId: 'plumbing',
     serviceName: 'Leaking Pipe Repair',
     dateLabel: 'May 28',
-    workerName: 'Ceferino Jumaoas',
+    workerName: 'Ceferino Jumao-as V',
     price: 450,
     status: 'Completed',
   },
