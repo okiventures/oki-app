@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 
 interface BottomNavItem {
@@ -20,6 +21,8 @@ export function BottomNav({ items }: BottomNavProps) {
   const { colors } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 8);
 
   const normalize = (path: string) => {
     let clean = path.replace(/\/\([^)]+\)/g, '');
@@ -41,7 +44,7 @@ export function BottomNav({ items }: BottomNavProps) {
         backgroundColor: '#FFFFFF',
         borderTopWidth: 1,
         borderTopColor: '#D3D1C7',
-        paddingBottom: 4,
+        paddingBottom: bottomPadding,
       }}
     >
       {items.map((item) => {

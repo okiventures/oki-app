@@ -33,7 +33,7 @@ export default function ClientHome() {
     : MOCK_DASHBOARD_CATEGORIES;
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: colors.primary['600'] }}>
+    <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
       <DashboardHeader
         city={MOCK_CLIENT.location}
         userName={MOCK_CLIENT.name}

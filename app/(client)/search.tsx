@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Navbar } from '../../src/components/navigation/Navbar';
-import { FormField } from '../../src/components/forms/FormField';
 import { Input } from '../../src/components/forms/Input';
 import { Button } from '../../src/components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,8 +15,8 @@ export default function ServiceRequest() {
   return (
     <View className="flex-1 bg-gray-50">
       <Navbar title={`Request ${category || 'Service'}`} showBack />
-      
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         <Text className="font-heading text-xl text-gray-900 mb-2">Describe the issue</Text>
         <Text className="text-[13px] text-gray-500 mb-4">This helps us match you with the right professional for the job.</Text>
 
@@ -61,7 +60,7 @@ export default function ServiceRequest() {
         )}
       </ScrollView>
 
-      <View className="p-3 bg-white border-t border-gray-200 absolute bottom-0 left-0 right-0">
+      <View className="border-t border-gray-200 bg-white p-3">
         <Button 
           label="Find Available Worker" 
           onPress={() => router.replace('/(client)/bookings')}
