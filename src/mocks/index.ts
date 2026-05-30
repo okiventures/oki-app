@@ -4,3 +4,6 @@ export * from './bookings';
 export * from './reviews';
 export * from './admin';
 export * from './services';
+export * from './dashboard';
+export * from './recentActivities';
+export * from './recommended';

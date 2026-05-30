@@ -23,33 +23,51 @@ export function SearchBar({
 
   return (
     <View className="flex-row items-center gap-2">
+      {/* Search Input Container */}
       <View
-        className={`flex-1 flex-row items-center rounded-full border ${focused ? 'border-primary-400' : 'border-transparent'} bg-gray-100 px-4 py-2`}>
-        <Ionicons name="search-outline" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
+        className="flex-1 flex-row items-center gap-2 rounded-xl border px-3 py-2.5"
+        style={{
+          backgroundColor: colors.ui.surface,
+          borderColor: focused ? colors.primary['400'] : colors.ui.border,
+        }}>
+        <Ionicons name="search-outline" size={18} color="#9CA3AF" />
         <TextInput
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor="#B0AEA8"
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          className="flex-1 text-[15px] text-gray-900"
+          className="flex-1 text-sm font-normal"
+          style={
+            {
+              color: colors.ui.text,
+              outlineStyle: 'none',
+              backgroundColor: 'transparent',
+            } as any
+          }
           underlineColorAndroid="transparent"
-          style={{ backgroundColor: 'transparent', borderWidth: 0, outlineWidth: 0 }}
           returnKeyType="search"
+          accessibilityLabel={placeholder}
         />
         {onLocationPress && (
-          <TouchableOpacity onPress={onLocationPress} accessibilityLabel="Use current location">
+          <TouchableOpacity
+            onPress={onLocationPress}
+            accessibilityLabel="Use current location"
+            className="ml-1">
             <Ionicons name="location-outline" size={18} color={colors.primary['600']} />
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Filter Button */}
       {onFilterPress && (
         <TouchableOpacity
           onPress={onFilterPress}
           accessibilityLabel="Open filters"
-          className="bg-primary-600 rounded-full p-2.5 shadow-sm">
-          <Ionicons name="options-outline" size={18} color="#FFF" />
+          className="h-11 w-11 items-center justify-center rounded-xl"
+          style={{ backgroundColor: colors.primary['600'] }}>
+          <Ionicons name="options-outline" size={20} color={colors.ui.surface} />
         </TouchableOpacity>
       )}
     </View>
