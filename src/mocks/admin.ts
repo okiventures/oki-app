@@ -28,7 +28,7 @@ export const MOCK_DISPUTES = [
     id: 'd2',
     bookingId: 'b88',
     clientName: 'Kyle Lee',
-    handymanName: 'Ceferino Jumaoas',
+    handymanName: 'Ceferino Jumao-as V',
     reason: 'No show',
     status: 'Investigating',
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),

@@ -6,7 +6,7 @@ export const MOCK_BOOKINGS: Booking[] = [
     clientId: 'c1',
     clientName: 'Ishah Bautista',
     handymanId: 'h1',
-    handymanName: 'Ceferino Jumaoas',
+    handymanName: 'Ceferino Jumao-as V',
     serviceCategory: ServiceCategory.Plumbing,
     status: BookingStatus.WorkStarted,
     bookingType: BookingType.OnDemand,
@@ -42,7 +42,7 @@ export const MOCK_BOOKINGS: Booking[] = [
     clientId: 'c2',
     clientName: 'Kyle Lee',
     handymanId: 'h1',
-    handymanName: 'Ceferino Jumaoas',
+    handymanName: 'Ceferino Jumao-as V',
     serviceCategory: ServiceCategory.Electrical,
     status: BookingStatus.Pending,
     bookingType: BookingType.Scheduled,
@@ -54,5 +54,5 @@ export const MOCK_BOOKINGS: Booking[] = [
     platformFee: 12,
     netAmount: 108,
     location: 'Cebu City',
-  }
+  },
 ];

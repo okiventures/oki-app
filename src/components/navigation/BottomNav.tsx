@@ -35,7 +35,15 @@ export function BottomNav({ items }: BottomNavProps) {
   const normalizedPath = normalize(pathname);
 
   return (
-    <View className="elevation-10 flex-row border-t border-gray-100 bg-white pb-1 shadow-sm">
+    <View
+      style={{
+        flexDirection: 'row',
+        backgroundColor: '#FFFFFF',
+        borderTopWidth: 1,
+        borderTopColor: '#D3D1C7',
+        paddingBottom: 4,
+      }}
+    >
       {items.map((item) => {
         const normalizedRoute = normalize(item.route);
         const isActive =
@@ -50,15 +58,26 @@ export function BottomNav({ items }: BottomNavProps) {
             accessibilityRole="tab"
             accessibilityLabel={item.label}
             accessibilityState={{ selected: isActive }}
-            className="flex-1 items-center pt-2.5 pb-1">
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              paddingTop: 10,
+              paddingBottom: 4,
+            }}
+          >
             <Ionicons
               name={(isActive ? item.activeIcon : item.icon) as never}
               size={22}
               color={isActive ? colors.primary['600'] : '#9CA3AF'}
             />
             <Text
-              style={{ color: isActive ? colors.primary['600'] : '#9CA3AF' }}
-              className={`mt-1 text-[11px] ${isActive ? 'font-semibold' : 'font-normal'}`}>
+              style={{
+                color: isActive ? colors.primary['600'] : '#9CA3AF',
+                fontSize: 12,
+                fontWeight: isActive ? '500' : '400',
+                marginTop: 3,
+              }}
+            >
               {item.label}
             </Text>
           </TouchableOpacity>
