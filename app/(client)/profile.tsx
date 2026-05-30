@@ -67,7 +67,7 @@ export default function ClientProfile() {
   const memberYear = new Date(MOCK_CLIENT.memberSince).getFullYear();
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: colors.primary['600'] }}>
+    <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ flexGrow: 1 }}
@@ -178,7 +178,7 @@ export default function ClientProfile() {
         onClose={() => setLogoutModalVisible(false)}
         title="Log Out">
         <Text className="mb-4 text-sm" style={{ color: '#6B7280' }}>
-          Are you sure you want to log out? You'll need to sign in again to access your bookings.
+          Are you sure you want to log out? You&apos;ll need to sign in again to access your bookings.
         </Text>
         <View className="gap-2.5">
           <Button
