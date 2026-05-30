@@ -9,6 +9,7 @@ import {
   SERVICE_CATEGORY_ICONS,
 } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
+import { Button } from '../ui/Button';
 import { RecentActivityRow } from '../../mocks/dashboard';
 
 interface BookingCardProps {
@@ -150,24 +151,28 @@ export function BookingCard({
       {!isRecentActivity && (onRebook || onReport) && status === BookingStatus.Paid && (
         <View className="mt-3 flex-row gap-2 border-t border-gray-50 pt-3">
           {onRebook && (
-            <TouchableOpacity
-              onPress={onRebook}
-              className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl py-2"
-              style={{ backgroundColor: colors.primary['50'] }}>
-              <Ionicons name="refresh-outline" size={14} color={colors.primary['600']} />
-              <Text className="text-[11px] font-semibold" style={{ color: colors.primary['600'] }}>
-                Rebook
-              </Text>
-            </TouchableOpacity>
+            <View className="flex-1">
+              <Button
+                label="Rebook"
+                onPress={onRebook}
+                variant="tertiary"
+                fullWidth
+                leftIcon={
+                  <Ionicons name="refresh-outline" size={14} color={colors.primary['600']} />
+                }
+              />
+            </View>
           )}
           {onReport && (
-            <TouchableOpacity
-              onPress={onReport}
-              className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl py-2"
-              style={{ backgroundColor: 'rgba(239, 68, 68, 0.08)' }}>
-              <Ionicons name="flag-outline" size={14} color="#EF4444" />
-              <Text className="text-[11px] font-semibold text-red-500">Report</Text>
-            </TouchableOpacity>
+            <View className="flex-1">
+              <Button
+                label="Report"
+                onPress={onReport}
+                variant="danger"
+                fullWidth
+                leftIcon={<Ionicons name="flag-outline" size={14} color="#FFFFFF" />}
+              />
+            </View>
           )}
         </View>
       )}

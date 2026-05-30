@@ -8,6 +8,7 @@ interface DashboardHeaderProps {
   city: string;
   onCityPress?: () => void;
   onNotificationPress?: () => void;
+  onProfilePress?: () => void;
   unreadCount?: number;
   userName: string;
   userPhotoUrl?: string;
@@ -17,6 +18,7 @@ export function DashboardHeader({
   city,
   onCityPress,
   onNotificationPress,
+  onProfilePress,
   unreadCount = 0,
   userName,
   userPhotoUrl,
@@ -26,7 +28,7 @@ export function DashboardHeader({
 
   return (
     <View
-      className="rounded-b-xl px-5 pt-12 pb-5"
+      className="px-5 pt-4 pb-10"
       style={{
         backgroundColor: colors.primary['600'],
       }}>
@@ -64,6 +66,7 @@ export function DashboardHeader({
           </TouchableOpacity>
 
           <TouchableOpacity
+            onPress={onProfilePress}
             accessibilityLabel={`Profile, ${firstName}`}
             className="flex-row items-center gap-1.5 rounded-full border px-2 py-1"
             style={{

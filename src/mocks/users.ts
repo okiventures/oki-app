@@ -7,7 +7,7 @@ export const MOCK_CLIENT = {
   photoUrl: 'https://api.dicebear.com/7.x/shapes/png?seed=Ishah',
   rating: 4.8,
   reviewCount: 12,
-  memberSince: '2023-01-15T08:00:00Z',
+  memberSince: '2026-01-15T08:00:00Z',
   location: 'Cebu City',
 };
 

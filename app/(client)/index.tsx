@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, ScrollView } from 'react-native';
+import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
 
@@ -38,31 +39,39 @@ export default function ClientHome() {
         userName={MOCK_CLIENT.name}
         userPhotoUrl={MOCK_CLIENT.photoUrl}
         unreadCount={3}
+        onProfilePress={() => router.push('/profile')}
       />
 
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 28 }}
-        showsVerticalScrollIndicator={false}
-        style={{ backgroundColor: colors.ui.background }}>
-        <GreetingBlock
-          userName={MOCK_CLIENT.name}
-          searchValue={searchText}
-          onSearchChange={setSearchText}
-        />
+      <View
+        className="flex-1 overflow-hidden rounded-t-[32px]"
+        style={{ backgroundColor: colors.ui.background, marginTop: -24 }}>
+        <ScrollView
+          className="mt-5 flex-1 rounded-xl"
+          contentContainerStyle={{ paddingBottom: 28 }}
+          showsVerticalScrollIndicator={false}
+          style={{ backgroundColor: colors.ui.background }}>
+          <GreetingBlock
+            userName={MOCK_CLIENT.name}
+            searchValue={searchText}
+            onSearchChange={setSearchText}
+          />
 
-        {MOCK_ACTIVE_BOOKING && (
-          <ActiveBookingCard booking={MOCK_ACTIVE_BOOKING} onTrackPress={() => {}} />
-        )}
+          {MOCK_ACTIVE_BOOKING && (
+            <ActiveBookingCard booking={MOCK_ACTIVE_BOOKING} onTrackPress={() => {}} />
+          )}
 
-        <CategoryGrid categories={filteredCategories} />
+          <CategoryGrid categories={filteredCategories} />
 
-        <QuickBookCards modes={MOCK_QUICK_BOOK_MODES} />
+          <QuickBookCards modes={MOCK_QUICK_BOOK_MODES} />
 
-        <PromoCard promo={MOCK_PROMO} />
+          <PromoCard promo={MOCK_PROMO} />
 
-        <RecentActivity rows={MOCK_RECENT_ACTIVITY_ROWS} />
-      </ScrollView>
+          <RecentActivity 
+            rows={MOCK_RECENT_ACTIVITY_ROWS.slice(0, 2)} 
+            onViewHistory={() => router.push('/bookings')}
+          />
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }

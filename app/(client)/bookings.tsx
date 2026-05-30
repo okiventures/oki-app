@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { View, ScrollView, Text } from 'react-native';
+import { View, ScrollView, Text, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
+import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { BookingCard } from '../../src/components/cards/BookingCard';
 import { ActiveBookingCard } from '../../src/components/cards/ActiveBookingCard';
 import { MOCK_BOOKINGS } from '../../src/mocks';
 import { SearchBar } from '../../src/components/forms/SearchBar';
 import { BookingStatus } from '../../src/types';
-import { Ionicons } from '@expo/vector-icons';
+import { EmptyState } from '../../src/components/ui/EmptyState';
+import { BookingListSection } from '../../src/components/bookings/BookingListSection';
 
 export default function ClientBookings() {
   const { colors } = useTheme();
@@ -47,98 +49,81 @@ export default function ClientBookings() {
   const hasAnyBookings = filteredBookings.length > 0;
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: colors.ui.background }}>
-      {/* Main scrolling content */}
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 32 }}
-        showsVerticalScrollIndicator={false}
-        style={{ backgroundColor: colors.ui.background }}>
-        {/* Search Bar Block */}
-        <View className="px-5 py-4">
-          <SearchBar
-            value={searchText}
-            onChangeText={setSearchText}
-            placeholder="Search bookings, services or provider…"
-          />
-        </View>
+    <SafeAreaView className="flex-1" style={{ backgroundColor: colors.primary['600'] }}>
+      <ScreenHeader title="My Bookings" showNotifications onNotificationsPress={() => {}} />
 
-        {/* Content list */}
-        {hasAnyBookings ? (
-          <View>
-            {/* 1. Active Bookings Section */}
-            {activeBookings.length > 0 && (
-              <View className="mb-3.5">
-                <Text
-                  className="mx-5 mb-2.5 text-[15px] font-semibold"
-                  style={{ color: colors.ui.text }}>
-                  Active Bookings
-                </Text>
-                {activeBookings.map((item) => (
-                  <ActiveBookingCard
-                    key={item.id}
-                    booking={item}
-                    onTrackPress={() => {}}
-                    onViewDetailsPress={() => {}}
-                  />
-                ))}
-              </View>
-            )}
-
-            {/* 2. Upcoming Bookings Section */}
-            {upcomingBookings.length > 0 && (
-              <View className="mb-3.5 px-5">
-                <Text
-                  className="mb-2.5 text-[15px] font-semibold"
-                  style={{ color: colors.ui.text }}>
-                  Upcoming Bookings
-                </Text>
-                {upcomingBookings.map((item) => (
-                  <BookingCard key={item.id} booking={item} userType="client" onPress={() => {}} />
-                ))}
-              </View>
-            )}
-
-            {/* 3. Previous Activity / History Section */}
-            {historyBookings.length > 0 && (
-              <View className="mb-3.5 px-5">
-                <Text
-                  className="mb-2.5 text-[15px] font-semibold"
-                  style={{ color: colors.ui.text }}>
-                  Previous Activity
-                </Text>
-                {historyBookings.map((item) => (
-                  <BookingCard
-                    key={item.id}
-                    booking={item}
-                    userType="client"
-                    onPress={() => {}}
-                    onRebook={() => {}}
-                    onReport={() => {}}
-                  />
-                ))}
-              </View>
-            )}
+      <View
+        className="flex-1 overflow-hidden rounded-t-[32px]"
+        style={{ backgroundColor: colors.ui.background, marginTop: -32 }}>
+        <ScrollView
+          className="mt-5 flex-1 rounded-xl"
+          contentContainerStyle={{ paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          style={{ backgroundColor: colors.ui.background }}>
+          <View className="px-5 py-4">
+            <SearchBar
+              value={searchText}
+              onChangeText={setSearchText}
+              placeholder="Search bookings, services or provider…"
+            />
           </View>
-        ) : (
-          /* Empty Search or Empty Data State */
-          <View className="mt-16 items-center justify-center px-8">
-            <View
-              className="mb-4 h-16 w-16 items-center justify-center rounded-2xl"
-              style={{ backgroundColor: `${colors.primary['600']}15` }}>
-              <Ionicons name="clipboard-outline" size={32} color={colors.primary['600']} />
+
+          {hasAnyBookings ? (
+            <View>
+              {activeBookings.length > 0 && (
+                <BookingListSection title="Active Bookings" noHorizontalPadding>
+                  {activeBookings.map((item) => (
+                    <ActiveBookingCard
+                      key={item.id}
+                      booking={item}
+                      onTrackPress={() => {}}
+                      onViewDetailsPress={() => {}}
+                    />
+                  ))}
+                </BookingListSection>
+              )}
+
+              {upcomingBookings.length > 0 && (
+                <BookingListSection title="Upcoming Bookings">
+                  {upcomingBookings.map((item) => (
+                    <BookingCard
+                      key={item.id}
+                      booking={item}
+                      userType="client"
+                      onPress={() => {}}
+                    />
+                  ))}
+                </BookingListSection>
+              )}
+
+              {historyBookings.length > 0 && (
+                <BookingListSection title="Previous Activity">
+                  {historyBookings.map((item) => (
+                    <BookingCard
+                      key={item.id}
+                      booking={item}
+                      userType="client"
+                      onPress={() => {}}
+                      onRebook={() => {}}
+                      onReport={() => {}}
+                    />
+                  ))}
+                </BookingListSection>
+              )}
             </View>
-            <Text className="text-center text-base font-semibold" style={{ color: colors.ui.text }}>
-              {searchText ? 'No matches found' : 'No bookings yet'}
-            </Text>
-            <Text className="mt-1.5 text-center text-sm" style={{ color: colors.ui.textLight }}>
-              {searchText
-                ? 'Try refining your search keyword or service category.'
-                : 'Your active and past appointments will show up here.'}
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+          ) : (
+            <EmptyState
+              icon="clipboard-outline"
+              title={searchText ? 'No matches found' : 'No bookings yet'}
+              message={
+                searchText
+                  ? 'Try refining your search keyword or service category.'
+                  : 'Your active and past appointments will show up here.'
+              }
+            />
+          )}
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }

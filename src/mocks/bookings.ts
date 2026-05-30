@@ -54,5 +54,5 @@ export const MOCK_BOOKINGS: Booking[] = [
     platformFee: 12,
     netAmount: 108,
     location: 'Cebu City',
-  }
+  },
 ];

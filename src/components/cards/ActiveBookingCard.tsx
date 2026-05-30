@@ -5,6 +5,7 @@ import { Booking, BookingStatus } from '../../types';
 import { ActiveBooking, ActiveBookingStep } from '../../mocks/dashboard';
 import { useTheme } from '../../context/ThemeContext';
 import { Stepper } from '../ui/Stepper';
+import { Button } from '../ui/Button';
 
 const BOOKING_STEPS: string[] = ['Confirmed', 'On the way', 'Working', 'Done'];
 
@@ -82,7 +83,7 @@ export function ActiveBookingCard({
     reference = `#OKI-${std.id.toUpperCase()}`;
     serviceName = std.serviceCategory;
     estimatedCompletion = std.bookingType === 'OnDemand' ? '~30 min' : 'Scheduled';
-    
+
     // Map BookingStatus to ActiveBookingStep
     if (std.status === BookingStatus.InTransit) {
       currentStep = 'On the way';
@@ -96,7 +97,11 @@ export function ActiveBookingCard({
 
     workerName = std.handymanName || 'Unassigned';
     workerInitials = std.handymanName
-      ? std.handymanName.split(' ').map((n) => n[0]).join('').toUpperCase()
+      ? std.handymanName
+          .split(' ')
+          .map((n) => n[0])
+          .join('')
+          .toUpperCase()
       : 'OK';
     workerRole = 'Service Professional';
   } else {
@@ -169,14 +174,11 @@ export function ActiveBookingCard({
           </View>
 
           {/* Track button */}
-          <TouchableOpacity
-            onPress={onTrackPress}
-            accessibilityLabel="Track live"
-            className="flex-row items-center gap-1 rounded-full px-3.5 py-1.5"
-            style={{ backgroundColor: primaryColor }}>
-            <Ionicons name="navigate" size={13} color="#FFF" />
-            <Text className="text-xs font-medium text-white">Track live</Text>
-          </TouchableOpacity>
+          <Button
+            label="Track live"
+            onPress={onTrackPress || (() => {})}
+            leftIcon={<Ionicons name="navigate" size={13} color="#FFF" />}
+          />
         </View>
       </View>
 
