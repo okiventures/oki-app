@@ -55,7 +55,16 @@ export default function LandingPage() {
             style={{ backgroundColor: colors.primary['50'] }}
             className="w-full items-center rounded-lg py-2">
             <Text style={{ color: colors.primary['700'] }} className="font-semibold">
-              Onboarding / KYC
+              Auth Entry
+            </Text>
+          </TouchableOpacity>
+        </Link>
+        <Link href="/(verification)/client/onboarding" asChild>
+          <TouchableOpacity
+            style={{ backgroundColor: colors.primary['50'] }}
+            className="w-full items-center rounded-lg py-2">
+            <Text style={{ color: colors.primary['700'] }} className="font-semibold">
+              Client Verification
             </Text>
           </TouchableOpacity>
         </Link>
@@ -81,6 +90,11 @@ export default function LandingPage() {
         <Text className="font-heading mb-1 text-[13px] tracking-wider text-gray-700 uppercase">
           Handyman Flow
         </Text>
+        <Link href="/(verification)/handyman/onboarding" asChild>
+          <TouchableOpacity className="w-full items-center rounded-lg bg-blue-50 py-2">
+            <Text className="font-semibold text-blue-700">Handyman Verification</Text>
+          </TouchableOpacity>
+        </Link>
         <Link href="/(handyman)" asChild>
           <TouchableOpacity className="w-full items-center rounded-lg bg-blue-600 py-2">
             <Text className="font-semibold text-white">Handyman Dashboard</Text>

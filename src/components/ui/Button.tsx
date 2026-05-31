@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, View, ViewStyle } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 
 type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'danger';
@@ -14,6 +14,7 @@ interface ButtonProps {
   fullWidth?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  style?: ViewStyle;
 }
 
 export function Button({
@@ -26,6 +27,7 @@ export function Button({
   fullWidth = false,
   leftIcon,
   rightIcon,
+  style,
 }: ButtonProps) {
   const { colors } = useTheme();
 
@@ -49,12 +51,14 @@ export function Button({
       disabled={disabled || loading}
       accessibilityRole="button"
       accessibilityLabel={label}
-      className={`flex-row items-center justify-center rounded-full px-3 py-1.5 ${variantClasses[variant]} ${fullWidth ? 'w-full' : 'self-auto'} ${disabled ? 'border-gray-300 bg-gray-300 opacity-50' : 'opacity-100'}`}
-      style={
+      className={`flex-row items-center justify-center rounded-full px-3 py-1.5 ${variantClasses[variant]} ${!fullWidth ? 'self-auto' : ''} ${disabled ? 'border-gray-300 bg-gray-300 opacity-50' : 'opacity-100'}`}
+      style={[
+        fullWidth ? { width: '100%', alignSelf: 'stretch' } : null,
         !disabled && variant === 'primary'
           ? { backgroundColor: colors.primary['600'], borderColor: colors.primary['600'] }
-          : {}
-      }>
+          : null,
+        style,
+      ]}>
       {loading ? (
         <ActivityIndicator
           size="small"

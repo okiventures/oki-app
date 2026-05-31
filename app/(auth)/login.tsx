@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { KeyboardAvoidingView, Platform, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -13,16 +13,34 @@ export default function ClientLogin() {
   const { colors } = useTheme();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const phoneDigits = identifier.replace(/\D/g, '');
+
+  const identifierIsValid = useMemo(() => {
+    const trimmedIdentifier = identifier.trim();
+    if (trimmedIdentifier.length === 0) {
+      return false;
+    }
+
+    if (trimmedIdentifier.includes('@')) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedIdentifier);
+    }
+
+    return phoneDigits.length >= 10;
+  }, [identifier, phoneDigits.length]);
 
   const canContinue = useMemo(
-    () => identifier.trim().length > 0 && password.trim().length > 0,
-    [identifier, password]
+    () => identifierIsValid && password.trim().length > 0,
+    [identifierIsValid, password]
   );
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <KeyboardAvoidingView
+      className="flex-1 bg-gray-50"
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
-        contentContainerStyle={{ padding: 20, flex: 1, justifyContent: 'center'}}
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+        contentContainerStyle={{ padding: 20, flexGrow: 1, justifyContent: 'center' }}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
 
         <Card className="flex flex-col gap-4 mt-6 px-8 py-12">
@@ -45,6 +63,8 @@ export default function ClientLogin() {
               onChangeText={setIdentifier}
               autoCapitalize="none"
               keyboardType="email-address"
+              error={identifier.length > 0 && !identifierIsValid ? 'Use a valid email address or a phone number with at least 10 digits.' : undefined}
+              helperText={identifier.length === 0 ? 'Email must look like name@example.com, or phone must have at least 10 digits.' : undefined}
               leftIcon={<Ionicons name="mail-outline" size={18} color="#9CA3AF" />}
             />
             <View className="mb-4">
@@ -55,6 +75,7 @@ export default function ClientLogin() {
                 onChangeText={setPassword}
                 secureTextEntry
                 secureToggle
+                helperText={password.length === 0 ? 'Password is required.' : undefined}
                 leftIcon={<Ionicons name="lock-closed-outline" size={18} color="#9CA3AF" />}
                 />
                 <TouchableOpacity className="items-end">
@@ -72,6 +93,6 @@ export default function ClientLogin() {
         </Card>
 
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
