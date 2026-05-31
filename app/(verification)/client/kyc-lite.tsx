@@ -3,11 +3,11 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Navbar } from '../../src/components/navigation/Navbar';
-import { Card } from '../../src/components/ui/Card';
-import { Badge } from '../../src/components/ui/Badge';
-import { Button } from '../../src/components/ui/Button';
-import { useTheme } from '../../src/context/ThemeContext';
+import { Navbar } from '../../../src/components/navigation/Navbar';
+import { Card } from '../../../src/components/ui/Card';
+import { Badge } from '../../../src/components/ui/Badge';
+import { Button } from '../../../src/components/ui/Button';
+import { useTheme } from '../../../src/context/ThemeContext';
 
 type KycItem = {
   id: 'id' | 'selfie' | 'address';
@@ -53,7 +53,7 @@ export default function ClientKycLite() {
 
   return (
     <SafeAreaView edges={["left", "right", "bottom"]} className="flex-1 bg-gray-50">
-      <Navbar showBack />
+      <Navbar title="KYC-lite" showBack />
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 24 }}>
         <View className="mb-4">
           <Badge variant="primary" text="Step 2 of 2" />

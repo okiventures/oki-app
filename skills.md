@@ -73,6 +73,33 @@ style={{
 - Coloured header band with `rounded-b-3xl` gives the same visual language as the home dashboard.
 - Avatar / hero card overlaps the band with a negative `marginTop` for a layered depth effect.
 
+### Critical Flex Ownership Rule
+
+- Keep using NativeWind `className` first for normal layout work, but for **screen-critical height ownership** add explicit React Native flex styles on the root container chain when needed: `SafeAreaView`, immediate wrapper `View`, and `ScrollView`.
+- Use this fallback specifically for cases where a screen's main content collapses and only footer/header elements remain visible on-device.
+- Safe pattern:
+
+```tsx
+<SafeAreaView className="flex-1" style={{ flex: 1, backgroundColor: colors.ui.background }}>
+  <Navbar title="Example" />
+
+  <View style={{ flex: 1 }}>
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={{ flexGrow: 1, paddingBottom: 32 }}
+      showsVerticalScrollIndicator={false}>
+      ...
+    </ScrollView>
+
+    <View>
+      ...footer actions...
+    </View>
+  </View>
+</SafeAreaView>
+```
+
+- This is environment-safe for all developers because `style={{ flex: 1 }}` is standard React Native layout behavior and does not depend on Tailwind class extraction.
+
 ### Fixed Footer Pattern
 
 - Avoid `absolute bottom-*` footers with magic offsets like `bottom-16` for primary screen actions.
@@ -138,6 +165,18 @@ style={{
 | ----------------- | ------------------------------------------------------------------------------------ |
 | `ProfileMenuRow`  | Menu list row with icon badge, title, subtitle, optional badge label, danger variant |
 | `ProfileStatsBar` | Horizontal strip of stat items (value + label)                                       |
+
+### Onboarding (`src/components/onboarding/`)
+
+| Component Path                                    | Purpose                                                    |
+| ------------------------------------------------- | ---------------------------------------------------------- |
+| `handyman/HandymanOnboardingHero`                 | Header band and step progress UI for handyman onboarding   |
+| `handyman/HandymanProfileStep`                    | Personal details step for handyman onboarding              |
+| `handyman/HandymanServicesStep`                   | Service selection and pricing step                         |
+| `handyman/HandymanDocumentsStep`                  | KYC upload step                                            |
+| `handyman/HandymanPendingStep`                    | Submission confirmation and pending review step            |
+| `handyman/shared`                                 | Shared onboarding constants and types for the handyman flow |
+| `handyman/useHandymanOnboardingFlow`              | Flow state, validation, upload orchestration, and step actions |
 
 ### Forms (`src/components/forms/`)
 
