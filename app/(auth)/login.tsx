@@ -3,7 +3,6 @@ import { KeyboardAvoidingView, Platform, View, Text, ScrollView, TouchableOpacit
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/context/ThemeContext';
-import { ValidationChecklist } from '../../src/components/onboarding/ValidationChecklist';
 import { Card } from '../../src/components/ui/Card';
 import { Form } from '../../src/components/forms/Form';
 import { Input } from '../../src/components/forms/Input';
@@ -83,16 +82,6 @@ export default function ClientLogin() {
                     <Text className="text-[12px] font-semibold text-gray-500">Forgot password?</Text>
                 </TouchableOpacity>
             </View>
-            <ValidationChecklist
-              title="Continue unlocks when these checks pass"
-              items={[
-                {
-                  label: 'Use a valid email address or a phone number with at least 10 digits.',
-                  isValid: identifierIsValid,
-                },
-                { label: 'Password is not empty.', isValid: password.trim().length > 0 },
-              ]}
-            />
           </Form>
 
           <Button
