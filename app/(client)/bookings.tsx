@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, Text, Pressable } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -51,7 +51,7 @@ export default function ClientBookings() {
   const hasAnyBookings = filteredBookings.length > 0;
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: colors.primary['600'] }}>
+    <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
       <ScreenHeader title="My Bookings" showNotifications onNotificationsPress={() => {}} />
 
       <View

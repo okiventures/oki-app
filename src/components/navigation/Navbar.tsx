@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface NavbarProps {
   title: string;
@@ -19,10 +20,12 @@ export function Navbar({
   transparent = false,
 }: NavbarProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   return (
     <View
-      className={`flex-row items-center px-4 pt-10 pb-4 ${transparent ? 'bg-transparent' : 'border-b border-gray-200 bg-white'}`}>
+      style={{ paddingTop: insets.top + 12 }}
+      className={`flex-row items-center px-4 pb-4 ${transparent ? 'bg-transparent' : 'border-b border-gray-200 bg-white'}`}>
       {showBack ? (
         <TouchableOpacity
           onPress={() => router.back()}

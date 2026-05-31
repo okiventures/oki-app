@@ -37,6 +37,14 @@ style={{
 
 ## Layout & Screen Structure
 
+### Safe-Area Ownership
+
+- `SafeAreaProvider` belongs at the Expo Router root in `app/_layout.tsx`, not `App.tsx`.
+- For screens rendered inside the custom bottom tab shell, `BottomNav` owns the **bottom** inset.
+- Tab screens should use `SafeAreaView` with `edges={["top", "left", "right"]}` unless the screen is intentionally responsible for its own bottom safe area.
+- Do not let both the screen and the tab bar reserve the bottom inset; that creates the extra strip above the tabs.
+- Standalone flows outside the tab shell may own their own bottom inset when they have fixed bottom actions.
+
 ### Standard Page Skeleton
 
 ```tsx
@@ -65,6 +73,13 @@ style={{
 - Coloured header band with `rounded-b-3xl` gives the same visual language as the home dashboard.
 - Avatar / hero card overlaps the band with a negative `marginTop` for a layered depth effect.
 
+### Fixed Footer Pattern
+
+- Avoid `absolute bottom-*` footers with magic offsets like `bottom-16` for primary screen actions.
+- Prefer a normal flex layout: scrollable content as `flex-1`, then a footer `View` as the final sibling.
+- Use `contentContainerStyle.paddingBottom` only for content breathing room, not to simulate navigator or safe-area spacing.
+- Fixed footers inside tab screens must not try to compensate for the tab bar manually.
+
 ---
 
 ## Reusable Shared Components
@@ -89,6 +104,12 @@ style={{
 | Component | Purpose                                                  |
 | --------- | -------------------------------------------------------- |
 | `Navbar`  | Top bar with title, optional back arrow and right action |
+
+#### Navbar Inset Rule
+
+- `Navbar` owns its own **top** safe-area spacing via `useSafeAreaInsets()`.
+- Never hardcode top offsets like `pt-10` for headers that can appear on multiple devices.
+- If a screen uses `Navbar`, do not add a second top inset in that same screen unless the layout is intentionally custom.
 
 ### Home (`src/components/home/`)
 
@@ -196,6 +217,8 @@ Use the shared `Modal` component for all confirmation dialogs:
 | Dynamic styles | Inline `style` prop only                                            |
 | Shadows        | Inline `style` only (not expressible in NativeWind)                 |
 | Page wrap      | `SafeAreaView` from `react-native-safe-area-context`                |
+| Bottom inset   | Owned by `BottomNav` inside tab shells; screens should not duplicate it |
+| Top inset      | Owned by `Navbar` when a screen uses the shared navbar              |
 | Buttons        | `Pressable` preferred; `Button` / `IconButton` for semantic actions |
 | Modals         | Shared `Modal` component                                            |
 | Mock data      | `src/mocks/` — import from barrel `../../src/mocks`                 |

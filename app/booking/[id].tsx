@@ -26,7 +26,7 @@ export default function BookingDetailScreen() {
   const primaryColor = colors.primary['600'];
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: primaryColor }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: primaryColor }}>
       <View className="px-5 pt-4 pb-24" style={{ backgroundColor: primaryColor }}>
         <View className="flex-row items-center justify-between">
           <Pressable

@@ -3,8 +3,6 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Navbar } from '../../src/components/navigation/Navbar';
-import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
 import { Form } from '../../src/components/forms/Form';
 import { Input } from '../../src/components/forms/Input';
@@ -27,8 +25,8 @@ export default function ClientOnboarding() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView contentContainerStyle={{ padding: 20, height: '100%'}}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 24 }}>
         <View className="mb-4">
           <Badge variant="primary" text="Step 1 of 2" />
           <Text className="font-heading mt-2 text-xl text-gray-900">Tell us about you</Text>
@@ -96,7 +94,7 @@ export default function ClientOnboarding() {
         </View>
       </ScrollView>
 
-      <View className="absolute bottom-16 left-0 right-0 p-4">
+      <View className="border-t border-gray-200 bg-[#F9FAFB] p-4">
         <Button
         label="Continue to KYC-lite"
         onPress={() => router.replace('/(auth)/kyc-lite')}

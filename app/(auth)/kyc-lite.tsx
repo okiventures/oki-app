@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Navbar } from '../../src/components/navigation/Navbar';
 import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
@@ -51,9 +52,9 @@ export default function ClientKycLite() {
   );
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <SafeAreaView edges={["left", "right", "bottom"]} className="flex-1 bg-gray-50">
       <Navbar showBack />
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 120 }}>
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 24 }}>
         <View className="mb-4">
           <Badge variant="primary" text="Step 2 of 2" />
           <Text className="font-heading mt-2 text-xl text-gray-900">Verify quickly</Text>
@@ -104,7 +105,7 @@ export default function ClientKycLite() {
         })}
       </ScrollView>
 
-      <View className="absolute bottom-16 left-0 right-0 p-4">
+      <View className="border-t border-gray-200 bg-gray-50 p-4">
         <Button
           label="Finish and go to Home"
           onPress={() => router.replace('/(client)')}
@@ -115,6 +116,6 @@ export default function ClientKycLite() {
           You can edit these later from your profile.
         </Text>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
