@@ -1,45 +1,59 @@
 import React, { useState } from 'react';
-import { View, FlatList } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { Navbar } from '../../src/components/navigation/Navbar';
-import { TabBar } from '../../src/components/navigation/TabBar';
 import { BookingCard } from '../../src/components/cards/BookingCard';
-import { MOCK_BOOKINGS } from '../../src/mocks';
+import { useBookings } from '../../src/context/BookingsContext';
+import { BookingStatus } from '../../src/types';
+import { ScheduleCalendar } from '../../src/components/handyman/ScheduleCalendar';
+import { EmptyState } from '../../src/components/ui/EmptyState';
+
+const HANDYMAN_ID = 'h1';
 
 export default function HandymanSchedule() {
-  const [activeTab, setActiveTab] = useState('upcoming');
-  const myBookings = MOCK_BOOKINGS.filter(b => b.handymanId === 'h1');
-  
-  const filteredBookings = myBookings.filter((b) => {
-    if (activeTab === 'upcoming')
-      return b.status !== 'Completed' && b.status !== 'Paid' && b.status !== 'Cancelled';
-    return b.status === 'Paid' || b.status === 'Completed' || b.status === 'Cancelled';
+  const { bookings } = useBookings();
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+
+  const myBookings = bookings.filter((booking) => booking.handymanId === HANDYMAN_ID);
+
+  const scheduledBookings = myBookings.filter((booking) => booking.scheduledAt);
+
+  const selectedDayBookings = scheduledBookings.filter((booking) => {
+    const bookingDate = new Date(booking.scheduledAt as string);
+    return (
+      bookingDate.getFullYear() === selectedDate.getFullYear() &&
+      bookingDate.getMonth() === selectedDate.getMonth() &&
+      bookingDate.getDate() === selectedDate.getDate()
+    );
   });
 
   return (
     <View className="flex-1 bg-gray-50">
       <Navbar title="My Schedule" />
-      <View className="bg-white">
-        <TabBar
-          tabs={[
-            { key: 'upcoming', label: 'Upcoming Jobs' },
-            { key: 'history', label: 'History' },
-          ]}
-          activeKey={activeTab}
-          onTabPress={setActiveTab}
+
+      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+        <ScheduleCalendar
+          bookings={scheduledBookings}
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
         />
-      </View>
-      <FlatList
-        data={filteredBookings}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 16 }}
-        renderItem={({ item }) => (
-          <BookingCard 
-            booking={item} 
-            userType="handyman" 
-            onPress={() => {}} 
-          />
-        )}
-      />
+
+        <View className="mt-6 px-4">
+          <View>
+            {selectedDayBookings.length > 0 ? (
+              selectedDayBookings.map((booking) => (
+                <BookingCard key={booking.id} booking={booking} userType="handyman" onPress={() => {}} />
+              ))
+            ) : (
+              <EmptyState
+                icon="calendar-outline"
+                title="No jobs on this day"
+                message="Pick another date to see your assigned bookings and reserved slots."
+              />
+            )}
+          </View>
+
+        </View>
+      </ScrollView>
     </View>
   );
 }

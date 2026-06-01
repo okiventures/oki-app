@@ -129,6 +129,8 @@ export interface Booking {
   clientName: string;
   handymanId: string;
   handymanName: string;
+  clientRating?: number;
+  distanceKm?: number;
   serviceCategory: ServiceCategory;
   bookingType: BookingType;
   status: BookingStatus;
@@ -138,6 +140,7 @@ export interface Booking {
   platformFee: number;
   netAmount: number;
   scheduledAt?: string;
+  requestExpiresAt?: string;
   createdAt: string;
   updatedAt: string;
   photos?: string[];

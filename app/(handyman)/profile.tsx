@@ -7,6 +7,7 @@ import { Badge } from '../../src/components/ui/Badge';
 import { Ionicons } from '@expo/vector-icons';
 import { MOCK_HANDYMAN } from '../../src/mocks';
 import { formatCurrency } from '../../src/utils';
+import { Link } from 'expo-router';
 
 export default function HandymanProfile() {
   return (
@@ -37,6 +38,19 @@ export default function HandymanProfile() {
         </Card>
 
         <Card className="p-0 overflow-hidden">
+          <Link href="/(handyman)/past-jobs" asChild>
+            <TouchableOpacity className="flex-row items-center p-4 border-b border-gray-100">
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-blue-50">
+                <Ionicons name="albums-outline" size={18} color="#2563EB" />
+              </View>
+              <View className="ml-4 flex-1">
+                <Text className="text-[15px] font-bold text-gray-900">Past Jobs</Text>
+                <Text className="text-[11px] text-gray-500 mt-0.5">Your Previous Jobs</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
+          </Link>
+
           <TouchableOpacity className="flex-row items-center p-4 border-b border-gray-100">
             <View className="h-10 w-10 items-center justify-center rounded-full bg-blue-50">
               <Ionicons name="settings-outline" size={18} color="#2563EB" />

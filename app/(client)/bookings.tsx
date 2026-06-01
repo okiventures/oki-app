@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useBookings } from '../../src/context/BookingsContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { BookingCard } from '../../src/components/cards/BookingCard';
 import { ActiveBookingCard } from '../../src/components/cards/ActiveBookingCard';
-import { MOCK_BOOKINGS } from '../../src/mocks';
 import { SearchBar } from '../../src/components/forms/SearchBar';
 import { BookingStatus } from '../../src/types';
 import { EmptyState } from '../../src/components/ui/EmptyState';
@@ -15,10 +15,11 @@ import { BookingListSection } from '../../src/components/bookings/BookingListSec
 export default function ClientBookings() {
   const { colors } = useTheme();
   const router = useRouter();
+  const { bookings } = useBookings();
   const [searchText, setSearchText] = useState('');
 
   // Filter bookings by search text
-  const filteredBookings = MOCK_BOOKINGS.filter((b) => {
+  const filteredBookings = bookings.filter((b) => {
     if (!searchText) return true;
     const s = searchText.toLowerCase();
     return (

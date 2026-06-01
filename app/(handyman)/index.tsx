@@ -5,9 +5,14 @@ import { Card } from '../../src/components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
 import { MOCK_HANDYMAN } from '../../src/mocks';
 import { formatCurrency } from '../../src/utils';
+import { useBookings, ACTIVE_HANDYMAN_BOOKING_STATUSES,} from '../../src/context/BookingsContext';
+import { ActiveJobWorkflowCardOverview } from '../../src/components/handyman/ActiveJobWorkflowCard';
 
 export default function HandymanDashboard() {
   const [isActive, setIsActive] = useState(MOCK_HANDYMAN.isOnline);
+  const { bookings } = useBookings();
+  const myBookings = bookings.filter((booking) => booking.handymanId === MOCK_HANDYMAN.id);
+  const activeJob = myBookings.filter((booking) => ACTIVE_HANDYMAN_BOOKING_STATUSES.includes(booking.status))[0];
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -39,6 +44,15 @@ export default function HandymanDashboard() {
             <Text className="text-[11px] text-gray-500 font-medium mb-1">This Week</Text>
             <Text className="font-heading text-lg text-gray-900">{formatCurrency(845)}</Text>
           </Card>
+        </View>
+
+        {/* Placeholder for Active Jobs */}
+        <View> 
+          <Text className="font-heading text-base text-gray-900 mb-4">Active Jobs</Text>
+          {activeJob ? (
+            <ActiveJobWorkflowCardOverview booking={activeJob} onAdvance={() => {}} />
+          ) : (
+            <Text className="text-[13px] text-gray-500 mt-1">You have no active jobs at the moment.</Text>)}
         </View>
 
         {/* Upcoming Schedule Snippet */}
