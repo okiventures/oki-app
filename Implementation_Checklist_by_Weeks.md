@@ -93,11 +93,11 @@
   - [x] ~~Accept/Decline action buttons with `ConfirmDialog` before committing~~
   - [x] ~~Active job card with state-driven CTA (e.g., "Mark Arrived" → "Start Work" → "Complete Job")~~
   - [x] ~~Schedule view: calendar with booked time slots highlighted (`app/(handyman)/schedule.tsx`)~~
-- [ ] Implement: Handyman wallet & payout request screen (`app/(handyman)/profile.tsx` wallet section)
-  - [ ] Wallet balance card: available vs pending earnings breakdown
-  - [ ] Transaction history list with credit/debit entries and booking reference
-  - [ ] Payout request button gated by minimum payout threshold
-  - [ ] Payout status tracker: Requested → Processing → Paid
+- [x] ~~Implement: Handyman wallet & payout request screen (`app/(handyman)/profile.tsx` wallet section)~~
+  - [x] ~~Wallet balance card: available vs pending earnings breakdown~~
+  - [x] ~~Transaction history list with credit/debit entries and booking reference~~
+  - [x] ~~Payout request button gated by minimum payout threshold~~
+  - [x] ~~Payout status tracker: Requested → Processing → Paid~~
 - [ ] Implement: Admin dashboard, verification portal, and dispute center (`app/(admin)/`)
   - [ ] Dashboard (`index.tsx`): KPI cards (total bookings, active handymen, platform revenue, open disputes)
   - [ ] Analytics: booking volume bar chart using `src/components/admin/Chart.tsx`

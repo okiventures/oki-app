@@ -8,3 +8,4 @@ export * from './services';
 export * from './dashboard';
 export * from './recentActivities';
 export * from './recommended';
+export * from './wallet';
