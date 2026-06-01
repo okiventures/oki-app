@@ -82,17 +82,17 @@
 ### **Week 3 · May 21 – May 27 — Handyman & Admin Screens (Code Implementation)**
 
 - [ ] [STANDUP] **Standup \#1 — May 20** (review Phase 1 progress, blockers)
-- [ ] Implement: Handyman onboarding flow and KYC document upload screen
-  - [ ] Multi-step onboarding: personal info → services offered → document upload → pending screen
-  - [ ] Service category multi-select with per-category custom pricing input
-  - [ ] KYC document upload UI: file picker, image preview, upload progress indicator
-  - [ ] Submission confirmation screen with "Pending Verification" status badge
-- [ ] Implement: Online/Offline toggle, job requests inbox, and state-driven workflow UI (`app/(handyman)/requests.tsx`, `schedule.tsx`)
-  - [ ] Persistent Online/Offline toggle in header with labeled status indicator
-  - [ ] Job requests inbox: list of incoming `PENDING` bookings with per-request countdown timer
-  - [ ] Accept/Decline action buttons with `ConfirmDialog` before committing
-  - [ ] Active job card with state-driven CTA (e.g., "Mark Arrived" → "Start Work" → "Complete Job")
-  - [ ] Schedule view: calendar with booked time slots highlighted (`app/(handyman)/schedule.tsx`)
+- [X] Implement: Handyman onboarding flow and KYC document upload screen
+  - [X] Multi-step onboarding: personal info → services offered → document upload → pending screen
+  - [X] Service category multi-select with per-category custom pricing input
+  - [X] KYC document upload UI: file picker, image preview, upload progress indicator
+  - [X] Submission confirmation screen with "Pending Verification" status badge
+- [x] ~~Implement: Online/Offline toggle, job requests inbox, and state-driven workflow UI (`app/(handyman)/requests.tsx`, `schedule.tsx`)~~
+  - [X] Persistent Online/Offline toggle in header with labeled status indicator
+  - [x] ~~Job requests inbox: list of incoming `PENDING` bookings with per-request countdown timer~~
+  - [x] ~~Accept/Decline action buttons with `ConfirmDialog` before committing~~
+  - [x] ~~Active job card with state-driven CTA (e.g., "Mark Arrived" → "Start Work" → "Complete Job")~~
+  - [x] ~~Schedule view: calendar with booked time slots highlighted (`app/(handyman)/schedule.tsx`)~~
 - [ ] Implement: Handyman wallet & payout request screen (`app/(handyman)/profile.tsx` wallet section)
   - [ ] Wallet balance card: available vs pending earnings breakdown
   - [ ] Transaction history list with credit/debit entries and booking reference
