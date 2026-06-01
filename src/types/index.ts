@@ -248,6 +248,27 @@ export interface EarningsEntry {
   date: string;
 }
 
+export type WalletTransactionType = 'Credit' | 'Debit';
+
+export type PayoutRequestStage = 'Requested' | 'Processing' | 'Paid';
+
+export interface WalletTransactionEntry {
+  id: string;
+  bookingReference: string;
+  type: WalletTransactionType;
+  description: string;
+  amount: number;
+  createdAt: string;
+}
+
+export interface HandymanWallet {
+  availableBalance: number;
+  pendingBalance: number;
+  minimumPayoutThreshold: number;
+  payoutStage: PayoutRequestStage;
+  transactions: WalletTransactionEntry[];
+}
+
 export interface SupportTicket {
   id: string;
   userId: string;

@@ -5,9 +5,9 @@ import { Avatar } from '../../src/components/ui/Avatar';
 import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
 import { Ionicons } from '@expo/vector-icons';
-import { MOCK_HANDYMAN } from '../../src/mocks';
-import { formatCurrency } from '../../src/utils';
+import { MOCK_HANDYMAN, MOCK_HANDYMAN_WALLET } from '../../src/mocks';
 import { Link } from 'expo-router';
+import { WalletSection } from '../../src/components/handyman/WalletSection';
 
 export default function HandymanProfile() {
   return (
@@ -29,13 +29,7 @@ export default function HandymanProfile() {
           </View>
         </View>
 
-        <Card className="mb-4 items-center bg-gray-900 p-3">
-          <Text className="mb-1 text-[13px] font-medium text-gray-400">Available Wallet Balance</Text>
-          <Text className="font-heading mb-3 text-2xl text-white">{formatCurrency(1240.5)}</Text>
-          <TouchableOpacity className="bg-primary-600 w-full items-center rounded-lg px-4 py-2.5">
-            <Text className="text-[15px] font-bold text-white">Withdraw Funds</Text>
-          </TouchableOpacity>
-        </Card>
+        <WalletSection wallet={MOCK_HANDYMAN_WALLET} />
 
         <Card className="p-0 overflow-hidden">
           <Link href="/(handyman)/past-jobs" asChild>
