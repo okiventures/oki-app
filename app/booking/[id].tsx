@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useBookings } from '../../src/context/BookingsContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import { MOCK_BOOKING_DETAILS } from '../../src/mocks/bookingDetails';
 import { BOOKING_STATUS_LABELS } from '../../src/constants/theme';
@@ -18,10 +19,32 @@ type Tab = (typeof TABS)[number];
 export default function BookingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { getBookingById } = useBookings();
   const { colors } = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
 
-  const booking = MOCK_BOOKING_DETAILS.find((b) => b.id === id) ?? MOCK_BOOKING_DETAILS[0];
+  const detailBooking = MOCK_BOOKING_DETAILS.find((b) => b.id === id) ?? MOCK_BOOKING_DETAILS[0];
+  const liveBooking = id ? getBookingById(id) : undefined;
+  const booking = liveBooking
+    ? {
+        ...detailBooking,
+        ...liveBooking,
+        reference: detailBooking.reference,
+        fullAddress: detailBooking.fullAddress,
+        latitude: detailBooking.latitude,
+        longitude: detailBooking.longitude,
+        paymentMethod: detailBooking.paymentMethod,
+        paymentStatus: detailBooking.paymentStatus,
+        paymentRef: detailBooking.paymentRef,
+        paidAt: detailBooking.paidAt,
+        notes: detailBooking.notes,
+        orderDetails: detailBooking.orderDetails,
+        timeline: detailBooking.timeline,
+        handymanPhotoUrl: detailBooking.handymanPhotoUrl,
+        handymanRating: detailBooking.handymanRating,
+        handymanJobsCompleted: detailBooking.handymanJobsCompleted,
+      }
+    : detailBooking;
   const statusLabel = BOOKING_STATUS_LABELS[booking.status] ?? booking.status;
   const primaryColor = colors.primary['600'];
 
