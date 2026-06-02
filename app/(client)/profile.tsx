@@ -83,7 +83,7 @@ export default function ClientProfile() {
           showSettings
           showNotifications
           onSettingsPress={() => {}}
-          onNotificationsPress={() => {}}
+          onNotificationsPress={() => router.push('/notifications')}
         />
 
         <View
@@ -148,7 +148,9 @@ export default function ClientProfile() {
                 title={item.title}
                 subtitle={item.subtitle}
                 onPress={() => {
-                  if (item.title === 'Theme') {
+                  if (item.title === 'Notifications') {
+                    router.push('/profile/notifications');
+                  } else if (item.title === 'Theme') {
                     setThemeModalVisible(true);
                   }
                 }}

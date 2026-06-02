@@ -39,6 +39,7 @@ export default function ClientHome() {
         userName={MOCK_CLIENT.name}
         userPhotoUrl={MOCK_CLIENT.photoUrl}
         unreadCount={3}
+        onNotificationPress={() => router.push('/notifications')}
         onProfilePress={() => router.push('/profile')}
       />
 
