@@ -54,7 +54,7 @@ export default function ClientBookings() {
     <SafeAreaView
       edges={['top', 'left', 'right']}
       style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
-      <ScreenHeader title="My Bookings" showNotifications onNotificationsPress={() => {}} />
+      <ScreenHeader title="My Bookings" showNotifications onNotificationsPress={() => router.push('/notifications')} />
 
       <View
         className="flex-1 overflow-hidden rounded-t-[32px]"

@@ -3,6 +3,7 @@ import { View, Text, FlatList, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Notification } from '../../types';
 import { formatDateTime } from '../../utils';
+import { useTheme } from '../../context/ThemeContext';
 
 interface NotificationCenterProps {
   notifications: Notification[];
@@ -15,6 +16,7 @@ export function NotificationCenter({
   onMarkRead,
   onMarkAllRead,
 }: NotificationCenterProps) {
+  const { colors } = useTheme();
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   if (notifications.length === 0) {
@@ -39,21 +41,23 @@ export function NotificationCenter({
       <FlatList
         data={notifications}
         keyExtractor={(item) => item.id}
-        ItemSeparatorComponent={() => <View className="h-px bg-gray-100" />}
+        ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: colors.ui.border }} />}
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() => onMarkRead(item.id)}
-            className={`flex-row items-start px-3 py-2 ${item.isRead ? 'bg-white' : 'bg-gray-50'}`}>
+            className="flex-row items-start px-5 py-4 bg-transparent">
             <View
-              className={`h-2 w-2 rounded-full ${item.isRead ? 'bg-transparent' : 'bg-blue-500'} mt-1.5 mr-3`}
+              className="h-2 w-2 rounded-full mt-1.5 mr-3"
+              style={item.isRead ? {} : { backgroundColor: colors.primary['600'] }}
             />
             <View className="flex-1">
               <Text
-                className={`text-[13px] ${item.isRead ? 'font-normal' : 'font-semibold'} mb-0.5 text-gray-900`}>
+                style={{ color: colors.ui.text }}
+                className={`text-[13px] ${item.isRead ? 'font-normal' : 'font-semibold'} mb-0.5`}>
                 {item.title}
               </Text>
-              <Text className="text-[13px] leading-5 text-gray-500">{item.body}</Text>
-              <Text className="mt-1 text-[11px] text-gray-400">
+              <Text style={{ color: colors.ui.textMuted }} className="text-[13px] leading-5">{item.body}</Text>
+              <Text style={{ color: colors.ui.textLight }} className="mt-1 text-[11px]">
                 {formatDateTime(item.createdAt)}
               </Text>
             </View>
