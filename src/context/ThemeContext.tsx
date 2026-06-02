@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ColorScheme } from '../types';
 import { COLOR_SCHEMES } from '../constants/theme';
+
+const STORAGE_KEY = 'oki_color_scheme';
 
 interface ThemeContextValue {
   scheme: ColorScheme;
@@ -18,27 +21,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [scheme, setSchemeState] = useState<ColorScheme>('crimson');
 
   useEffect(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const saved = window.localStorage.getItem('oki_color_scheme');
-        if (saved && (saved === 'crimson' || saved === 'teal' || saved === 'indigo')) {
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then((saved) => {
+        if (saved === 'crimson' || saved === 'teal' || saved === 'indigo') {
           setSchemeState(saved as ColorScheme);
         }
-      }
-    } catch {
-      // noop
-    }
+      })
+      .catch(() => {});
   }, []);
 
   const setScheme = (s: ColorScheme) => {
     setSchemeState(s);
-    try {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('oki_color_scheme', s);
-      }
-    } catch {
-      // noop
-    }
+    AsyncStorage.setItem(STORAGE_KEY, s).catch(() => {});
   };
 
   return (

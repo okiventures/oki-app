@@ -2,7 +2,8 @@ import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BookingsProvider } from '../src/context/BookingsContext';
-import { ThemeProvider } from '../src/context/ThemeContext';
+import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
+import { View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
@@ -10,6 +11,15 @@ import { Nunito_700Bold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
 import '../global.css';
 
 SplashScreen.preventAutoHideAsync();
+
+function RootStack() {
+  const { scheme } = useTheme();
+  return (
+    <View className={`flex-1 theme-${scheme}`}>
+      <Stack screenOptions={{ headerShown: false }} />
+    </View>
+  );
+}
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -35,7 +45,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider>
         <BookingsProvider>
-          <Stack screenOptions={{ headerShown: false }} />
+          <RootStack />
         </BookingsProvider>
       </ThemeProvider>
     </SafeAreaProvider>

@@ -65,7 +65,9 @@ export function NewBookingDetailsStep({
       <TouchableOpacity
         className="mt-4 flex-row items-center gap-3 rounded-2xl border px-4 py-3.5"
         style={{ borderColor: colors.ui.border, backgroundColor: colors.ui.surface }}>
-        <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary-50">
+        <View
+          className="h-9 w-9 items-center justify-center rounded-xl"
+          style={{ backgroundColor: colors.primary['50'] }}>
           <Ionicons name="camera-outline" size={18} color={colors.primary['600']} />
         </View>
         <View className="flex-1">

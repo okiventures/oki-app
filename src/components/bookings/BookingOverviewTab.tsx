@@ -80,7 +80,7 @@ export function BookingOverviewTab({
         <CardContainer>
           <View
             className="w-full items-center justify-center rounded-t-2xl"
-            style={{ height: 120, backgroundColor: '#E8F0FE' }}>
+            style={{ height: 120, backgroundColor: colors.primary['50'] }}>
             <Ionicons name="map-outline" size={24} color={primaryColor} />
             <Text className="mt-1 text-[11px] font-medium text-blue-500/80">
               Map View Placeholder

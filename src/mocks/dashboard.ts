@@ -1,3 +1,5 @@
+import { SERVICE_CATEGORY_COLORS } from '../constants/theme';
+
 export interface PlatformStats {
   avgWorkerRating: string;
   jobsCompletedPct: string;
@@ -48,33 +50,33 @@ export const MOCK_DASHBOARD_CATEGORIES: DashboardCategory[] = [
     id: 'massage',
     name: 'Massage',
     icon: 'leaf-outline',
-    iconColor: '#10B981',
-    bgColor: '#D1FAE5',
-    borderColor: '#A7F3D0',
+    iconColor: SERVICE_CATEGORY_COLORS.massage.icon,
+    bgColor: SERVICE_CATEGORY_COLORS.massage.bg,
+    borderColor: SERVICE_CATEGORY_COLORS.massage.border,
   },
   {
     id: 'cleaning',
     name: 'Cleaning',
     icon: 'water-outline',
-    iconColor: '#3B82F6',
-    bgColor: '#DBEAFE',
-    borderColor: '#BFDBFE',
+    iconColor: SERVICE_CATEGORY_COLORS.cleaning.icon,
+    bgColor: SERVICE_CATEGORY_COLORS.cleaning.bg,
+    borderColor: SERVICE_CATEGORY_COLORS.cleaning.border,
   },
   {
     id: 'painting',
     name: 'Painting',
     icon: 'color-palette-outline',
-    iconColor: '#7C3AED',
-    bgColor: '#EDE9FE',
-    borderColor: '#DDD6FE',
+    iconColor: SERVICE_CATEGORY_COLORS.painting.icon,
+    bgColor: SERVICE_CATEGORY_COLORS.painting.bg,
+    borderColor: SERVICE_CATEGORY_COLORS.painting.border,
   },
   {
     id: 'more',
     name: 'More',
     icon: 'grid-outline',
-    iconColor: '#6B7280',
-    bgColor: '#F3F4F6',
-    borderColor: '#E5E7EB',
+    iconColor: SERVICE_CATEGORY_COLORS.more.icon,
+    bgColor: SERVICE_CATEGORY_COLORS.more.bg,
+    borderColor: SERVICE_CATEGORY_COLORS.more.border,
   },
 ];
 
@@ -95,7 +97,7 @@ export const MOCK_QUICK_BOOK_MODES: QuickBookMode[] = [
     title: 'Book Now',
     description: 'A worker heads to you right away',
     startingPrice: 299,
-    accentColor: '',
+    accentColor: '', // filled from theme at render time
     iconName: 'time-outline',
   },
   {
@@ -104,7 +106,7 @@ export const MOCK_QUICK_BOOK_MODES: QuickBookMode[] = [
     title: 'Book Later',
     description: 'Schedule for a date and time',
     startingPrice: 199,
-    accentColor: '#7C3AED',
+    accentColor: SERVICE_CATEGORY_COLORS.painting.icon, // purple accent for "schedule"
     iconName: 'calendar-outline',
   },
 ];

@@ -82,7 +82,9 @@ export function NewBookingReviewStep({
               borderBottomWidth: i < rows.length - 1 ? 1 : 0,
               borderBottomColor: colors.ui.border,
             }}>
-            <View className="bg-primary-50 mt-0.5 h-8 w-8 items-center justify-center rounded-xl">
+            <View
+              className="mt-0.5 h-8 w-8 items-center justify-center rounded-xl"
+              style={{ backgroundColor: colors.primary['50'] }}>
               <Ionicons name={row.icon as never} size={15} color={colors.primary['600']} />
             </View>
             <View className="flex-1">
@@ -101,9 +103,13 @@ export function NewBookingReviewStep({
         ))}
       </View>
 
-      <View className="bg-primary-50 mt-4 flex-row items-center gap-3 rounded-2xl p-4">
+      <View
+        className="mt-4 flex-row items-center gap-3 rounded-2xl p-4"
+        style={{ backgroundColor: colors.primary['50'] }}>
         <Ionicons name="information-circle-outline" size={18} color={colors.primary['600']} />
-        <Text className="text-primary-700 flex-1 text-[12px] leading-4">
+        <Text
+          className="flex-1 text-[12px] leading-4"
+          style={{ color: colors.primary['700'] }}>
           Final price will be quoted by the handyman after assessing the job on-site.
         </Text>
       </View>

@@ -1,22 +1,25 @@
 import { ColorScheme } from '../types';
 
-export const COLOR_SCHEMES: Record<ColorScheme, {
-  primary: Record<string, string>;
-  secondary: Record<string, string>;
-  ui: {
-    background: string;
-    surface: string;
-    border: string;
-    text: string;
-    textMuted: string;
-    textLight: string;
-  };
-  label: string;
-}> = {
+export const COLOR_SCHEMES: Record<
+  ColorScheme,
+  {
+    primary: Record<string, string>;
+    secondary: Record<string, string>;
+    ui: {
+      background: string;
+      surface: string;
+      border: string;
+      text: string;
+      textMuted: string;
+      textLight: string;
+    };
+    label: string;
+  }
+> = {
   crimson: {
     label: 'Crimson & Amber',
     primary: {
-      '50':  '#fdf2f3',
+      '50': '#fdf2f3',
       '100': '#fce4e7',
       '200': '#f9c9cf',
       '300': '#f49faa',
@@ -28,16 +31,16 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
       '900': '#5a1622',
     },
     secondary: {
-      '50':  '#fdf9ed',
-      '100': '#faf0cc',
-      '200': '#f4de95',
-      '300': '#edc757',
-      '400': '#e8b430',
-      '500': '#D4A642',
-      '600': '#b8882a',
-      '700': '#8B6914',
-      '800': '#735410',
-      '900': '#5f4512',
+      '50': '#fffbeb',
+      '100': '#fef3c7',
+      '200': '#fde68a',
+      '300': '#fcd34d',
+      '400': '#fbbf24',
+      '500': '#f59e0b',
+      '600': '#d97706',
+      '700': '#b45309',
+      '800': '#92400e',
+      '900': '#78350f',
     },
     ui: {
       background: '#FAFAFA',
@@ -45,13 +48,13 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
       border: '#E5E7EB',
       text: '#1C1917',
       textMuted: '#6B7280',
-      textLight: '#8A8780',
+      textLight: '#9CA3AF',
     },
   },
   teal: {
     label: 'Deep Teal & Coral',
     primary: {
-      '50':  '#f0fafa',
+      '50': '#f0fafa',
       '100': '#d9f2f2',
       '200': '#b6e5e5',
       '300': '#82d0d0',
@@ -63,7 +66,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
       '900': '#153f3f',
     },
     secondary: {
-      '50':  '#fdf3ee',
+      '50': '#fdf3ee',
       '100': '#fae4d5',
       '200': '#f5c5aa',
       '300': '#ee9d76',
@@ -80,13 +83,13 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
       border: '#E5E7EB',
       text: '#1C1917',
       textMuted: '#6B7280',
-      textLight: '#8A8780',
+      textLight: '#9CA3AF',
     },
   },
   indigo: {
     label: 'Indigo & Amber',
     primary: {
-      '50':  '#f5f0fb',
+      '50': '#f5f0fb',
       '100': '#ebe0f7',
       '200': '#d4beed',
       '300': '#b592df',
@@ -98,16 +101,16 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
       '900': '#2C1650',
     },
     secondary: {
-      '50':  '#fdf9ed',
-      '100': '#faf0cc',
-      '200': '#f4de95',
-      '300': '#edc757',
-      '400': '#e8b430',
-      '500': '#D4A642',
-      '600': '#b8882a',
-      '700': '#8B6914',
-      '800': '#735410',
-      '900': '#5f4512',
+      '50': '#fffbeb',
+      '100': '#fef3c7',
+      '200': '#fde68a',
+      '300': '#fcd34d',
+      '400': '#fbbf24',
+      '500': '#f59e0b',
+      '600': '#d97706',
+      '700': '#b45309',
+      '800': '#92400e',
+      '900': '#78350f',
     },
     ui: {
       background: '#FAFAFA',
@@ -115,10 +118,14 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
       border: '#E5E7EB',
       text: '#1C1917',
       textMuted: '#6B7280',
-      textLight: '#8A8780',
+      textLight: '#9CA3AF',
     },
   },
 };
+
+// ─── Semantic / status colors ───────────────────────────────────────────────
+// These are intentionally fixed (not theme-dependent) so that statuses always
+// carry universally recognised meaning regardless of brand colour.
 
 export const BOOKING_STATUS_LABELS: Record<string, string> = {
   Pending: 'Pending',
@@ -142,6 +149,49 @@ export const BOOKING_STATUS_COLORS: Record<string, string> = {
   Cancelled: '#EF4444',
 };
 
+export const MEMBERSHIP_TIER_COLORS: Record<string, string> = {
+  Bronze: '#CD7F32',
+  Silver: '#C0C0C0',
+  Gold: '#FFD700',
+  Platinum: '#E5E4E2',
+};
+
+// ─── Service / category palette ──────────────────────────────────────────────
+// Each category has a fixed semantic colour palette that persists across themes.
+// Components should pull from here instead of hardcoding hex values.
+
+export interface CategoryPalette {
+  /** Icon / foreground colour */
+  icon: string;
+  /** Chip / card background */
+  bg: string;
+  /** Subtle border (optional use) */
+  border: string;
+}
+
+export const SERVICE_CATEGORY_COLORS: Record<string, CategoryPalette> = {
+  // Booking categories (new-booking flow)
+  massage: { icon: '#EC4899', bg: '#FDF2F8', border: '#FBCFE8' },
+  cleaning: { icon: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE' },
+  painting: { icon: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE' },
+  general: { icon: '#64748B', bg: '#F8FAFC', border: '#E2E8F0' },
+
+  // Dashboard quick-category tiles
+  more: { icon: '#6B7280', bg: '#F3F4F6', border: '#E5E7EB' },
+
+  // Generic service categories (used in handyman / admin flows)
+  Plumbing: { icon: '#0EA5E9', bg: '#E0F2FE', border: '#BAE6FD' },
+  Electrical: { icon: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
+  Carpentry: { icon: '#92400E', bg: '#FEF3C7', border: '#FDE68A' },
+  Cleaning: { icon: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE' },
+  Painting: { icon: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE' },
+  HVAC: { icon: '#06B6D4', bg: '#ECFEFF', border: '#A5F3FC' },
+  Roofing: { icon: '#78716C', bg: '#F5F5F4', border: '#E7E5E4' },
+  Landscaping: { icon: '#22C55E', bg: '#F0FDF4', border: '#BBF7D0' },
+  'Appliance Repair': { icon: '#F97316', bg: '#FFF7ED', border: '#FED7AA' },
+  'General Handyman': { icon: '#64748B', bg: '#F8FAFC', border: '#E2E8F0' },
+};
+
 export const SERVICE_CATEGORY_ICONS: Record<string, string> = {
   Plumbing: 'water',
   Electrical: 'flash',
@@ -155,11 +205,6 @@ export const SERVICE_CATEGORY_ICONS: Record<string, string> = {
   'General Handyman': 'hammer',
 };
 
-export const PLATFORM_FEE_PERCENT = 10;
+// ─── Misc ─────────────────────────────────────────────────────────────────────
 
-export const MEMBERSHIP_TIER_COLORS: Record<string, string> = {
-  Bronze: '#CD7F32',
-  Silver: '#C0C0C0',
-  Gold: '#FFD700',
-  Platinum: '#E5E4E2',
-};
+export const PLATFORM_FEE_PERCENT = 10;

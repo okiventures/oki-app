@@ -61,8 +61,9 @@ const SUPPORT_ITEMS = [
 ];
 
 export default function ClientProfile() {
-  const { colors } = useTheme();
+  const { scheme, setScheme, colors } = useTheme();
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [themeModalVisible, setThemeModalVisible] = useState(false);
 
   const memberYear = new Date(MOCK_CLIENT.memberSince).getFullYear();
 
@@ -134,7 +135,11 @@ export default function ClientProfile() {
                 icon={item.icon}
                 title={item.title}
                 subtitle={item.subtitle}
-                onPress={() => {}}
+                onPress={() => {
+                  if (item.title === 'Theme') {
+                    setThemeModalVisible(true);
+                  }
+                }}
                 hideDivider={i === PREFERENCES_ITEMS.length - 1}
               />
             ))}
@@ -177,7 +182,7 @@ export default function ClientProfile() {
         visible={logoutModalVisible}
         onClose={() => setLogoutModalVisible(false)}
         title="Log Out">
-        <Text className="mb-4 text-sm" style={{ color: '#6B7280' }}>
+        <Text className="mb-4 text-sm" style={{ color: colors.ui.textMuted }}>
           Are you sure you want to log out? You&apos;ll need to sign in again to access your bookings.
         </Text>
         <View className="gap-2.5">
@@ -193,6 +198,38 @@ export default function ClientProfile() {
             fullWidth
             onPress={() => setLogoutModalVisible(false)}
           />
+        </View>
+      </Modal>
+
+      <Modal
+        visible={themeModalVisible}
+        onClose={() => setThemeModalVisible(false)}
+        title="App Theme">
+        <View className="gap-3">
+          {(['crimson', 'teal', 'indigo'] as const).map((s) => (
+            <Pressable
+              key={s}
+              onPress={() => {
+                setScheme(s);
+                setThemeModalVisible(false);
+              }}
+              className="flex-row items-center justify-between rounded-xl border p-3"
+              style={{
+                borderColor: scheme === s ? colors.primary['500'] : colors.ui.border,
+                backgroundColor: scheme === s ? `${colors.primary['500']}15` : colors.ui.surface,
+              }}>
+              <View className="flex-row items-center gap-3">
+                <View
+                  style={{ backgroundColor: s === 'crimson' ? '#A82839' : s === 'teal' ? '#2D7A7A' : '#5D2E8C' }}
+                  className="h-4 w-4 rounded-full"
+                />
+                <Text className="text-[14px] font-semibold" style={{ color: colors.ui.text }}>
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </Text>
+              </View>
+              {scheme === s && <Ionicons name="checkmark" size={18} color={colors.primary['500']} />}
+            </Pressable>
+          ))}
         </View>
       </Modal>
     </SafeAreaView>
