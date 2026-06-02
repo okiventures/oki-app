@@ -64,13 +64,9 @@ export default function HandymanRequests() {
     <View className="flex-1 bg-gray-50">
       <Navbar title="Incoming Requests" />
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-        <Text className="px-1 text-[13px] text-gray-500">
-          Requests are now driven by the same booking records the client sees, so each action updates both sides of the prototype flow.
-        </Text>
-
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
         {activeJob ? (
-          <View className="mt-5">
+          <View>
             <ActiveJobWorkflowCard booking={activeJob} onAdvance={() => advanceBooking(activeJob.id)} />
           </View>
         ) : null}

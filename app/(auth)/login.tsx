@@ -64,7 +64,6 @@ export default function ClientLogin() {
               autoCapitalize="none"
               keyboardType="email-address"
               error={identifier.length > 0 && !identifierIsValid ? 'Use a valid email address or a phone number with at least 10 digits.' : undefined}
-              helperText={identifier.length === 0 ? 'Email must look like name@example.com, or phone must have at least 10 digits.' : undefined}
               leftIcon={<Ionicons name="mail-outline" size={18} color="#9CA3AF" />}
             />
             <View className="mb-4">
@@ -75,7 +74,6 @@ export default function ClientLogin() {
                 onChangeText={setPassword}
                 secureTextEntry
                 secureToggle
-                helperText={password.length === 0 ? 'Password is required.' : undefined}
                 leftIcon={<Ionicons name="lock-closed-outline" size={18} color="#9CA3AF" />}
                 />
                 <TouchableOpacity className="items-end">

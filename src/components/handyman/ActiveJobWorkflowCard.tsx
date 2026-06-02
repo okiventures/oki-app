@@ -61,14 +61,7 @@ export function ActiveJobWorkflowCard({ booking, onAdvance }: ActiveJobWorkflowC
             {booking.scheduledAt ? formatDateTime(booking.scheduledAt) : 'Immediate dispatch'}
           </Text>
         </View>
-      </View>
-
-      <View className="mt-4 flex-row items-center gap-2 rounded-2xl border border-gray-100 px-3 py-3">
-        <Ionicons name="information-circle-outline" size={18} color="#6B7280" />
-        <Text className="flex-1 text-[12px] leading-5 text-gray-600">
-          Drive the workflow from booking status so the client and handyman views stay in sync.
-        </Text>
-      </View>
+      </View>   
 
       <View className="mt-4 flex-row items-center justify-between">
         <Badge variant="success" text={`Client rated ${(booking.clientRating ?? 5).toFixed(1)}`} />
