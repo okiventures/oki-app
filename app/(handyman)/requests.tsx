@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { Navbar } from '../../src/components/navigation/Navbar';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../../src/context/ThemeContext';
+import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import {
   ACTIVE_HANDYMAN_BOOKING_STATUSES,
   useBookings,
@@ -19,6 +21,7 @@ type PendingAction = {
 } | null;
 
 export default function HandymanRequests() {
+  const { colors } = useTheme();
   const { bookings, acceptBooking, declineBooking, advanceBooking } = useBookings();
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
@@ -61,38 +64,48 @@ export default function HandymanRequests() {
   };
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <Navbar title="Incoming Requests" />
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
+      <ScreenHeader title="Incoming Requests" />
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
-        {activeJob ? (
-          <View>
-            <ActiveJobWorkflowCard booking={activeJob} onAdvance={() => advanceBooking(activeJob.id)} />
+      <View
+        className="flex-1 overflow-hidden rounded-t-[32px]"
+        style={{ backgroundColor: colors.ui.background, marginTop: -32 }}>
+        <ScrollView
+          className="mt-5 flex-1 rounded-xl"
+          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          style={{ backgroundColor: colors.ui.background }}>
+          {activeJob ? (
+            <View className="mb-4">
+              <ActiveJobWorkflowCard booking={activeJob} onAdvance={() => advanceBooking(activeJob.id)} />
+            </View>
+          ) : null}
+
+          <View className="mb-3 mt-1 px-1">
+            <Text className="text-[18px] font-bold text-gray-900">Request Inbox</Text>
+            <Text className="mt-1 text-[13px] text-gray-500">{requestCountLabel}</Text>
           </View>
-        ) : null}
 
-        <View className="mb-3 mt-1 px-1">
-          <Text className="text-[18px] font-bold text-gray-900">Request Inbox</Text>
-          <Text className="mt-1 text-[13px] text-gray-500">{requestCountLabel}</Text>
-        </View>
-
-        {incomingRequests.length > 0 ? (
-          incomingRequests.map((booking) => (
-            <RequestInboxCard
-              key={booking.id}
-              booking={booking}
-              onAccept={() => setPendingAction({ booking, type: 'accept' })}
-              onDecline={() => setPendingAction({ booking, type: 'decline' })}
+          {incomingRequests.length > 0 ? (
+            incomingRequests.map((booking) => (
+              <RequestInboxCard
+                key={booking.id}
+                booking={booking}
+                onAccept={() => setPendingAction({ booking, type: 'accept' })}
+                onDecline={() => setPendingAction({ booking, type: 'decline' })}
+              />
+            ))
+          ) : (
+            <EmptyState
+              icon="mail-open-outline"
+              title="No pending requests"
+              message="New booking matches will appear here when a client request is routed to you."
             />
-          ))
-        ) : (
-          <EmptyState
-            icon="mail-open-outline"
-            title="No pending requests"
-            message="New booking matches will appear here when a client request is routed to you."
-          />
-        )}
-      </ScrollView>
+          )}
+        </ScrollView>
+      </View>
 
       <ConfirmDialog
         visible={pendingAction !== null}
@@ -108,6 +121,6 @@ export default function HandymanRequests() {
         onConfirm={confirmPendingAction}
         onCancel={() => setPendingAction(null)}
       />
-    </View>
+    </SafeAreaView>
   );
 }
