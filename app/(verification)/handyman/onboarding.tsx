@@ -66,7 +66,6 @@ export default function HandymanOnboarding() {
   return (
     <SafeAreaView
       edges={["left", "right", "bottom"]}
-      className="flex-1"
       style={{ flex: 1, backgroundColor: colors.ui.background }}>
       <Navbar title="Handyman Onboarding" showBack={currentStepIndex === 0} />
 

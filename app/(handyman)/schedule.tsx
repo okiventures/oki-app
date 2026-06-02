@@ -30,7 +30,7 @@ export default function HandymanSchedule() {
     <View className="flex-1 bg-gray-50">
       <Navbar title="My Schedule" />
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView contentContainerStyle={{ paddingVertical: 16 }}>
         <ScheduleCalendar
           bookings={scheduledBookings}
           selectedDate={selectedDate}

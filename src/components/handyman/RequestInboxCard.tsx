@@ -116,18 +116,18 @@ export function RequestInboxCard({ booking, onAccept, onDecline }: RequestInboxC
         </View>
       </View>
 
-      <View className="mt-4 gap-2 rounded-2xl border border-gray-100 px-3 py-3">
+      <View className="flex flex-row justify-between py-3">
         <View className="flex-row items-center gap-2">
           <Ionicons name="location-outline" size={15} color="#6B7280" />
-          <Text className="flex-1 text-[12px] text-gray-600">{booking.location}</Text>
+          <Text className="text-[12px] text-gray-600">{booking.location}</Text>
         </View>
         <View className="flex-row items-center gap-2">
           <Ionicons name="calendar-outline" size={15} color="#6B7280" />
-          <Text className="flex-1 text-[12px] text-gray-600">{bookingWindowLabel}</Text>
+          <Text className="text-[12px] text-gray-600">{bookingWindowLabel}</Text>
         </View>
       </View>
 
-      <View className="mt-4 flex-row gap-3">
+      <View className="mt-2 flex-row gap-3">
         <View className="flex-1">
           <Button
             label="Decline"

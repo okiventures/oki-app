@@ -21,8 +21,7 @@ export default function EditProfile() {
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
-      className="flex-1"
-      style={{ backgroundColor: colors.primary['600'] }}>
+      style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
       <ScreenHeader title="Edit Profile" showBack onBackPress={() => router.back()} />
       <View
         className="-mt-8 flex-1 overflow-hidden rounded-t-[32px]"

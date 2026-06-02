@@ -99,9 +99,8 @@ export default function NewBookingScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1"
-      style={{ backgroundColor: colors.primary['600'] }}
-      edges={['top', 'left', 'right']}>
+      style={{ flex: 1, backgroundColor: colors.primary['600'] }}
+      edges={['top', 'left', 'right', 'bottom']}>
       <View className="px-5 pt-3 pb-6">
         <View className="mb-5 flex-row items-center justify-between">
           <Pressable

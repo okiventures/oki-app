@@ -85,8 +85,7 @@ export default function SavedAddresses() {
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
-      className="flex-1"
-      style={{ backgroundColor: colors.primary['600'] }}>
+      style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
       <ScreenHeader title="Saved Addresses" showBack onBackPress={() => router.back()} />
 
       <View

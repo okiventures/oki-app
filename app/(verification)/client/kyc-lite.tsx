@@ -52,7 +52,7 @@ export default function ClientKycLite() {
   );
 
   return (
-    <SafeAreaView edges={["left", "right", "bottom"]} className="flex-1 bg-gray-50">
+    <SafeAreaView edges={["left", "right", "bottom"]} style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
       <Navbar title="KYC-lite" showBack />
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 24 }}>
         <View className="mb-4">

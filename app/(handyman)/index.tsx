@@ -56,7 +56,7 @@ export default function HandymanDashboard() {
         </View>
 
         {/* Upcoming Schedule Snippet */}
-        <Text className="font-heading text-base text-gray-900 mt-2">Next Job</Text>
+        <Text className="font-heading text-base text-gray-900">Next Job</Text>
         <Card>
           <Text className="text-[13px] font-semibold text-gray-800">Plumbing Fix</Text>
           <Text className="text-[11px] text-gray-500 mt-1">Today, 2:00 PM • 123 Main St</Text>
