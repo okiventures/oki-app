@@ -1,18 +1,17 @@
 import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Navbar } from '../../src/components/navigation/Navbar';
 import { Card } from '../../src/components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
-import { MOCK_ADMIN_STATS } from '../../src/mocks';
-import { formatCurrency } from '../../src/utils';
+import { Chart } from '../../src/components/admin/Chart';
+import { MOCK_ADMIN_STATS, MOCK_ADMIN_CHART_DATA, MOCK_ADMIN_FEED, MOCK_TRANSACTIONS } from '../../src/mocks';
+import { formatCurrency, formatDateTime } from '../../src/utils';
 
 export default function AdminDashboard() {
   return (
     <View className="flex-1 bg-gray-50">
       <Navbar title="Admin Panel" />
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
-        
-        {/* KPI Grid */}
         <View className="flex-row gap-2">
           <Card className="flex-1 p-3">
             <Ionicons name="people" size={20} color="#4F46E5" className="mb-2" />
@@ -43,21 +42,44 @@ export default function AdminDashboard() {
           </Card>
         </View>
 
-        {/* Quick Actions */}
-        <Text className="text-[13px] font-bold text-gray-900 mt-3 px-1">Quick Actions</Text>
-        <Card className="p-0 overflow-hidden">
-          <View className="flex-row items-center border-b border-gray-100 p-3">
-            <Ionicons name="megaphone-outline" size={18} color="#6B7280" />
-            <Text className="flex-1 ml-3 text-[13px] font-semibold text-gray-800">Send Global Announcement</Text>
-            <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+        <Chart title="Bookings + Revenue (7 days)" data={MOCK_ADMIN_CHART_DATA.revenue} labels={MOCK_ADMIN_CHART_DATA.labels} />
+
+        <View>
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-[13px] font-bold text-gray-900">Pending Transactions</Text>
+            <Text className="text-[11px] text-gray-500">Latest updates</Text>
           </View>
-          <View className="flex-row items-center p-3">
-            <Ionicons name="settings-outline" size={18} color="#6B7280" />
-            <Text className="flex-1 ml-3 text-[13px] font-semibold text-gray-800">System Preferences</Text>
-            <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-          </View>
-        </Card>
-        
+          {MOCK_TRANSACTIONS.slice(0, 3).map((transaction) => (
+            <Card key={transaction.id} className="mb-3 p-3">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-sm font-semibold text-gray-900">{transaction.clientName} → {transaction.handymanName}</Text>
+                <Text className="text-[11px] text-gray-500">{transaction.paymentMethod}</Text>
+              </View>
+              <Text className="text-[13px] text-gray-600 mb-2">Booking {transaction.bookingId}</Text>
+              <View className="flex-row items-center justify-between">
+                <Text className="text-[13px] text-gray-800">{formatCurrency(transaction.amount)}</Text>
+                <Text className="text-[11px] text-gray-500">{formatDateTime(transaction.createdAt)}</Text>
+              </View>
+            </Card>
+          ))}
+        </View>
+
+        <View>
+          <Text className="text-[13px] font-bold text-gray-900 mb-3">Recent Activity</Text>
+          {MOCK_ADMIN_FEED.map((item) => (
+            <Card key={item.id} className="mb-3 p-3">
+              <Text className="text-sm font-semibold text-gray-900 mb-1">{item.title}</Text>
+              <Text className="text-[13px] text-gray-600 mb-2">{item.description}</Text>
+              <Text className="text-[11px] text-gray-500">{formatDateTime(item.createdAt)}</Text>
+            </Card>
+          ))}
+        </View>
+
+        <View className="mt-2">
+          <TouchableOpacity className="bg-primary-600 rounded-2xl py-3 items-center">
+            <Text className="text-sm font-bold text-white">View full analytics</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
