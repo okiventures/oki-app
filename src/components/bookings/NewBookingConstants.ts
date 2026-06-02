@@ -1,3 +1,5 @@
+import { SERVICE_CATEGORY_COLORS } from '../../constants/theme';
+
 export interface BookingSubService {
   id: string;
   name: string;
@@ -19,8 +21,8 @@ export const NEW_BOOKING_CATEGORIES: BookingCategory[] = [
     id: 'massage',
     name: 'Massage',
     icon: 'leaf-outline',
-    color: '#EC4899',
-    bg: '#FDF2F8',
+    color: SERVICE_CATEGORY_COLORS.massage.icon,
+    bg: SERVICE_CATEGORY_COLORS.massage.bg,
     subServices: [
       { id: 'massage-swedish', name: 'Swedish Massage', description: 'Full-body relaxation massage', startingPrice: 350 },
       { id: 'massage-deep', name: 'Deep Tissue', description: 'Targets muscle knots and tension', startingPrice: 450 },
@@ -32,8 +34,8 @@ export const NEW_BOOKING_CATEGORIES: BookingCategory[] = [
     id: 'cleaning',
     name: 'Cleaning',
     icon: 'water-outline',
-    color: '#3B82F6',
-    bg: '#EFF6FF',
+    color: SERVICE_CATEGORY_COLORS.cleaning.icon,
+    bg: SERVICE_CATEGORY_COLORS.cleaning.bg,
     subServices: [
       { id: 'cleaning-general', name: 'General Cleaning', description: 'Sweeping, mopping, and tidying up', startingPrice: 300 },
       { id: 'cleaning-deep', name: 'Deep Cleaning', description: 'Thorough top-to-bottom clean', startingPrice: 600 },
@@ -45,8 +47,8 @@ export const NEW_BOOKING_CATEGORIES: BookingCategory[] = [
     id: 'painting',
     name: 'Painting',
     icon: 'color-palette-outline',
-    color: '#8B5CF6',
-    bg: '#F5F3FF',
+    color: SERVICE_CATEGORY_COLORS.painting.icon,
+    bg: SERVICE_CATEGORY_COLORS.painting.bg,
     subServices: [
       { id: 'painting-interior', name: 'Interior Painting', description: 'Walls, ceilings, and trim indoors', startingPrice: 800 },
       { id: 'painting-exterior', name: 'Exterior Painting', description: 'Facade, gates, and outdoor surfaces', startingPrice: 1200 },
@@ -57,13 +59,13 @@ export const NEW_BOOKING_CATEGORIES: BookingCategory[] = [
     id: 'general',
     name: 'General Handyman',
     icon: 'construct-outline',
-    color: '#64748B',
-    bg: '#F8FAFC',
+    color: SERVICE_CATEGORY_COLORS.general.icon,
+    bg: SERVICE_CATEGORY_COLORS.general.bg,
     subServices: [
       { id: 'general-furniture', name: 'Furniture Assembly', description: 'Flat-pack and modular assembly', startingPrice: 300 },
       { id: 'general-mounting', name: 'TV / Shelf Mounting', description: 'Wall-mount installation and wiring', startingPrice: 350 },
       { id: 'general-repair', name: 'Minor Repairs', description: 'Doors, hinges, handles, and fixtures', startingPrice: 250 },
-      { id: 'general-other', name: 'Other', description: 'Describe your task and we\'ll find the right person', startingPrice: 200 },
+      { id: 'general-other', name: 'Other', description: "Describe your task and we'll find the right person", startingPrice: 200 },
     ],
   },
 ];

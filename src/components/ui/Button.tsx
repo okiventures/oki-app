@@ -32,19 +32,46 @@ export function Button({
 }: ButtonProps) {
   const { colors } = useTheme();
 
-  const variantClasses = {
-    primary: 'bg-primary-600 border-primary-600',
-    secondary: 'bg-secondary-500 border-secondary-500',
-    tertiary: 'bg-transparent border-primary-600 border',
-    danger: 'bg-red-700 border-red-700',
+  // Define dynamic style objects using theme colors
+  const variantStyles = {
+    primary: {
+      backgroundColor: colors.primary['600'],
+      borderColor: colors.primary['600'],
+      borderWidth: 1,
+    },
+    secondary: {
+      backgroundColor: colors.secondary['500'],
+      borderColor: colors.secondary['500'],
+      borderWidth: 1,
+    },
+    tertiary: {
+      backgroundColor: 'transparent',
+      borderColor: colors.primary['600'],
+      borderWidth: 1,
+    },
+    danger: {
+      backgroundColor: '#EF4444',
+      borderColor: '#EF4444',
+      borderWidth: 1,
+    },
   };
 
   const textColors = {
-    primary: 'text-white',
-    secondary: 'text-white',
-    tertiary: 'text-primary-600',
-    danger: 'text-white',
+    primary: '#FFFFFF',
+    secondary: '#FFFFFF',
+    tertiary: colors.primary['600'],
+    danger: '#FFFFFF',
   };
+
+  // Determine container styling
+  const buttonStyle: ViewStyle = disabled
+    ? {
+        backgroundColor: colors.ui.border,
+        borderColor: colors.ui.border,
+        borderWidth: 1,
+        opacity: 0.5,
+      }
+    : variantStyles[variant];
 
   return (
     <TouchableOpacity
@@ -52,12 +79,10 @@ export function Button({
       disabled={disabled || loading}
       accessibilityRole="button"
       accessibilityLabel={label}
-      className={`flex-row items-center justify-center rounded-full px-3 py-1.5 ${variantClasses[variant]} ${!fullWidth ? 'self-auto' : ''} ${disabled ? 'border-gray-300 bg-gray-300 opacity-50' : 'opacity-100'}`}
+      className={`flex-row items-center justify-center rounded-full px-3 py-1.5 ${!fullWidth ? 'self-auto' : ''}`}
       style={[
         fullWidth ? { width: '100%', alignSelf: 'stretch' } : null,
-        !disabled && variant === 'primary'
-          ? { backgroundColor: colors.primary['600'], borderColor: colors.primary['600'] }
-          : null,
+        buttonStyle,
         style,
       ]}>
       {loading ? (
@@ -69,8 +94,8 @@ export function Button({
         <>
           {leftIcon && <View className="mr-2">{leftIcon}</View>}
           <Text
-            className={`${textColors[variant]} text-[13px] font-semibold tracking-wide`}
-            style={textStyle}>
+            className="text-[13px] font-semibold tracking-wide"
+            style={[{ color: textColors[variant] }, textStyle]}>
             {label}
           </Text>
           {rightIcon && <View className="ml-2">{rightIcon}</View>}

@@ -60,7 +60,9 @@ export default function NewBookingScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.ui.background }}>
         <View className="flex-1 items-center justify-center px-8">
-          <View className="bg-primary-50 mb-6 h-20 w-20 items-center justify-center rounded-full">
+          <View
+            className="mb-6 h-20 w-20 items-center justify-center rounded-full"
+            style={{ backgroundColor: colors.primary['50'] }}>
             <Ionicons name="checkmark-circle" size={48} color={colors.primary['600']} />
           </View>
           <Text
@@ -96,7 +98,9 @@ export default function NewBookingScreen() {
   }
 
   return (
-    <SafeAreaView style={{ backgroundColor: colors.primary['600'], flex: 1 }} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: colors.primary['600'] }}
+      edges={['top', 'left', 'right', 'bottom']}>
       <View className="px-5 pt-3 pb-6">
         <View className="mb-5 flex-row items-center justify-between">
           <Pressable
@@ -141,14 +145,14 @@ export default function NewBookingScreen() {
             />
           )}
           {stepIndex === 1 && (
-              <NewBookingDetailsStep
-                address={address}
-                description={description}
-                notes={notes}
-                onAddressChange={setAddress}
-                onDescriptionChange={setDescription}
-                onNotesChange={setNotes}
-              />
+            <NewBookingDetailsStep
+              address={address}
+              description={description}
+              notes={notes}
+              onAddressChange={setAddress}
+              onDescriptionChange={setDescription}
+              onNotesChange={setNotes}
+            />
           )}
           {stepIndex === 2 && (
             <NewBookingScheduleStep
@@ -163,17 +167,17 @@ export default function NewBookingScreen() {
             />
           )}
           {stepIndex === 3 && (
-              <NewBookingReviewStep
-                mode={bookingMode}
-                categoryId={categoryId}
-                subServiceId={subServiceId}
-                address={address}
-                description={description}
-                notes={notes}
-                selectedDate={selectedDate}
-                selectedHour={selectedHour}
-                selectedMinute={selectedMinute}
-              />
+            <NewBookingReviewStep
+              mode={bookingMode}
+              categoryId={categoryId}
+              subServiceId={subServiceId}
+              address={address}
+              description={description}
+              notes={notes}
+              selectedDate={selectedDate}
+              selectedHour={selectedHour}
+              selectedMinute={selectedMinute}
+            />
           )}
         </ScrollView>
 

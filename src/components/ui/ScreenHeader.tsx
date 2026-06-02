@@ -9,6 +9,8 @@ export interface ScreenHeaderProps {
   onNotificationsPress?: () => void;
   showSettings?: boolean;
   showNotifications?: boolean;
+  showBack?: boolean;
+  onBackPress?: () => void;
 }
 
 export function ScreenHeader({
@@ -17,13 +19,24 @@ export function ScreenHeader({
   onNotificationsPress,
   showSettings = false,
   showNotifications = false,
+  showBack = false,
+  onBackPress,
 }: ScreenHeaderProps) {
   const { colors } = useTheme();
 
   return (
     <View className="px-5 pt-4 pb-20" style={{ backgroundColor: colors.primary['600'] }}>
       <View className="flex-row items-center justify-between">
-        {showSettings ? (
+        {showBack ? (
+          <Pressable
+            onPress={onBackPress}
+            accessibilityLabel="Go back"
+            android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: true }}
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+            className="p-1">
+            <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.9)" />
+          </Pressable>
+        ) : showSettings ? (
           <Pressable
             onPress={onSettingsPress}
             accessibilityLabel="Settings"

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BookingStatus } from '../../types';
 import { TimelineEvent } from '../../mocks/bookingDetails';
 import { BOOKING_STATUS_COLORS } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
 
 interface VerticalStepperProps {
   events: TimelineEvent[];
@@ -50,6 +51,7 @@ export function VerticalStepper({
   primaryColor,
   primaryLight,
 }: VerticalStepperProps) {
+  const { colors } = useTheme();
   const currentIdx = STATUS_ORDER.indexOf(currentStatus);
 
   return (
@@ -116,21 +118,21 @@ export function VerticalStepper({
                 <Text
                   className="text-[13px] font-semibold flex-1 pr-2"
                   style={{
-                    color: isActive ? primaryColor : isCompleted ? '#1C1917' : '#6B7280',
+                    color: isActive ? primaryColor : isCompleted ? colors.ui.text : colors.ui.textMuted,
                   }}>
                   {event.label}
                 </Text>
                 {event.timestamp && (
                   <Text
                     className="text-[11px] font-normal"
-                    style={{ color: '#9CA3AF' }}>
+                    style={{ color: colors.ui.textLight }}>
                     {formatTimestamp(event.timestamp)}
                   </Text>
                 )}
               </View>
               <Text
                 className="mt-0.5 text-[12px] font-normal leading-[17px]"
-                style={{ color: '#6B7280' }}>
+                style={{ color: colors.ui.textMuted }}>
                 {event.description}
               </Text>
               {isActive && (

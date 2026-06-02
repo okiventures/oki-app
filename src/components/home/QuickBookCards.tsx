@@ -19,7 +19,7 @@ interface QuickBookCardProps {
 
 function QuickBookCard({ mode, onPress, primaryColor, primaryLight }: QuickBookCardProps) {
   const { colors } = useTheme();
-  const accentColor = mode.type === 'now' ? primaryColor : mode.accentColor;
+  const accentColor = mode.type === 'now' ? primaryColor : colors.secondary['600'];
 
   return (
     <TouchableOpacity
@@ -52,20 +52,14 @@ function QuickBookCard({ mode, onPress, primaryColor, primaryLight }: QuickBookC
 
       {/* Card content */}
       <View className="flex-1 p-3.5 pt-5">
-        <Text className="mb-1 text-[15px] font-semibold text-white">
-          {mode.title}
-        </Text>
-        <Text
-          className="text-xs font-normal leading-tight text-white/90"
-          numberOfLines={2}>
+        <Text className="mb-1 text-[15px] font-semibold text-white">{mode.title}</Text>
+        <Text className="text-xs leading-tight font-normal text-white/90" numberOfLines={2}>
           {mode.description}
         </Text>
       </View>
 
       {/* Price footer */}
-      <View
-        className="px-3.5 py-2.5"
-        style={{ backgroundColor: colors.ui.surface }}>
+      <View className="px-3.5 py-2.5" style={{ backgroundColor: colors.ui.surface }}>
         <Text className="text-xs font-medium" style={{ color: colors.ui.textMuted }}>
           Starts at{' '}
           <Text style={{ color: accentColor, fontWeight: '600' }}>₱{mode.startingPrice}</Text>
@@ -80,9 +74,7 @@ export function QuickBookCards({ modes, onModePress }: QuickBookCardsProps) {
 
   return (
     <View className="mx-5 mb-5">
-      <Text
-        className="mb-2.5 text-sm font-medium"
-        style={{ color: colors.ui.text }}>
+      <Text className="mb-2.5 text-sm font-medium" style={{ color: colors.ui.text }}>
         How do you want to book?
       </Text>
       <View className="flex-row gap-2.5">

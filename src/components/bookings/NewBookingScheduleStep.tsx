@@ -44,21 +44,29 @@ export function NewBookingScheduleStep({
       {isNow ? (
         <View className="gap-4">
           <View
-            className="bg-primary-50 border-primary-100 rounded-3xl border-[1.5px] p-6"
+            className="rounded-3xl border-[1.5px] p-6"
             style={{
+              backgroundColor: colors.primary['50'],
+              borderColor: colors.primary['100'],
               shadowColor: colors.primary['600'],
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.05,
               shadowRadius: 10,
               elevation: 2,
             }}>
-            <View className="bg-primary-100 mb-4 h-14 w-14 items-center justify-center self-center rounded-full">
+            <View
+              className="mb-4 h-14 w-14 items-center justify-center self-center rounded-full"
+              style={{ backgroundColor: colors.primary['100'] }}>
               <Ionicons name="flash" size={28} color={colors.primary['600']} />
             </View>
-            <Text className="text-primary-700 mb-1.5 text-center text-[18px] font-bold">
+            <Text
+              className="mb-1.5 text-center text-[18px] font-bold"
+              style={{ color: colors.primary['700'] }}>
               Immediate dispatch
             </Text>
-            <Text className="text-primary-800 text-center text-[14px] leading-5">
+            <Text
+              className="text-center text-[14px] leading-5"
+              style={{ color: colors.primary['800'] }}>
               We'll match you with the nearest available handyman right away.
             </Text>
           </View>

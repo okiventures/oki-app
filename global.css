@@ -49,16 +49,16 @@
   --primary-800: #6B1A29;
   --primary-900: #5a1622;
 
-  --secondary-50: #fdf9ed;
-  --secondary-100: #faf0cc;
-  --secondary-200: #f4de95;
-  --secondary-300: #edc757;
-  --secondary-400: #e8b430;
-  --secondary-500: #D4A642;
-  --secondary-600: #b8882a;
-  --secondary-700: #8B6914;
-  --secondary-800: #735410;
-  --secondary-900: #5f4512;
+  --secondary-50: #fffbeb;
+  --secondary-100: #fef3c7;
+  --secondary-200: #fde68a;
+  --secondary-300: #fcd34d;
+  --secondary-400: #fbbf24;
+  --secondary-500: #f59e0b;
+  --secondary-600: #d97706;
+  --secondary-700: #b45309;
+  --secondary-800: #92400e;
+  --secondary-900: #78350f;
 }
 
 .theme-teal {
@@ -97,14 +97,14 @@
   --primary-800: #371952;
   --primary-900: #2C1650;
 
-  --secondary-50: #fdf9ed;
-  --secondary-100: #faf0cc;
-  --secondary-200: #f4de95;
-  --secondary-300: #edc757;
-  --secondary-400: #e8b430;
-  --secondary-500: #D4A642;
-  --secondary-600: #b8882a;
-  --secondary-700: #8B6914;
-  --secondary-800: #735410;
-  --secondary-900: #5f4512;
+  --secondary-50: #fffbeb;
+  --secondary-100: #fef3c7;
+  --secondary-200: #fde68a;
+  --secondary-300: #fcd34d;
+  --secondary-400: #fbbf24;
+  --secondary-500: #f59e0b;
+  --secondary-600: #d97706;
+  --secondary-700: #b45309;
+  --secondary-800: #92400e;
+  --secondary-900: #78350f;
 }

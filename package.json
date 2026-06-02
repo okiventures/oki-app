@@ -15,6 +15,7 @@
     "@expo-google-fonts/nunito": "^0.4.2",
     "@expo/metro-runtime": "~6.1.2",
     "@expo/vector-icons": "^15.0.3",
+    "@react-native-async-storage/async-storage": "^3.1.1",
     "@tailwindcss/postcss": "^4.1.13",
     "expo": "~54.0.35",
     "expo-constants": "~18.0.13",
