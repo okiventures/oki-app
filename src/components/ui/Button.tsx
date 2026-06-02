@@ -1,5 +1,4 @@
-import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, View, ViewStyle } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, View, ViewStyle, TextStyle } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 
 type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'danger';
@@ -15,6 +14,7 @@ interface ButtonProps {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   style?: ViewStyle;
+  textStyle?: TextStyle;
 }
 
 export function Button({
@@ -28,6 +28,7 @@ export function Button({
   leftIcon,
   rightIcon,
   style,
+  textStyle,
 }: ButtonProps) {
   const { colors } = useTheme();
 
@@ -67,7 +68,9 @@ export function Button({
       ) : (
         <>
           {leftIcon && <View className="mr-2">{leftIcon}</View>}
-          <Text className={`${textColors[variant]} text-[13px] font-semibold tracking-wide`}>
+          <Text
+            className={`${textColors[variant]} text-[13px] font-semibold tracking-wide`}
+            style={textStyle}>
             {label}
           </Text>
           {rightIcon && <View className="ml-2">{rightIcon}</View>}

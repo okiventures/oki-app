@@ -11,7 +11,6 @@ import { SearchBar } from '../../src/components/forms/SearchBar';
 import { BookingStatus } from '../../src/types';
 import { EmptyState } from '../../src/components/ui/EmptyState';
 import { BookingListSection } from '../../src/components/bookings/BookingListSection';
-
 export default function ClientBookings() {
   const { colors } = useTheme();
   const router = useRouter();
@@ -52,7 +51,9 @@ export default function ClientBookings() {
   const hasAnyBookings = filteredBookings.length > 0;
 
   return (
-    <SafeAreaView edges={["top", "left", "right"]} style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
       <ScreenHeader title="My Bookings" showNotifications onNotificationsPress={() => {}} />
 
       <View

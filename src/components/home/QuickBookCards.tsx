@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { QuickBookMode } from '../../mocks/dashboard';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -22,7 +23,10 @@ function QuickBookCard({ mode, onPress, primaryColor, primaryLight }: QuickBookC
 
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={() => {
+        onPress?.();
+        router.push(`/new-booking?mode=${mode.type}`);
+      }}
       accessibilityLabel={`${mode.title} — starting at ₱${mode.startingPrice}`}
       className="flex-1 overflow-hidden rounded-2xl"
       style={{

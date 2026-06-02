@@ -37,7 +37,18 @@ export function ActiveJobWorkflowCard({ booking, onAdvance }: ActiveJobWorkflowC
         </View>
       </View>
 
-      <Text className="mt-3 text-[13px] leading-5 text-gray-600">{booking.description}</Text>
+      <View className="mt-3 gap-2">
+        <View>
+          <Text className="text-[11px] uppercase tracking-[0.8px] text-gray-500">Description</Text>
+          <Text className="mt-0.5 text-[13px] leading-5 text-gray-600">{booking.description}</Text>
+        </View>
+        {booking.notes && (
+          <View>
+            <Text className="text-[11px] uppercase tracking-[0.8px] text-gray-500">Order Notes</Text>
+            <Text className="mt-0.5 text-[13px] leading-5 text-gray-600">{booking.notes}</Text>
+          </View>
+        )}
+      </View>
 
       <View className="mt-4 flex-row gap-3">
         <View className="flex-1 rounded-2xl bg-gray-50 px-3 py-3">

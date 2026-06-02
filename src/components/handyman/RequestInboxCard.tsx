@@ -64,13 +64,26 @@ export function RequestInboxCard({ booking, onAccept, onDecline }: RequestInboxC
       <View className="flex-row items-start justify-between gap-3">
         <View className="flex-1">
           <View className="flex-row items-center gap-2">
-            <Text className="text-[16px] font-semibold text-gray-900">{booking.serviceCategory}</Text>
+            <Text className="text-[16px] font-semibold text-gray-900">
+              {booking.serviceCategory}
+            </Text>
             <Badge
               variant={booking.bookingType === BookingType.OnDemand ? 'warning' : 'primary'}
               text={booking.bookingType === BookingType.OnDemand ? 'On-demand' : 'Scheduled'}
             />
           </View>
-          <Text className="mt-1 text-[13px] leading-5 text-gray-600">{booking.description}</Text>
+          <View className="mt-2 gap-1.5">
+            <Text className="text-[13px] leading-5 text-gray-600">
+              <Text className="font-semibold text-gray-700">Problem: </Text>
+              {booking.description}
+            </Text>
+            {booking.notes && (
+              <Text className="text-[13px] leading-5 text-gray-600">
+                <Text className="font-semibold text-gray-700">Notes: </Text>
+                {booking.notes}
+              </Text>
+            )}
+          </View>
         </View>
 
         <View className="items-end gap-2">
@@ -88,7 +101,9 @@ export function RequestInboxCard({ booking, onAccept, onDecline }: RequestInboxC
             <Text className="text-[13px] font-semibold text-gray-900">{booking.clientName}</Text>
             <View className="mt-1 flex-row items-center gap-1.5">
               <Ionicons name="star" size={12} color="#F59E0B" />
-              <Text className="text-[12px] text-gray-500">{(booking.clientRating ?? 5).toFixed(1)} client rating</Text>
+              <Text className="text-[12px] text-gray-500">
+                {(booking.clientRating ?? 5).toFixed(1)} client rating
+              </Text>
             </View>
           </View>
         </View>
@@ -114,7 +129,13 @@ export function RequestInboxCard({ booking, onAccept, onDecline }: RequestInboxC
 
       <View className="mt-4 flex-row gap-3">
         <View className="flex-1">
-          <Button label="Decline" onPress={onDecline} variant="tertiary" fullWidth disabled={hasExpired} />
+          <Button
+            label="Decline"
+            onPress={onDecline}
+            variant="tertiary"
+            fullWidth
+            disabled={hasExpired}
+          />
         </View>
         <View className="flex-1">
           <Button label="Accept" onPress={onAccept} fullWidth disabled={hasExpired} />

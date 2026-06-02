@@ -146,6 +146,7 @@ export interface Booking {
   photos?: string[];
   beforePhoto?: string;
   afterPhoto?: string;
+  notes?: string;
 }
 
 export interface Review {

@@ -24,14 +24,14 @@ export interface ActiveBooking {
 }
 
 export const MOCK_ACTIVE_BOOKING: ActiveBooking | null = {
-  id: 'ab1',
-  reference: '#OKI-20503',
-  serviceName: 'Plumbing Repair',
+  id: 'b1',
+  reference: '#OKI-B1',
+  serviceName: 'Plumbing',
   estimatedCompletion: '~30 min',
   currentStep: 'Working',
   workerInitials: 'CJ',
   workerName: 'Ceferino Jumao-as V',
-  workerRole: 'Licensed Plumber',
+  workerRole: 'Service Professional',
 };
 
 export interface DashboardCategory {
