@@ -52,9 +52,13 @@ export function Input({
             setFocused(false);
             rest.onBlur?.(e);
           }}
-          className="flex-1 py-2 text-[15px] text-gray-900"
+          className="flex-1 py-2 text-[15px] text-gray-900 outline-none"
           placeholderTextColor="#9CA3AF"
-          style={rest.multiline ? { textAlignVertical: 'top' } : undefined}
+          style={
+            rest.multiline
+              ? { textAlignVertical: 'top', outlineStyle: 'none' }
+              : ({ outlineStyle: 'none' } as any)
+          }
         />
         {secureToggle && (
           <TouchableOpacity

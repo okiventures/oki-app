@@ -7,15 +7,19 @@ import { Input } from '../forms/Input';
 interface DetailsStepProps {
   address: string;
   description: string;
+  notes: string;
   onAddressChange: (v: string) => void;
   onDescriptionChange: (v: string) => void;
+  onNotesChange: (v: string) => void;
 }
 
 export function NewBookingDetailsStep({
   address,
   description,
+  notes,
   onAddressChange,
   onDescriptionChange,
+  onNotesChange,
 }: DetailsStepProps) {
   const { colors } = useTheme();
 
@@ -45,6 +49,17 @@ export function NewBookingDetailsStep({
         onChangeText={onDescriptionChange}
         multiline
         numberOfLines={4}
+      />
+
+      <View className="mt-2" />
+
+      <Input
+        label="Order Notes (Optional)"
+        placeholder="e.g. Ring the doorbell, gate is open, beware of dogs…"
+        value={notes}
+        onChangeText={onNotesChange}
+        multiline
+        numberOfLines={3}
       />
 
       <TouchableOpacity

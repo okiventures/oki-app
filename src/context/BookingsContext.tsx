@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { MOCK_BOOKINGS } from '../mocks';
 import { Booking, BookingStatus } from '../types';
 
-const STORAGE_KEY = 'oki_bookings_state';
+const STORAGE_KEY = 'oki_bookings_state_v2';
 
 type HandymanNextAction = {
   label: string;
@@ -60,6 +60,10 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
   const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
 
   useEffect(() => {
+    setBookings(MOCK_BOOKINGS);
+  }, []);
+
+  useEffect(() => {
     try {
       if (typeof window !== 'undefined') {
         const saved = window.localStorage.getItem(STORAGE_KEY);
@@ -87,8 +91,8 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
       current.map((booking) =>
         booking.id === bookingId && booking.status === BookingStatus.Pending
           ? updateBooking(booking, BookingStatus.Accepted)
-          : booking,
-      ),
+          : booking
+      )
     );
   };
 
@@ -97,8 +101,8 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
       current.map((booking) =>
         booking.id === bookingId && booking.status === BookingStatus.Pending
           ? updateBooking(booking, BookingStatus.Cancelled)
-          : booking,
-      ),
+          : booking
+      )
     );
   };
 
@@ -115,7 +119,7 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
         }
 
         return updateBooking(booking, nextAction.nextStatus);
-      }),
+      })
     );
   };
 
@@ -127,7 +131,7 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
       advanceBooking,
       getBookingById: (bookingId: string) => bookings.find((booking) => booking.id === bookingId),
     }),
-    [bookings],
+    [bookings]
   );
 
   return <BookingsContext.Provider value={value}>{children}</BookingsContext.Provider>;

@@ -10,6 +10,7 @@ interface ReviewStepProps {
   subServiceId: string | null;
   address: string;
   description: string;
+  notes: string;
   selectedDate: string;
   selectedHour: number;
   selectedMinute?: number;
@@ -21,6 +22,7 @@ export function NewBookingReviewStep({
   subServiceId,
   address,
   description,
+  notes,
   selectedDate,
   selectedHour,
   selectedMinute = 0,
@@ -39,6 +41,7 @@ export function NewBookingReviewStep({
     { icon: 'construct-outline', label: 'Service', value: svc?.name ?? '—' },
     { icon: 'location-outline', label: 'Address', value: address || '—' },
     { icon: 'document-text-outline', label: 'Description', value: description || '—' },
+    { icon: 'chatbox-ellipses-outline', label: 'Order Notes', value: notes || '—' },
     {
       icon: mode === 'now' ? 'time-outline' : 'calendar-outline',
       label: 'Schedule',

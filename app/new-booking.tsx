@@ -26,6 +26,7 @@ export default function NewBookingScreen() {
   const [subServiceId, setSubServiceId] = useState<string | null>(null);
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
+  const [notes, setNotes] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedHour, setSelectedHour] = useState(9);
   const [selectedMinute, setSelectedMinute] = useState(0);
@@ -140,12 +141,14 @@ export default function NewBookingScreen() {
             />
           )}
           {stepIndex === 1 && (
-            <NewBookingDetailsStep
-              address={address}
-              description={description}
-              onAddressChange={setAddress}
-              onDescriptionChange={setDescription}
-            />
+              <NewBookingDetailsStep
+                address={address}
+                description={description}
+                notes={notes}
+                onAddressChange={setAddress}
+                onDescriptionChange={setDescription}
+                onNotesChange={setNotes}
+              />
           )}
           {stepIndex === 2 && (
             <NewBookingScheduleStep
@@ -160,16 +163,17 @@ export default function NewBookingScreen() {
             />
           )}
           {stepIndex === 3 && (
-            <NewBookingReviewStep
-              mode={bookingMode}
-              categoryId={categoryId}
-              subServiceId={subServiceId}
-              address={address}
-              description={description}
-              selectedDate={selectedDate}
-              selectedHour={selectedHour}
-              selectedMinute={selectedMinute}
-            />
+              <NewBookingReviewStep
+                mode={bookingMode}
+                categoryId={categoryId}
+                subServiceId={subServiceId}
+                address={address}
+                description={description}
+                notes={notes}
+                selectedDate={selectedDate}
+                selectedHour={selectedHour}
+                selectedMinute={selectedMinute}
+              />
           )}
         </ScrollView>
 

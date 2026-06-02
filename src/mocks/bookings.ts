@@ -1,5 +1,6 @@
 import { Booking, BookingStatus, BookingType, ServiceCategory } from '../types';
 
+
 export const MOCK_BOOKINGS: Booking[] = [
   {
     id: 'b1',
@@ -10,7 +11,7 @@ export const MOCK_BOOKINGS: Booking[] = [
     clientRating: 4.9,
     distanceKm: 1.2,
     serviceCategory: ServiceCategory.Plumbing,
-    status: BookingStatus.Completed,
+    status: BookingStatus.WorkStarted,
     bookingType: BookingType.OnDemand,
     description: 'Fix leaking pipe under the kitchen sink.',
     createdAt: new Date(Date.now() - 3600000).toISOString(),
