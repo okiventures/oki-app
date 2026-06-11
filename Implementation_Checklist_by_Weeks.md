@@ -82,13 +82,13 @@
 ### **Week 3 · May 21 – May 27 — Handyman & Admin Screens (Code Implementation)**
 
 - [ ] [STANDUP] **Standup \#1 — May 20** (review Phase 1 progress, blockers)
-- [X] Implement: Handyman onboarding flow and KYC document upload screen
-  - [X] Multi-step onboarding: personal info → services offered → document upload → pending screen
-  - [X] Service category multi-select with per-category custom pricing input
-  - [X] KYC document upload UI: file picker, image preview, upload progress indicator
-  - [X] Submission confirmation screen with "Pending Verification" status badge
+- [x] Implement: Handyman onboarding flow and KYC document upload screen
+  - [x] Multi-step onboarding: personal info → services offered → document upload → pending screen
+  - [x] Service category multi-select with per-category custom pricing input
+  - [x] KYC document upload UI: file picker, image preview, upload progress indicator
+  - [x] Submission confirmation screen with "Pending Verification" status badge
 - [x] ~~Implement: Online/Offline toggle, job requests inbox, and state-driven workflow UI (`app/(handyman)/requests.tsx`, `schedule.tsx`)~~
-  - [X] Persistent Online/Offline toggle in header with labeled status indicator
+  - [x] Persistent Online/Offline toggle in header with labeled status indicator
   - [x] ~~Job requests inbox: list of incoming `PENDING` bookings with per-request countdown timer~~
   - [x] ~~Accept/Decline action buttons with `ConfirmDialog` before committing~~
   - [x] ~~Active job card with state-driven CTA (e.g., "Mark Arrived" → "Start Work" → "Complete Job")~~
@@ -98,12 +98,12 @@
   - [x] ~~Transaction history list with credit/debit entries and booking reference~~
   - [x] ~~Payout request button gated by minimum payout threshold~~
   - [x] ~~Payout status tracker: Requested → Processing → Paid~~
-- [ ] Implement: Admin dashboard, verification portal, and dispute center (`app/(admin)/`)
-  - [ ] Dashboard (`index.tsx`): KPI cards (total bookings, active handymen, platform revenue, open disputes)
-  - [ ] Analytics: booking volume bar chart using `src/components/admin/Chart.tsx`
-  - [ ] KYC verification queue (`users.tsx`): handyman list with document viewer, Approve / Reject actions
-  - [ ] Dispute center (`disputes.tsx`): open disputes table with booking reference and photo evidence viewer
-  - [ ] User management: searchable table with Suspend / Reinstate actions and reason field
+- [x] ~~Implement: Admin dashboard, verification portal, and dispute center (`app/(admin)/`)~~
+  - [x] ~~Dashboard (`index.tsx`): KPI cards (total bookings, active handymen, platform revenue, open disputes)~~
+  - [x] ~~Analytics: booking volume bar chart using `src/components/admin/Chart.tsx`~~
+  - [x] ~~KYC verification queue (`users.tsx`): handyman list with document viewer, Approve / Reject actions~~
+  - [x] ~~Dispute center (`disputes.tsx`): open disputes table with booking reference and photo evidence viewer~~
+  - [x] ~~User management: searchable table with Suspend / Reinstate actions and reason field~~
 - [ ] Stakeholder review of all implemented screens
   - [ ] Record a screen walkthrough demo for all three role flows
   - [ ] Collect and triage feedback; log as issues with priority labels
@@ -122,15 +122,15 @@
 
 ### **Week 4 · May 28 – June 3 — UI Component Library & Screen Polish**
 
-- [ ] Finalize shared UI component library (`src/components/ui/`)
-  - [ ] `Button`: primary / secondary / destructive / ghost variants; loading spinner state; disabled state
-  - [ ] `Card`: base card with elevation/border variants; pressable and static versions
-  - [ ] `Modal`: animated bottom sheet and center modal; backdrop dismiss; keyboard-aware scroll
-  - [ ] `Toast`: success / error / info / warning variants; auto-dismiss with configurable duration
-  - [ ] `Avatar`: image with fallback initials; sm / md / lg size variants
-  - [ ] `Badge`: semantic color mapping to booking states (e.g., `PENDING` → yellow, `COMPLETED` → green)
-  - [ ] `LoadingSpinner`: full-screen and inline sizes
-  - [ ] `ConfirmDialog`: reusable destructive-action confirmation with title, body, and cancel/confirm
+- [x] ~~Finalize shared UI component library (`src/components/ui/`)~~
+  - [x] ~~`Button`: primary / secondary / destructive / ghost variants; loading spinner state; disabled state~~
+  - [x] ~~`Card`: base card with elevation/border variants; pressable and static versions~~
+  - [x] ~~`Modal`: animated bottom sheet and center modal; backdrop dismiss; keyboard-aware scroll~~
+  - [x] ~~`Toast`: success / error / info / warning variants; auto-dismiss with configurable duration~~
+  - [x] ~~`Avatar`: image with fallback initials; sm / md / lg size variants~~
+  - [x] ~~`Badge`: semantic color mapping to booking states (e.g., `PENDING` → yellow, `COMPLETED` → green)~~
+  - [x] ~~`LoadingSpinner`: full-screen and inline sizes~~
+  - [x] ~~`ConfirmDialog`: reusable destructive-action confirmation with title, body, and cancel/confirm~~
 - [ ] Polish and refine Client app screens with final component integration
   - [ ] Replace any inline/ad-hoc styles with `theme.ts` token classes
   - [ ] Add loading skeletons to Search results and Bookings list
