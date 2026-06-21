@@ -1,12 +1,12 @@
 # **Implementation Checklist — Handyman Platform**
 
-**Project Window:** May 6, 2026 → November 18, 2026 (\~28 weeks) **Approach:** Code-first prototyping → Iterative implementation **Cadence:** Team standups every 2 weeks (marked with [STANDUP])
+**Project Window:** May 6, 2026 → November 18, 2026 (28 weeks) **Approach:** Code-first prototyping → Iterative implementation **Cadence:** Team standups every 2 weeks (marked with [STANDUP])
 
 **Legend:** ☐ to-do · ☑ done · [STANDUP] Bi-weekly standup · [MILESTONE] Phase milestone
 
 ---
 
-## **Phase 1 — System Design & Code Prototyping (May 5 – June 5, 2026\)**
+## **Phase 1 — System Design & Code Prototyping (May 5 – June 5, 2026**
 
 ### **Week 1 · May 6 – May 13 — Discovery, Requirements & Project Scaffolding**
 
@@ -81,7 +81,7 @@
 
 ### **Week 3 · May 21 – May 27 — Handyman & Admin Screens (Code Implementation)**
 
-- [ ] [STANDUP] **Standup \#1 — May 20** (review Phase 1 progress, blockers)
+- [ ] [STANDUP] **Standup 1 — May 20** (review Phase 1 progress, blockers)
 - [x] Implement: Handyman onboarding flow and KYC document upload screen
   - [x] Multi-step onboarding: personal info → services offered → document upload → pending screen
   - [x] Service category multi-select with per-category custom pricing input
@@ -162,17 +162,17 @@
 
 ### **Week 5 · June 4 – June 10 — Database Architecture & Finalization**
 
-- [ ] [STANDUP] **Standup \#2 — June 3** (review implemented screens, sign-off on scope)
-- [ ] ER diagram \+ PostgreSQL/PostGIS schema draft
-  - [ ] Define core entities: `users`, `handymen`, `bookings`, `services`, `payments`, `reviews`, `wallet_transactions`, `disputes`, `booking_events`
-  - [ ] Map all foreign key relationships and cardinalities (one-to-many, many-to-many)
-  - [ ] Identify PostGIS-enabled columns: `location GEOGRAPHY(Point, 4326)` on `handymen` and `bookings`
-  - [ ] Define Row Level Security (RLS) policy boundaries per table per role
-- [ ] State machine spec (booking lifecycle)
-  - [ ] Document all valid states: `PENDING → ACCEPTED → IN_TRANSIT → ARRIVED → WORK_STARTED → COMPLETED → PAID`
-  - [ ] Define guard conditions per transition (e.g., payment captured before `PAID`; photo required before `WORK_STARTED`)
-  - [ ] Document invalid transitions and expected API error response (422 + reason)
-  - [ ] Publish FSM diagram to shared project docs
+- [ ] [STANDUP] **Standup 2 — June 3** (review implemented screens, sign-off on scope)
+- [x] ER diagram  PostgreSQL/PostGIS schema draft
+  - [x] Define core entities: `users`, `handymen`, `bookings`, `services`, `payments`, `reviews`, `wallet_transactions`, `disputes`, `booking_events`
+  - [x] Map all foreign key relationships and cardinalities (one-to-many, many-to-many)
+  - [x] Identify PostGIS-enabled columns: `location GEOGRAPHY(Point, 4326)` on `handymen` and `bookings`
+  - [x] Define Row Level Security (RLS) policy boundaries per table per role
+- [x] State machine spec (booking lifecycle)
+  - [x] Document all valid states: `PENDING → ACCEPTED → IN_TRANSIT → ARRIVED → WORK_STARTED → COMPLETED → PAID`
+  - [x] Define guard conditions per transition (e.g., payment captured before `PAID`; photo required before `WORK_STARTED`)
+  - [x] Document invalid transitions and expected API error response (422 + reason)
+  - [x] Publish FSM diagram to shared project docs (`backend/docs/booking-state-machine.md`)
 - [ ] API contract / OpenAPI draft
   - [ ] Auth: `POST /auth/signup`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/reset-password`
   - [ ] Bookings: `POST /bookings`, `GET /bookings/:id`, `PATCH /bookings/:id/state`, `DELETE /bookings/:id`
@@ -198,11 +198,11 @@
 
 ---
 
-## **Phase 2 — Core Build (June 8 – August 7, 2026\)**
+## **Phase 2 — Core Build (June 8 – August 7, 2026**
 
 ### **Week 6 · June 11 – June 17 — Scaffolding & Auth**
 
-- [ ] Initialize mobile (Client \+ Handyman) and web (Admin) projects
+- [ ] Initialize mobile (Client  Handyman) and web (Admin) projects
   - [ ] Verify Expo project structure is production-ready (EAS Build configured, app.json finalized)
   - [ ] Scaffold backend project: Node.js (Fastify) or Supabase Edge Functions per ADR
   - [ ] Configure monorepo or separate repos with shared types package if applicable
@@ -234,7 +234,7 @@
 
 ### **Week 7 · June 18 – June 24 — User Profiles & KYC Backend**
 
-- [ ] [STANDUP] **Standup \#3 — June 17**
+- [ ] [STANDUP] **Standup 3 — June 17**
 - [ ] Profile CRUD for Client and Handyman
   - [ ] `GET /profiles/:id` and `PATCH /profiles/:id` endpoints with RLS (own record only)
   - [ ] Avatar upload to Supabase Storage with public CDN URL stored on profile
@@ -248,7 +248,7 @@
   - [ ] RBAC middleware reads role from JWT claims; attaches to request context
   - [ ] Guard decorators/middleware for `client-only`, `handyman-only`, `admin-only` routes
   - [ ] Return `403 Forbidden` with descriptive message on role mismatch
-- [ ] Unit tests for auth \+ profiles
+- [ ] Unit tests for auth  profiles
   - [ ] Auth: signup, login, token refresh, password reset test cases
   - [ ] Profile: get, update, avatar upload test cases
   - [ ] RBAC: each role correctly permitted and rejected on guarded routes
@@ -266,7 +266,7 @@
 
 ### **Week 8 · June 25 – July 1 — Booking System Core**
 
-- [ ] Booking entity \+ lifecycle states
+- [ ] Booking entity  lifecycle states
   - [ ] Create `bookings` table with status enum, foreign keys to client/handyman/service, timestamps
   - [ ] `booking_events` audit table: logs every state transition with actor, from_state, to_state, timestamp
   - [ ] Migration and RLS policies: client sees own bookings; handyman sees assigned bookings
@@ -274,7 +274,7 @@
   - [ ] `ST_DWithin` radius query on `handymen.location` filtered by service category and `is_online = true`
   - [ ] Results sorted by distance ascending; include distance in meters in response
   - [ ] Add GiST index on `handymen.location` for query performance
-- [ ] On-Demand booking flow (API \+ Client UI)
+- [ ] On-Demand booking flow (API  Client UI)
   - [ ] `POST /bookings` creates record in `PENDING` state and broadcasts to matching handymen
   - [ ] Client UI shows "Searching for a handyman…" state with live refresh
   - [ ] Booking confirmation screen shown after handyman accepts
@@ -296,7 +296,7 @@
 
 ### **Week 9 · July 2 – July 8 — Booking Flows (Continued)**
 
-- [ ] [STANDUP] **Standup \#4 — July 1**
+- [ ] [STANDUP] **Standup 4 — July 1**
 - [ ] Handyman job inbox (accept / reject)
   - [ ] `PATCH /bookings/:id/state` with `action: ACCEPT | REJECT` transitions state machine
   - [ ] Acceptance updates booking's `handyman_id` and transitions to `ACCEPTED`
@@ -356,7 +356,7 @@
 
 ### **Week 11 · July 16 – July 22 — State Machine Workflow**
 
-- [ ] [STANDUP] **Standup \#5 — July 15**
+- [ ] [STANDUP] **Standup 5 — July 15**
 - [ ] Implement state machine: Accept → Arrived → Work Started → Complete
   - [ ] FSM implemented as a standalone service (e.g., XState or a typed transition map)
   - [ ] Valid transitions: `PENDING→ACCEPTED`, `ACCEPTED→IN_TRANSIT`, `IN_TRANSIT→ARRIVED`, `ARRIVED→WORK_STARTED`, `WORK_STARTED→COMPLETED`, `COMPLETED→PAID`
@@ -417,7 +417,7 @@
 
 ### **Week 13 · July 30 – August 5 — Rating & Review Loop**
 
-- [ ] [STANDUP] **Standup \#6 — July 29**
+- [ ] [STANDUP] **Standup 6 — July 29**
 - [ ] Post-job rating (Client → Handyman, Handyman → Client)
   - [ ] Rating prompt triggers once per completed booking per actor, shown on `PAID` state transition
   - [ ] Rating schema: `booking_id`, `reviewer_id`, `reviewee_id`, `stars` (1–5), `comment` (optional), `created_at`
@@ -473,11 +473,11 @@
 
 ---
 
-## **Phase 3 — Integration (August 10 – October 9, 2026\)**
+## **Phase 3 — Integration (August 10 – October 9, 2026**
 
 ### **Week 15 · August 13 – August 19 — Escrow Foundation**
 
-- [ ] [STANDUP] **Standup \#7 — August 12**
+- [ ] [STANDUP] **Standup 7 — August 12**
 - [ ] Payment provider integration (auth/capture)
   - [ ] Integrate Stripe (or local equivalent): configure SDK, sandbox credentials, and webhook secret
   - [ ] Create `PaymentIntent` on booking acceptance; store `payment_intent_id` on booking record
@@ -486,7 +486,7 @@
   - [ ] Capture (release) payment automatically on `PAID` state transition
   - [ ] 24-hour dispute window: hold funds in escrow before releasing to Handyman wallet
   - [ ] Admin manual release: endpoint to release funds early if dispute is resolved in Handyman's favor
-- [ ] Webhook handlers \+ idempotency
+- [ ] Webhook handlers  idempotency
   - [ ] Handle `payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.dispute.created`
   - [ ] Idempotency enforced via `webhook_event_id` deduplification in database
   - [ ] Webhook signature verification on every inbound event (reject unsigned payloads)
@@ -516,7 +516,7 @@
   - [ ] Earnings summary: today, this week, this month, all-time totals
   - [ ] Available balance vs pending balance (within 24 h escrow window)
   - [ ] Transaction history list with booking reference, date, amount, and status
-- [ ] Payout request flow \+ admin approval
+- [ ] Payout request flow  admin approval
   - [ ] `POST /wallet/payout` validates minimum payout threshold; creates a `PENDING` payout record
   - [ ] Admin payout queue: list of pending requests with amount, handyman details, and Approve / Decline actions
   - [ ] Approval triggers bank transfer via payment provider; payout record moves to `PROCESSING → PAID`
@@ -539,7 +539,7 @@
 
 ### **Week 17 · August 27 – September 2 — PostGIS & Real-Time Tracking**
 
-- [ ] [STANDUP] **Standup \#8 — August 26**
+- [ ] [STANDUP] **Standup 8 — August 26**
 - [ ] WebSocket / pub-sub infra for live location
   - [ ] Supabase Realtime channel scoped per `booking_id`: `location:booking_{id}`
   - [ ] Channel access restricted by RLS: only the booking's Client and Handyman can subscribe
@@ -601,7 +601,7 @@
 
 ### **Week 19 · September 10 – September 16 — Notifications & Messaging**
 
-- [ ] [STANDUP] **Standup \#9 — September 9**
+- [ ] [STANDUP] **Standup 9 — September 9**
 - [ ] Unified notification engine (push, email, SMS)
   - [ ] `NotificationService` class with adapters for Expo Push, Resend (email), and Twilio (SMS)
   - [ ] Delivery routing: attempt push first; fall back to email if push token invalid; SMS for critical alerts only
@@ -633,7 +633,7 @@
 
 ### **Week 20 · September 17 – September 23 — Safety: SOS, Masked Calls, Photo Proof**
 
-- [ ] Photo proof on Work Started \+ Complete (required)
+- [ ] Photo proof on Work Started  Complete (required)
   - [ ] `ARRIVED→WORK_STARTED` transition blocked at API level if no before-photo uploaded
   - [ ] `WORK_STARTED→COMPLETED` transition blocked if no after-photo uploaded
   - [ ] Photos stored in private Supabase Storage bucket linked to `booking_id`
@@ -666,18 +666,18 @@
 
 ### **Week 21 · September 24 – September 30 — Dynamic Pricing & Cancellation Fees**
 
-- [ ] [STANDUP] **Standup \#10 — September 23**
+- [ ] [STANDUP] **Standup 10 — September 23**
 - [ ] Surge pricing engine (supply/demand multipliers)
   - [ ] `pricing_rules` table: service_zone, service_category, multiplier, active_from, active_to
   - [ ] Multiplier applied to base price at booking creation time; stored as `surge_multiplier` on booking
   - [ ] Configurable cap: multiplier cannot exceed 3.0× without explicit Admin override
   - [ ] Surge indicator shown on search results and booking confirmation screen
-- [ ] Cancellation policy logic \+ Travel Fee captures
+- [ ] Cancellation policy logic  Travel Fee captures
   - [ ] Time-based tiers: free cancellation > 2 h before; 50% fee at 1–2 h; 100% fee < 1 h (post-acceptance)
   - [ ] Cancellation fee charged from Client's held `PaymentIntent` partial capture
   - [ ] Travel Fee: if Handyman has departed (state = `IN_TRANSIT`), travel fee applies regardless of time tier
   - [ ] Cancellation policy displayed to Client before booking confirmation and at cancellation prompt
-- [ ] Pricing transparency UI (Client \+ Handyman)
+- [ ] Pricing transparency UI (Client  Handyman)
   - [ ] Itemized price breakdown before confirmation: base price, surge, platform fee, travel fee (if applicable)
   - [ ] `PriceBreakdown` component (`src/components/features/PriceBreakdown.tsx`) used consistently
   - [ ] Handyman sees their net earnings after platform fee deduction on job card
@@ -714,7 +714,7 @@
   - [ ] Referral codes tied to a referrer user; referrer receives a wallet credit on first referee booking
   - [ ] Code validation at booking confirmation: one-time use per user, expiry checked server-side
   - [ ] Redemption creates a `wallet_transactions` DEBIT entry for the discount amount
-- [ ] Saved addresses \+ smart suggestion notifications
+- [ ] Saved addresses  smart suggestion notifications
   - [ ] After surge subsides in a zone matching a user's saved address, notify: "Rates are back to normal near your home"
   - [ ] Smart suggestion triggers at most once per surge event per user
   - [ ] Notification deep-links directly into the booking flow for the relevant service category
@@ -732,7 +732,7 @@
 
 ### **Week 23 · October 8 – October 14 — Integration QA**
 
-- [ ] [STANDUP] **Standup \#11 — October 7**
+- [ ] [STANDUP] **Standup 11 — October 7**
 - [ ] End-to-end integration test pass
   - [ ] Automated E2E test suite (Maestro or Detox) covering 5 critical paths: full booking, cancellation, KYC approval, payout, SOS alert
   - [ ] Tests run on CI against staging environment on every main branch merge
@@ -760,11 +760,11 @@
 
 ---
 
-## **Phase 4 — Launch & Audit (October 12 – November 13, 2026\)**
+## **Phase 4 — Launch & Audit (October 12 – November 13, 2026**
 
 ### **Week 24 · October 14 – October 21 — Security Audit**
 
-- [ ] OWASP Top 10 review (mobile \+ web \+ API)
+- [ ] OWASP Top 10 review (mobile  web  API)
   - [ ] SQL Injection: verify all queries use parameterized statements or Supabase ORM (no raw interpolation)
   - [ ] Broken Access Control: verify RLS policies cover every sensitive table; test IDOR on booking, profile, and wallet endpoints
   - [ ] Security Misconfiguration: audit Supabase project settings (anon key scope, service role key exposure)
@@ -798,7 +798,7 @@
 
 ### **Week 25 · October 22 – October 28 — Stress Testing**
 
-- [ ] [STANDUP] **Standup \#12 — October 21**
+- [ ] [STANDUP] **Standup 12 — October 21**
 - [ ] Load tests (booking, search, sockets)
   - [ ] k6 script: 500 concurrent booking creation requests sustained for 5 minutes
   - [ ] k6 script: 1,000 concurrent search queries with varied radius and category parameters
@@ -833,7 +833,7 @@
 
 ### **Week 26 · October 29 – November 4 — Closed Beta**
 
-- [ ] Internal/closed beta release (TestFlight \+ Play Internal)
+- [ ] Internal/closed beta release (TestFlight  Play Internal)
   - [ ] iOS build submitted to TestFlight; distributed to internal testers (up to 100)
   - [ ] Android build uploaded to Play Internal Testing track
   - [ ] Release notes published; testers briefed on test scope and known issues
@@ -842,7 +842,7 @@
   - [ ] Structured 2-hour test session covering all three role flows
   - [ ] Each tester assigned a specific role (Client, Handyman, Admin) and test script
   - [ ] All findings logged immediately into issue tracker with severity and reproduction steps
-- [ ] Crash analytics \+ telemetry review
+- [ ] Crash analytics  telemetry review
   - [ ] Sentry and Firebase Crashlytics dashboards reviewed daily during beta
   - [ ] Crash-free rate target: ≥ 98% within 48 h of beta release
   - [ ] Top 5 error types triaged and assigned to engineers on Day 1 of beta
@@ -864,13 +864,13 @@
 
 ### **Week 27 · November 5 – November 11 — Store Submission Prep**
 
-- [ ] [STANDUP] **Standup \#13 — November 4**
+- [ ] [STANDUP] **Standup 13 — November 4**
 - [ ] Store assets (screenshots, descriptions, privacy policy)
   - [ ] Screenshots captured at required sizes: 6.7" iPhone, 12.9" iPad Pro, Pixel 8 Pro
   - [ ] App preview video (30 s) demonstrating core booking flow for each store
   - [ ] Short description (80 chars) and full description (4,000 chars) written and localized
   - [ ] Age rating questionnaire completed; content rating justified
-- [ ] App Store \+ Play Store submission
+- [ ] App Store  Play Store submission
   - [ ] App Store Connect: all metadata fields complete; build attached; review guidelines checklist passed
   - [ ] Play Store: content policy checklist passed; data safety form completed (all data types declared)
   - [ ] Both submissions include privacy policy URL and support contact
@@ -909,7 +909,7 @@
   - [ ] PagerDuty on-call rotation: at least 2 engineers available 24/7 for the launch week
   - [ ] Escalation runbook published: who to contact for DB, payment, and push notification incidents
   - [ ] Rollback plan documented: criteria for reverting to previous build via Play Store staged rollout halt
-- [ ] Post-launch retro \+ roadmap handoff
+- [ ] Post-launch retro  roadmap handoff
   - [ ] Sprint retro: what went well, what to improve, team recognition
   - [ ] v1.1 backlog groomed: top user feedback items from beta and launch week prioritized
   - [ ] Handoff documentation: architecture decisions, runbooks, on-call guide delivered to ops team
@@ -928,8 +928,9 @@
 
 ## **Standup Quick Index**
 
-| \#  | Date               | Phase   |
-| :-- | :----------------- | :------ |
+
+|     | Date               | Phase   |
+| --- | ------------------ | ------- |
 | 1   | May 19, 2026       | Phase 1 |
 | 2   | June 2, 2026       | Phase 1 |
 | 3   | June 16, 2026      | Phase 2 |
@@ -943,3 +944,5 @@
 | 11  | October 6, 2026    | Phase 3 |
 | 12  | October 20, 2026   | Phase 4 |
 | 13  | November 3, 2026   | Phase 4 |
+
+
