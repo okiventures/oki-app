@@ -4,10 +4,15 @@ import { Navbar } from '../../src/components/navigation/Navbar';
 import { Card } from '../../src/components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
 import { Chart } from '../../src/components/admin/Chart';
-import { MOCK_ADMIN_STATS, MOCK_ADMIN_CHART_DATA, MOCK_ADMIN_FEED, MOCK_TRANSACTIONS } from '../../src/mocks';
+import { MOCK_ADMIN_CHART_DATA, MOCK_ADMIN_FEED, MOCK_TRANSACTIONS } from '../../src/mocks';
+import { useAdmin } from '../../src/context/AdminContext';
+import { DisputeStatus } from '../../src/types';
 import { formatCurrency, formatDateTime } from '../../src/utils';
 
 export default function AdminDashboard() {
+  const { users, disputes, pendingKycCount, activeDisputesCount } = useAdmin();
+  const activeUsers = users.filter((user) => user.status === 'Active').length;
+
   return (
     <View className="flex-1 bg-gray-50">
       <Navbar title="Admin Panel" />
@@ -16,14 +21,14 @@ export default function AdminDashboard() {
           <Card className="flex-1 p-3">
             <Ionicons name="people" size={20} color="#4F46E5" className="mb-2" />
             <Text className="text-[11px] text-gray-500 font-medium">Active Users</Text>
-            <Text className="font-heading text-lg text-gray-900 mt-1">{MOCK_ADMIN_STATS.activeUsers.toLocaleString()}</Text>
-            <Text className="text-[10px] text-green-600 font-bold mt-1">{MOCK_ADMIN_STATS.activeUsersGrowth}</Text>
+            <Text className="font-heading text-lg text-gray-900 mt-1">{activeUsers.toLocaleString()}</Text>
+            <Text className="text-[10px] text-green-600 font-bold mt-1">Updated live</Text>
           </Card>
           <Card className="flex-1 p-3">
             <Ionicons name="cash" size={20} color="#10B981" className="mb-2" />
             <Text className="text-[11px] text-gray-500 font-medium">Revenue</Text>
-            <Text className="font-heading text-lg text-gray-900 mt-1">{formatCurrency(MOCK_ADMIN_STATS.totalRevenue)}</Text>
-            <Text className="text-[10px] text-green-600 font-bold mt-1">{MOCK_ADMIN_STATS.revenueGrowth}</Text>
+            <Text className="font-heading text-lg text-gray-900 mt-1">{formatCurrency(285400)}</Text>
+            <Text className="text-[10px] text-green-600 font-bold mt-1">+8.5%</Text>
           </Card>
         </View>
 
@@ -31,18 +36,27 @@ export default function AdminDashboard() {
           <Card className="flex-1 p-3">
             <Ionicons name="alert-circle" size={20} color="#EF4444" className="mb-2" />
             <Text className="text-[11px] text-gray-500 font-medium">Active Disputes</Text>
-            <Text className="font-heading text-lg text-gray-900 mt-1">{MOCK_ADMIN_STATS.activeDisputes}</Text>
+            <Text className="font-heading text-lg text-gray-900 mt-1">{activeDisputesCount}</Text>
             <Text className="text-[10px] text-red-600 font-bold mt-1">Needs Attention</Text>
           </Card>
           <Card className="flex-1 p-3">
             <Ionicons name="document-text" size={20} color="#F59E0B" className="mb-2" />
             <Text className="text-[11px] text-gray-500 font-medium">Pending KYC</Text>
-            <Text className="font-heading text-lg text-gray-900 mt-1">{MOCK_ADMIN_STATS.pendingKYC}</Text>
+            <Text className="font-heading text-lg text-gray-900 mt-1">{pendingKycCount}</Text>
             <Text className="text-[10px] text-gray-500 font-bold mt-1">In Queue</Text>
           </Card>
         </View>
 
-        <Chart title="Bookings + Revenue (7 days)" data={MOCK_ADMIN_CHART_DATA.revenue} labels={MOCK_ADMIN_CHART_DATA.labels} />
+        <Chart
+          title="Bookings + Revenue (7 days)"
+          labels={MOCK_ADMIN_CHART_DATA.labels}
+          xAxisLabel="Day"
+          yAxisLabel="Count / PHP"
+          series={[
+            { name: 'Bookings', data: MOCK_ADMIN_CHART_DATA.bookings, color: '#6366F1' },
+            { name: 'Revenue', data: MOCK_ADMIN_CHART_DATA.revenue, color: '#10B981' },
+          ]}
+        />
 
         <View>
           <View className="flex-row items-center justify-between mb-3">

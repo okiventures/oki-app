@@ -1,3 +1,5 @@
+import { DisputeStatus, KycStatus, UserStatus } from '../types';
+
 export const MOCK_ADMIN_STATS = {
   activeUsers: 12450,
   activeUsersGrowth: '+12%',
@@ -21,7 +23,7 @@ export const MOCK_DISPUTES = [
     clientName: 'Princess Jaena',
     handymanName: 'Kyle Lee',
     reason: 'Poor quality of work',
-    status: 'Open',
+    status: DisputeStatus.Open,
     createdAt: new Date(Date.now() - 86400000).toISOString(),
   },
   {
@@ -30,7 +32,7 @@ export const MOCK_DISPUTES = [
     clientName: 'Kyle Lee',
     handymanName: 'Ceferino Jumao-as V',
     reason: 'No show',
-    status: 'Investigating',
+    status: DisputeStatus.InReview,
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
   },
 ];
@@ -42,7 +44,7 @@ export const MOCK_ADMIN_USERS = [
     email: 'ishah@example.com',
     phone: '+63 912 345 6789',
     userType: 'client',
-    status: 'Active',
+    status: UserStatus.Active,
     createdAt: new Date(Date.now() - 86400000 * 14).toISOString(),
     lastActive: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
   },
@@ -52,7 +54,7 @@ export const MOCK_ADMIN_USERS = [
     email: 'james@example.com',
     phone: '+63 915 987 6543',
     userType: 'handyman',
-    status: 'Active',
+    status: UserStatus.Active,
     createdAt: new Date(Date.now() - 86400000 * 28).toISOString(),
     lastActive: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
   },
@@ -62,7 +64,7 @@ export const MOCK_ADMIN_USERS = [
     email: 'mara@example.com',
     phone: '+63 923 123 4567',
     userType: 'client',
-    status: 'Suspended',
+    status: UserStatus.Suspended,
     createdAt: new Date(Date.now() - 86400000 * 40).toISOString(),
     lastActive: new Date(Date.now() - 86400000 * 2).toISOString(),
   },
@@ -72,7 +74,7 @@ export const MOCK_ADMIN_USERS = [
     email: 'kyle@example.com',
     phone: '+63 917 222 3344',
     userType: 'handyman',
-    status: 'Active',
+    status: UserStatus.Active,
     createdAt: new Date(Date.now() - 86400000 * 7).toISOString(),
     lastActive: new Date(Date.now() - 1000 * 60 * 7).toISOString(),
   },
@@ -153,7 +155,7 @@ export const MOCK_KYC_REQUESTS = [
     handymanName: 'James Ty',
     serviceCategory: 'Roofing',
     submittedAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-    status: 'Pending',
+    status: KycStatus.Pending,
     riskScore: 'Low',
   },
   {
@@ -161,7 +163,7 @@ export const MOCK_KYC_REQUESTS = [
     handymanName: 'Princess Jaena',
     serviceCategory: 'Cleaning',
     submittedAt: new Date(Date.now() - 86400000).toISOString(),
-    status: 'Pending',
+    status: KycStatus.Pending,
     riskScore: 'Medium',
   },
 ];

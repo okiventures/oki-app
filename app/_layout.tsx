@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BookingsProvider } from '../src/context/BookingsContext';
+import { AdminProvider } from '../src/context/AdminContext';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
@@ -44,9 +45,11 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <BookingsProvider>
-          <RootStack />
-        </BookingsProvider>
+        <AdminProvider>
+          <BookingsProvider>
+            <RootStack />
+          </BookingsProvider>
+        </AdminProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

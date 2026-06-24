@@ -3,10 +3,22 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Navbar } from '../../src/components/navigation/Navbar';
 import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
+import { ConfirmDialog } from '../../src/components/ui/ConfirmDialog';
+import { Table, TableColumn } from '../../src/components/admin/Table';
 import { Ionicons } from '@expo/vector-icons';
 import { SearchBar } from '../../src/components/forms/SearchBar';
-import { MOCK_KYC_REQUESTS, MOCK_ADMIN_USERS } from '../../src/mocks';
+import { useAdmin } from '../../src/context/AdminContext';
 import { formatDate } from '../../src/utils';
+
+type DialogInfo = {
+  visible: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  danger?: boolean;
+  onConfirm: () => void;
+};
 
 const statusBadge = (status: string) => {
   switch (status) {
@@ -24,13 +36,23 @@ const statusBadge = (status: string) => {
 const STATUS_OPTIONS = ['All', 'Active', 'Suspended', 'Banned'];
 
 export default function AdminUsers() {
+  const { users, kycRequests, suspendUser, approveKyc, rejectKyc } = useAdmin();
   const [searchValue, setSearchValue] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [dialogInfo, setDialogInfo] = useState<DialogInfo>({
+    visible: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Confirm',
+    cancelLabel: 'Cancel',
+    danger: false,
+    onConfirm: () => { },
+  });
 
   const filteredUsers = useMemo(
     () =>
-      MOCK_ADMIN_USERS.filter((user) => {
+      users.filter((user) => {
         const query = searchValue.toLowerCase();
         const matchesSearch =
           user.name.toLowerCase().includes(query) ||
@@ -42,8 +64,101 @@ export default function AdminUsers() {
 
         return matchesSearch && matchesStatus;
       }),
-    [searchValue, statusFilter]
+    [users, searchValue, statusFilter]
   );
+
+  const selectedUser = users.find((user) => user.id === selectedUserId) ?? null;
+
+  const openDialog = (dialog: Omit<DialogInfo, 'visible'>) => {
+    setDialogInfo({ visible: true, ...dialog });
+  };
+
+  const closeDialog = () => setDialogInfo((prev) => ({ ...prev, visible: false }));
+
+  const handleSuspendUser = (userId: string) => {
+    openDialog({
+      title: 'Suspend user',
+      message: 'Suspend this user and block access until the account is reinstated.',
+      confirmLabel: 'Suspend user',
+      danger: true,
+      onConfirm: () => {
+        suspendUser(userId);
+        closeDialog();
+      },
+    });
+  };
+
+  const handleApproveRequest = (requestId: string) => {
+    openDialog({
+      title: 'Approve KYC request',
+      message: 'Approve this KYC submission and mark the handyman as verified.',
+      confirmLabel: 'Approve',
+      danger: false,
+      onConfirm: () => {
+        approveKyc(requestId);
+        closeDialog();
+      },
+    });
+  };
+
+  const handleRejectRequest = (requestId: string) => {
+    openDialog({
+      title: 'Reject KYC request',
+      message: 'Reject this KYC request and send the handyman a reason for resubmission.',
+      confirmLabel: 'Reject',
+      danger: true,
+      onConfirm: () => {
+        rejectKyc(requestId);
+        closeDialog();
+      },
+    });
+  };
+
+  const userColumns: TableColumn<typeof users[number]>[] = [
+    {
+      key: 'name',
+      title: 'Name',
+      width: 180,
+      render: (user) => (
+        <View>
+          <Text className="text-[13px] font-semibold text-gray-900">{user.name}</Text>
+          <Text className="text-[11px] text-gray-500">{user.userType}</Text>
+        </View>
+      ),
+    },
+    {
+      key: 'email',
+      title: 'Email',
+      width: 220,
+      render: (user) => <Text className="text-[13px] text-gray-700">{user.email}</Text>,
+    },
+    { key: 'phone', title: 'Phone', width: 150 },
+    {
+      key: 'status',
+      title: 'Status',
+      width: 120,
+      render: (user) => <Badge text={user.status} variant={statusBadge(user.status)} />,
+    },
+    {
+      key: 'joined',
+      title: 'Joined',
+      width: 120,
+      render: (user) => <Text className="text-[12px] text-gray-600">{formatDate(user.createdAt)}</Text>,
+    },
+    {
+      key: 'actions',
+      title: 'Actions',
+      width: 160,
+      render: (user) => (
+        <TouchableOpacity
+          onPress={() => handleSuspendUser(user.id)}
+          className="rounded-full border border-red-200 bg-red-50 px-3 py-2"
+        >
+          <Text className="text-[12px] font-semibold text-red-600">Suspend</Text>
+        </TouchableOpacity>
+      ),
+    },
+  ];
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -52,12 +167,12 @@ export default function AdminUsers() {
         <View className="flex-row gap-2">
           <Card className="flex-1 p-3">
             <Text className="text-[11px] text-gray-500 font-medium">Total Users</Text>
-            <Text className="font-heading text-lg text-gray-900 mt-1">{MOCK_ADMIN_USERS.length}</Text>
+            <Text className="font-heading text-lg text-gray-900 mt-1">{users.length}</Text>
             <Text className="text-[10px] text-gray-500 font-bold mt-1">Clients + Workers</Text>
           </Card>
           <Card className="flex-1 p-3">
             <Text className="text-[11px] text-gray-500 font-medium">Pending KYC</Text>
-            <Text className="font-heading text-lg text-gray-900 mt-1">{MOCK_KYC_REQUESTS.length}</Text>
+            <Text className="font-heading text-lg text-gray-900 mt-1">{kycRequests.length}</Text>
             <Text className="text-[10px] text-amber-700 font-bold mt-1">Needs review</Text>
           </Card>
         </View>
@@ -83,20 +198,34 @@ export default function AdminUsers() {
 
         <View>
           <Text className="text-[13px] font-bold text-gray-900 mb-3">Pending KYC Verifications</Text>
-          {MOCK_KYC_REQUESTS.map((item) => (
-            <Card key={item.id} className="mb-3 p-3 flex-row items-center">
-              <View className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center">
-                <Ionicons name="document-text-outline" size={18} color="#6B7280" />
+          {kycRequests.length === 0 && (
+            <Text className="text-[12px] text-gray-500">No pending KYC requests available.</Text>
+          )}
+          {kycRequests.map((item) => (
+            <Card key={item.id} className="mb-3 p-3">
+              <View className="flex-row items-start gap-3">
+                <View className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center">
+                  <Ionicons name="document-text-outline" size={18} color="#6B7280" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-[15px] font-bold text-gray-900">{item.handymanName}</Text>
+                  <Text className="text-[11px] text-gray-500 mt-0.5">{item.serviceCategory}</Text>
+                  <Text className="text-[11px] text-gray-400 mt-1">Submitted {formatDate(item.submittedAt)}</Text>
+                  <Text className="text-[11px] text-gray-500 mt-1">Risk score: {item.riskScore}</Text>
+                </View>
               </View>
-              <View className="flex-1 ml-4">
-                <Text className="text-[15px] font-bold text-gray-900">{item.handymanName}</Text>
-                <Text className="text-[11px] text-gray-500 mt-0.5">{item.serviceCategory}</Text>
-                <Text className="text-[11px] text-gray-400 mt-1">Submitted {formatDate(item.submittedAt)}</Text>
-              </View>
-              <View className="items-end gap-2">
-                <Badge text={item.status} variant="warning" />
-                <TouchableOpacity>
-                  <Text className="text-[11px] font-bold text-primary-600">Review</Text>
+              <View className="mt-4 flex-row gap-2">
+                <TouchableOpacity
+                  onPress={() => handleApproveRequest(item.id)}
+                  className="flex-1 rounded-full bg-emerald-600 py-2 items-center"
+                >
+                  <Text className="text-[12px] font-semibold text-white">Approve</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleRejectRequest(item.id)}
+                  className="flex-1 rounded-full bg-red-50 py-2 items-center"
+                >
+                  <Text className="text-[12px] font-semibold text-red-600">Reject</Text>
                 </TouchableOpacity>
               </View>
             </Card>
@@ -105,42 +234,46 @@ export default function AdminUsers() {
 
         <View>
           <Text className="text-[13px] font-bold text-gray-900 mb-3">Recent Users</Text>
-          {filteredUsers.map((user) => {
-            const isSelected = selectedUserId === user.id;
-            return (
-              <Card key={user.id} className="mb-3 p-3">
+          <Table
+            columns={userColumns}
+            data={filteredUsers}
+            keyExtractor={(user) => user.id}
+            onRowPress={(user) => setSelectedUserId(selectedUserId === user.id ? null : user.id)}
+          />
+
+          {selectedUser && (
+            <Card className="mt-4 p-4">
+              <Text className="text-[14px] font-bold text-gray-900 mb-2">{selectedUser.name}</Text>
+              <Text className="text-[12px] text-gray-600 mb-1">Email: {selectedUser.email}</Text>
+              <Text className="text-[12px] text-gray-600 mb-1">Phone: {selectedUser.phone}</Text>
+              <Text className="text-[12px] text-gray-600 mb-1">Joined: {formatDate(selectedUser.createdAt)}</Text>
+              <Text className="text-[12px] text-gray-600 mb-3">Last active: {formatDate(selectedUser.lastActive || selectedUser.createdAt)}</Text>
+              <View className="flex-row gap-2">
                 <TouchableOpacity
-                  onPress={() => setSelectedUserId(isSelected ? null : user.id)}
-                  className="flex-row items-center justify-between">
-                  <View>
-                    <Text className="text-[15px] font-bold text-gray-900">{user.name}</Text>
-                    <Text className="text-[11px] text-gray-500">{user.email}</Text>
-                  </View>
-                  <Badge text={user.status} variant={statusBadge(user.status)} />
+                  onPress={() => handleSuspendUser(selectedUser.id)}
+                  className="flex-1 rounded-full bg-red-50 py-2 items-center"
+                >
+                  <Text className="text-[12px] font-semibold text-red-600">Suspend</Text>
                 </TouchableOpacity>
-                {isSelected && (
-                  <View className="mt-3 space-y-2 border-t border-gray-100 pt-3">
-                    <Text className="text-[12px] text-gray-600">Phone: {user.phone}</Text>
-                    <Text className="text-[12px] text-gray-600">Joined {formatDate(user.createdAt)}</Text>
-                    <Text className="text-[12px] text-gray-600">Last active {formatDate(user.lastActive || user.createdAt)}</Text>
-                    <View className="flex-row gap-2">
-                      <TouchableOpacity className="flex-1 bg-gray-100 rounded-xl py-2 items-center">
-                        <Text className="text-[12px] font-semibold text-gray-700">Suspend</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity className="flex-1 bg-primary-600 rounded-xl py-2 items-center">
-                        <Text className="text-[12px] font-semibold text-white">Message</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-              </Card>
-            );
-          })}
-          {filteredUsers.length === 0 && (
-            <Text className="text-[12px] text-gray-500">No users match your search or filter.</Text>
+                <TouchableOpacity className="flex-1 rounded-full bg-primary-600 py-2 items-center">
+                  <Text className="text-[12px] font-semibold text-white">Message</Text>
+                </TouchableOpacity>
+              </View>
+            </Card>
           )}
         </View>
       </ScrollView>
+
+      <ConfirmDialog
+        visible={dialogInfo.visible}
+        title={dialogInfo.title}
+        message={dialogInfo.message}
+        confirmLabel={dialogInfo.confirmLabel}
+        cancelLabel={dialogInfo.cancelLabel}
+        danger={dialogInfo.danger}
+        onConfirm={dialogInfo.onConfirm}
+        onCancel={closeDialog}
+      />
     </View>
   );
 }

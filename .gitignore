@@ -24,3 +24,8 @@ android
 
 # guide files
 App_Development_Guide.md
+
+# Environment files
+.env
+.env.local
+.env.*.local

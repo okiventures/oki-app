@@ -140,10 +140,10 @@
   - [ ] Consistent header layout with Online/Offline `Badge` across all Handyman tabs
   - [ ] Animate state transition on active job card CTA change
   - [ ] Loading state on wallet balance fetch; error state on network failure
-- [ ] Polish and refine Admin dashboard screens
-  - [ ] Responsive `Table` layout for User Management and Dispute Center (`src/components/admin/Table.tsx`)
-  - [ ] Chart axis labels, color legend, and tooltips for readability
-  - [ ] `ConfirmDialog` on all destructive actions: Reject KYC, Suspend User
+- [x] Polish and refine Admin dashboard screens
+  - [x] Responsive `Table` layout for User Management and Dispute Center (`src/components/admin/Table.tsx`)
+  - [x] Chart axis labels, color legend, and tooltips for readability
+  - [x] `ConfirmDialog` on all destructive actions: Reject KYC, Suspend User
 - [ ] End-to-end interactive navigation test across all role flows
   - [ ] Manual test pass: Client full booking flow (search → book → status tracking)
   - [ ] Manual test pass: Handyman full flow (receive request → accept → complete job)
@@ -173,17 +173,17 @@
   - [x] Define guard conditions per transition (e.g., payment captured before `PAID`; photo required before `WORK_STARTED`)
   - [x] Document invalid transitions and expected API error response (422 + reason)
   - [x] Publish FSM diagram to shared project docs (`backend/docs/booking-state-machine.md`)
-- [ ] API contract / OpenAPI draft
-  - [ ] Auth: `POST /auth/signup`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/reset-password`
-  - [ ] Bookings: `POST /bookings`, `GET /bookings/:id`, `PATCH /bookings/:id/state`, `DELETE /bookings/:id`
-  - [ ] Search: `GET /handymen/search?lat&lng&radius&category&page`
-  - [ ] KYC, profiles, wallet, payout, admin, and review endpoints
-  - [ ] Document request/response schemas, required auth headers, and error codes for each endpoint
-- [ ] Tech stack lock-in for backend services
-  - [ ] Confirm: Supabase (PostgreSQL + PostGIS + Auth + Storage + Realtime)
-  - [ ] Backend API layer decision documented as an ADR: Supabase Edge Functions vs Node.js (Fastify)
+- [x] API contract / OpenAPI draft
+  - [x] Auth: `POST /auth/signup`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/reset-password`
+  - [x] Bookings: `POST /bookings`, `GET /bookings/:id`, `PATCH /bookings/:id/state`, `DELETE /bookings/:id`
+  - [x] Search: `GET /handymen/search?lat&lng&radius&category&page`
+  - [x] KYC, profiles, wallet, payout, admin, and review endpoints
+  - [x] Document request/response schemas, required auth headers, and error codes for each endpoint
+- [x] Tech stack lock-in for backend services
+  - [x] Confirm: Supabase (PostgreSQL + PostGIS + Auth + Storage + Realtime)
+  - [x] Backend API layer decision documented as an ADR: Supabase Edge Functions vs Node.js (Fastify)
   - [ ] Payment provider selected (Stripe or local equivalent) with sandbox credentials provisioned
-  - [ ] Notification stack: Expo Push + Resend (email) + Twilio (SMS)
+  - [x] Notification stack: Expo Push + Resend (email) + Twilio (SMS)
   - [ ] Secrets management strategy: Supabase Vault for all third-party API keys
 - [ ] [MILESTONE] **Milestone:** All role screens implemented + database architecture approved
 
@@ -928,7 +928,6 @@
 
 ## **Standup Quick Index**
 
-
 |     | Date               | Phase   |
 | --- | ------------------ | ------- |
 | 1   | May 19, 2026       | Phase 1 |
@@ -944,5 +943,3 @@
 | 11  | October 6, 2026    | Phase 3 |
 | 12  | October 20, 2026   | Phase 4 |
 | 13  | November 3, 2026   | Phase 4 |
-
-
