@@ -6,6 +6,7 @@ import { useTheme } from '../../src/context/ThemeContext';
 
 import { DashboardHeader } from '../../src/components/home/DashboardHeader';
 import { GreetingBlock } from '../../src/components/home/GreetingBlock';
+import { EmptyState } from '../../src/components/ui/EmptyState';
 
 import { ActiveBookingCard } from '../../src/components/cards/ActiveBookingCard';
 import { CategoryGrid } from '../../src/components/home/CategoryGrid';
@@ -65,7 +66,15 @@ export default function ClientHome() {
             />
           )}
 
-          <CategoryGrid categories={filteredCategories} />
+          {filteredCategories.length === 0 && searchText ? (
+            <EmptyState
+              icon="search-outline"
+              title="No categories found"
+              message={`No service matches "${searchText}". Try a different keyword.`}
+            />
+          ) : (
+            <CategoryGrid categories={filteredCategories} />
+          )}
 
           <QuickBookCards modes={MOCK_QUICK_BOOK_MODES} />
 

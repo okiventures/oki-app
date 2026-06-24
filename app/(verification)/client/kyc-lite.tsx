@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -52,9 +52,12 @@ export default function ClientKycLite() {
   );
 
   return (
-    <SafeAreaView edges={["left", "right", "bottom"]} style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+    <SafeAreaView edges={["left", "right", "bottom"]} style={{ flex: 1, backgroundColor: colors.ui.background }}>
       <Navbar title="KYC-lite" showBack />
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 24 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
         <View className="mb-4">
           <Badge variant="primary" text="Step 2 of 2" />
           <Text className="font-heading mt-2 text-xl text-gray-900">Verify quickly</Text>
@@ -104,8 +107,9 @@ export default function ClientKycLite() {
           );
         })}
       </ScrollView>
+      </KeyboardAvoidingView>
 
-      <View className="border-t border-gray-200 bg-gray-50 p-4">
+      <View className="border-t border-gray-200 p-4" style={{ backgroundColor: colors.ui.background }}>
         <Button
           label="Finish and go to Home"
           onPress={() => router.replace('/(client)')}

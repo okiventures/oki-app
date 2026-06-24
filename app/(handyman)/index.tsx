@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, Switch, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
+import { Badge } from '../../src/components/ui/Badge';
 import { Card } from '../../src/components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
 import { MOCK_HANDYMAN } from '../../src/mocks';
@@ -12,8 +13,7 @@ import { ActiveJobWorkflowCardOverview } from '../../src/components/handyman/Act
 
 export default function HandymanDashboard() {
   const { colors } = useTheme();
-  const [isActive, setIsActive] = useState(MOCK_HANDYMAN.isOnline);
-  const { bookings } = useBookings();
+  const { bookings, isHandymanOnline, setIsHandymanOnline } = useBookings();
   const myBookings = bookings.filter((booking) => booking.handymanId === MOCK_HANDYMAN.id);
   const activeJob = myBookings.filter((booking) => ACTIVE_HANDYMAN_BOOKING_STATUSES.includes(booking.status))[0];
 
@@ -21,11 +21,19 @@ export default function HandymanDashboard() {
     <SafeAreaView
       edges={['top', 'left', 'right']}
       style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
-      <ScreenHeader title="Dashboard" />
+      <ScreenHeader
+        title="Dashboard"
+        badge={
+          <Badge
+            variant={isHandymanOnline ? 'online' : 'offline'}
+            text={isHandymanOnline ? 'Online · Accepting Jobs' : 'Offline · Not Visible'}
+          />
+        }
+      />
 
       <View
         className="flex-1 overflow-hidden rounded-t-[32px]"
-        style={{ backgroundColor: colors.ui.background, marginTop: -32 }}>
+        style={{ backgroundColor: colors.ui.background, marginTop: -36 }}>
         <ScrollView
           className="mt-5 flex-1 rounded-xl"
           contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 16 }}
@@ -34,15 +42,20 @@ export default function HandymanDashboard() {
           {/* Active Status Toggle */}
           <Card className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
-              <View className={`w-8 h-8 rounded-full items-center justify-center ${isActive ? 'bg-green-100' : 'bg-gray-100'}`}>
-                <Ionicons name={isActive ? 'radio-button-on' : 'radio-button-off'} size={18} color={isActive ? '#15803D' : '#6B7280'} />
+              <View className={`w-8 h-8 rounded-full items-center justify-center ${isHandymanOnline ? 'bg-green-100' : 'bg-gray-100'}`}>
+                <Ionicons name={isHandymanOnline ? 'radio-button-on' : 'radio-button-off'} size={18} color={isHandymanOnline ? '#15803D' : '#6B7280'} />
               </View>
               <View>
-                <Text className="text-[15px] font-bold text-gray-900">{isActive ? 'Accepting Requests' : 'Offline'}</Text>
-                <Text className="text-[11px] text-gray-500 mt-0.5">{isActive ? 'You are visible to clients.' : 'Go online to get jobs.'}</Text>
+                <Text className="text-[15px] font-bold text-gray-900">{isHandymanOnline ? 'Accepting Requests' : 'Offline'}</Text>
+                <Text className="text-[11px] text-gray-500 mt-0.5">{isHandymanOnline ? 'You are visible to clients.' : 'Go online to get jobs.'}</Text>
               </View>
             </View>
-            <Switch value={isActive} onValueChange={setIsActive} trackColor={{ true: colors.primary['600'] }} />
+            <Switch
+              value={isHandymanOnline}
+              onValueChange={setIsHandymanOnline}
+              accessibilityLabel="Toggle online status"
+              trackColor={{ true: colors.primary['600'] }}
+            />
           </Card>
 
           {/* Earnings Overview */}
@@ -59,8 +72,8 @@ export default function HandymanDashboard() {
             </Card>
           </View>
 
-          {/* Placeholder for Active Jobs */}
-          <View> 
+          {/* Active Jobs */}
+          <View>
             <Text className="font-heading text-base text-gray-900 mb-4">Active Jobs</Text>
             {activeJob ? (
               <ActiveJobWorkflowCardOverview booking={activeJob} onAdvance={() => {}} />
@@ -73,7 +86,7 @@ export default function HandymanDashboard() {
           <Text className="font-heading text-base text-gray-900">Next Job</Text>
           <Card>
             <Text className="text-[13px] font-semibold text-gray-800">Plumbing Fix</Text>
-            <Text className="text-[11px] text-gray-500 mt-1">Today, 2:00 PM • 123 Main St</Text>
+            <Text className="text-[11px] text-gray-500 mt-1">Today, 2:00 PM · 123 Main St</Text>
           </Card>
         </ScrollView>
       </View>

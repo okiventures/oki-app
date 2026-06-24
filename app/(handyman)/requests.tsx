@@ -12,6 +12,7 @@ import { ActiveJobWorkflowCard } from '../../src/components/handyman/ActiveJobWo
 import { RequestInboxCard } from '../../src/components/handyman/RequestInboxCard';
 import { ConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 import { EmptyState } from '../../src/components/ui/EmptyState';
+import { Badge } from '../../src/components/ui/Badge';
 
 const HANDYMAN_ID = 'h1';
 
@@ -22,7 +23,7 @@ type PendingAction = {
 
 export default function HandymanRequests() {
   const { colors } = useTheme();
-  const { bookings, acceptBooking, declineBooking, advanceBooking } = useBookings();
+  const { bookings, acceptBooking, declineBooking, advanceBooking, isHandymanOnline } = useBookings();
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
   const myBookings = useMemo(
@@ -67,11 +68,19 @@ export default function HandymanRequests() {
     <SafeAreaView
       edges={['top', 'left', 'right']}
       style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
-      <ScreenHeader title="Incoming Requests" />
+      <ScreenHeader
+        title="Incoming Requests"
+        badge={
+          <Badge
+            variant={isHandymanOnline ? 'online' : 'offline'}
+            text={isHandymanOnline ? 'Online · Accepting Jobs' : 'Offline · Not Visible'}
+          />
+        }
+      />
 
       <View
         className="flex-1 overflow-hidden rounded-t-[32px]"
-        style={{ backgroundColor: colors.ui.background, marginTop: -32 }}>
+        style={{ backgroundColor: colors.ui.background, marginTop: -36 }}>
         <ScrollView
           className="mt-5 flex-1 rounded-xl"
           contentContainerStyle={{ padding: 16, paddingBottom: 32 }}

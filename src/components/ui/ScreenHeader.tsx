@@ -11,6 +11,7 @@ export interface ScreenHeaderProps {
   showNotifications?: boolean;
   showBack?: boolean;
   onBackPress?: () => void;
+  badge?: React.ReactNode;
 }
 
 export function ScreenHeader({
@@ -21,6 +22,7 @@ export function ScreenHeader({
   showNotifications = false,
   showBack = false,
   onBackPress,
+  badge,
 }: ScreenHeaderProps) {
   const { colors } = useTheme();
 
@@ -64,6 +66,12 @@ export function ScreenHeader({
           <View className="w-[30px] p-1" />
         )}
       </View>
+
+      {badge ? (
+        <View className="mt-2 items-center">
+          {badge}
+        </View>
+      ) : null}
     </View>
   );
 }

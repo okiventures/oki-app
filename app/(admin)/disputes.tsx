@@ -4,6 +4,7 @@ import { Navbar } from '../../src/components/navigation/Navbar';
 import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
 import { SearchBar } from '../../src/components/forms/SearchBar';
+import { ConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 import { MOCK_DISPUTES } from '../../src/mocks';
 import { formatDateTime } from '../../src/utils';
 
@@ -24,10 +25,13 @@ const statusVariant = (status: string) => {
 
 const DISPUTE_STATUS_OPTIONS = ['All', 'Open', 'Investigating', 'Resolved', 'Closed'];
 
+type ResolveTarget = { id: string; reason: string } | null;
+
 export default function AdminDisputes() {
   const [searchValue, setSearchValue] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [expandedDisputeId, setExpandedDisputeId] = useState<string | null>(null);
+  const [resolveTarget, setResolveTarget] = useState<ResolveTarget>(null);
 
   const filteredDisputes = useMemo(
     () =>
@@ -60,12 +64,14 @@ export default function AdminDisputes() {
               value={searchValue}
               onChangeText={setSearchValue}
               placeholder="Search by dispute ID, booking, client, or worker"
+              accessibilityLabel="Search disputes"
             />
             <View className="flex-row flex-wrap gap-2 mt-3 mb-4">
               {DISPUTE_STATUS_OPTIONS.map((status) => (
                 <TouchableOpacity
                   key={status}
                   onPress={() => setStatusFilter(status)}
+                  accessibilityLabel={`Filter by ${status}`}
                   className={`rounded-full px-3 py-2 ${statusFilter === status ? 'bg-primary-600' : 'bg-gray-100'}`}>
                   <Text className={`${statusFilter === status ? 'text-white' : 'text-gray-700'} text-[12px] font-semibold`}>
                     {status}
@@ -84,6 +90,7 @@ export default function AdminDisputes() {
             <TouchableOpacity
               onPress={() => setExpandedDisputeId(isExpanded ? null : item.id)}
               activeOpacity={0.9}
+              accessibilityLabel={`Dispute: ${item.reason}`}
               className="mb-3">
               <Card className="p-3">
                 <View className="flex-row items-center justify-between mb-2">
@@ -92,13 +99,20 @@ export default function AdminDisputes() {
                 </View>
                 <Text className="text-[15px] font-bold text-gray-900 mb-1">{item.reason}</Text>
                 <Text className="text-[13px] text-gray-600 mb-3">
-                  <Text className="font-semibold text-gray-800">{item.clientName}</Text> reported <Text className="font-semibold text-gray-800">{item.handymanName}</Text>
+                  <Text className="font-semibold text-gray-800">{item.clientName}</Text>
+                  {' reported '}
+                  <Text className="font-semibold text-gray-800">{item.handymanName}</Text>
                 </Text>
                 <View className="flex-row gap-2">
-                  <TouchableOpacity className="flex-1 bg-gray-100 py-2 rounded-md items-center">
+                  <TouchableOpacity
+                    accessibilityLabel="View dispute details"
+                    className="flex-1 bg-gray-100 py-2 rounded-md items-center">
                     <Text className="text-[13px] font-bold text-gray-700">Details</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity className="flex-1 bg-gray-900 py-2 rounded-md items-center">
+                  <TouchableOpacity
+                    accessibilityLabel="Resolve dispute"
+                    onPress={() => setResolveTarget({ id: item.id, reason: item.reason })}
+                    className="flex-1 bg-gray-900 py-2 rounded-md items-center">
                     <Text className="text-[13px] font-bold text-white">Resolve</Text>
                   </TouchableOpacity>
                 </View>
@@ -114,6 +128,16 @@ export default function AdminDisputes() {
             </TouchableOpacity>
           );
         }}
+      />
+
+      <ConfirmDialog
+        visible={resolveTarget !== null}
+        title="Resolve this dispute?"
+        message={`Mark "${resolveTarget?.reason ?? 'this dispute'}" as resolved? This action will notify both parties and close the case.`}
+        confirmLabel="Yes, Resolve"
+        cancelLabel="Cancel"
+        onConfirm={() => setResolveTarget(null)}
+        onCancel={() => setResolveTarget(null)}
       />
     </View>
   );

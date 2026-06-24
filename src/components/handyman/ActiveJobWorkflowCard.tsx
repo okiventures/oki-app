@@ -1,5 +1,5 @@
-import React from 'react';
-import { Text, View, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Text, View, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS } from '../../constants/theme';
 import { getNextHandymanAction } from '../../context/BookingsContext';
@@ -19,6 +19,19 @@ export function ActiveJobWorkflowCard({ booking, onAdvance }: ActiveJobWorkflowC
   const nextAction = getNextHandymanAction(booking.status);
   const statusColor = BOOKING_STATUS_COLORS[booking.status] ?? '#6B7280';
   const statusLabel = BOOKING_STATUS_LABELS[booking.status] ?? booking.status;
+
+  const ctaOpacity = useRef(new Animated.Value(1)).current;
+  const prevLabel = useRef(nextAction?.label);
+
+  useEffect(() => {
+    if (prevLabel.current === nextAction?.label) return;
+    prevLabel.current = nextAction?.label;
+
+    Animated.sequence([
+      Animated.timing(ctaOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(ctaOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
+  }, [nextAction?.label, ctaOpacity]);
 
   return (
     <Card className="mb-5">
@@ -61,9 +74,9 @@ export function ActiveJobWorkflowCard({ booking, onAdvance }: ActiveJobWorkflowC
             {booking.scheduledAt ? formatDateTime(booking.scheduledAt) : 'Immediate dispatch'}
           </Text>
         </View>
-      </View>   
+      </View>
 
-      <View className="mt-4 flex-row items-center justify-between">
+      <Animated.View className="mt-4 flex-row items-center justify-between" style={{ opacity: ctaOpacity }}>
         <Badge variant="success" text={`Client rated ${(booking.clientRating ?? 5).toFixed(1)}`} />
         <Button
           label={nextAction?.label ?? 'Awaiting payment'}
@@ -73,7 +86,7 @@ export function ActiveJobWorkflowCard({ booking, onAdvance }: ActiveJobWorkflowC
             nextAction ? <Ionicons name="arrow-forward" size={14} color="#FFFFFF" /> : undefined
           }
         />
-      </View>
+      </Animated.View>
     </Card>
   );
 }
@@ -81,7 +94,7 @@ export function ActiveJobWorkflowCard({ booking, onAdvance }: ActiveJobWorkflowC
 export function ActiveJobWorkflowCardOverview({ booking, onAdvance }: ActiveJobWorkflowCardProps) {
   return (
     <Link href={`/(handyman)/requests`} asChild>
-      <TouchableOpacity>
+      <TouchableOpacity accessibilityLabel="View active job">
         <Card className="mb-5">
           <View className="flex-row items-start justify-between gap-3">
             <View className="flex-1">

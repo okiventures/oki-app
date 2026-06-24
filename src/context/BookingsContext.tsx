@@ -38,6 +38,8 @@ interface BookingsContextValue {
   declineBooking: (bookingId: string) => void;
   advanceBooking: (bookingId: string) => void;
   getBookingById: (bookingId: string) => Booking | undefined;
+  isHandymanOnline: boolean;
+  setIsHandymanOnline: (online: boolean) => void;
 }
 
 const BookingsContext = createContext<BookingsContextValue>({
@@ -46,6 +48,8 @@ const BookingsContext = createContext<BookingsContextValue>({
   declineBooking: () => {},
   advanceBooking: () => {},
   getBookingById: () => undefined,
+  isHandymanOnline: true,
+  setIsHandymanOnline: () => {},
 });
 
 function updateBooking(booking: Booking, status: BookingStatus): Booking {
@@ -58,6 +62,7 @@ function updateBooking(booking: Booking, status: BookingStatus): Booking {
 
 export function BookingsProvider({ children }: { children: React.ReactNode }) {
   const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
+  const [isHandymanOnline, setIsHandymanOnline] = useState(true);
 
   useEffect(() => {
     setBookings(MOCK_BOOKINGS);
@@ -130,8 +135,10 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
       declineBooking,
       advanceBooking,
       getBookingById: (bookingId: string) => bookings.find((booking) => booking.id === bookingId),
+      isHandymanOnline,
+      setIsHandymanOnline,
     }),
-    [bookings]
+    [bookings, isHandymanOnline]
   );
 
   return <BookingsContext.Provider value={value}>{children}</BookingsContext.Provider>;

@@ -1,5 +1,63 @@
 import { UserType, MembershipTier } from '../types';
 
+export const MOCK_HANDYMAN_SEARCH_RESULTS = [
+  {
+    id: 'h1',
+    name: 'Ceferino Jumao-as V',
+    photoUrl: 'https://api.dicebear.com/7.x/shapes/png?seed=Ceferino',
+    rating: 4.9,
+    reviewCount: 142,
+    distanceKm: 0.8,
+    isOnline: true,
+    serviceCategories: ['Plumbing', 'Electrical'],
+    hourlyRate: 450,
+  },
+  {
+    id: 'h2',
+    name: 'Ramon Dela Cruz',
+    photoUrl: 'https://api.dicebear.com/7.x/shapes/png?seed=Ramon',
+    rating: 4.7,
+    reviewCount: 89,
+    distanceKm: 1.2,
+    isOnline: true,
+    serviceCategories: ['Carpentry', 'Painting'],
+    hourlyRate: 380,
+  },
+  {
+    id: 'h3',
+    name: 'Jose Bernardo',
+    photoUrl: 'https://api.dicebear.com/7.x/shapes/png?seed=Jose',
+    rating: 4.6,
+    reviewCount: 54,
+    distanceKm: 1.8,
+    isOnline: false,
+    serviceCategories: ['Cleaning', 'General Handyman'],
+    hourlyRate: 300,
+  },
+  {
+    id: 'h4',
+    name: 'Maria Santos',
+    photoUrl: 'https://api.dicebear.com/7.x/shapes/png?seed=Maria',
+    rating: 4.5,
+    reviewCount: 31,
+    distanceKm: 2.3,
+    isOnline: true,
+    serviceCategories: ['Painting', 'Cleaning'],
+    hourlyRate: 320,
+  },
+  {
+    id: 'h5',
+    name: 'Eduardo Mendoza',
+    photoUrl: 'https://api.dicebear.com/7.x/shapes/png?seed=Eduardo',
+    rating: 4.8,
+    reviewCount: 112,
+    distanceKm: 3.1,
+    isOnline: true,
+    serviceCategories: ['Electrical', 'HVAC'],
+    hourlyRate: 500,
+  },
+];
+
 export const MOCK_CLIENT = {
   id: 'c1',
   name: 'Ishah Bautista',

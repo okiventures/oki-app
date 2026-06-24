@@ -5,15 +5,15 @@ import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { BookingCard } from '../../src/components/cards/BookingCard';
 import { useBookings } from '../../src/context/BookingsContext';
-import { BookingStatus } from '../../src/types';
 import { ScheduleCalendar } from '../../src/components/handyman/ScheduleCalendar';
 import { EmptyState } from '../../src/components/ui/EmptyState';
+import { Badge } from '../../src/components/ui/Badge';
 
 const HANDYMAN_ID = 'h1';
 
 export default function HandymanSchedule() {
   const { colors } = useTheme();
-  const { bookings } = useBookings();
+  const { bookings, isHandymanOnline } = useBookings();
   const [selectedDate, setSelectedDate] = useState(() => new Date());
 
   const myBookings = bookings.filter((booking) => booking.handymanId === HANDYMAN_ID);
@@ -33,11 +33,19 @@ export default function HandymanSchedule() {
     <SafeAreaView
       edges={['top', 'left', 'right']}
       style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
-      <ScreenHeader title="My Schedule" />
+      <ScreenHeader
+        title="My Schedule"
+        badge={
+          <Badge
+            variant={isHandymanOnline ? 'online' : 'offline'}
+            text={isHandymanOnline ? 'Online · Accepting Jobs' : 'Offline · Not Visible'}
+          />
+        }
+      />
 
       <View
         className="flex-1 overflow-hidden rounded-t-[32px]"
-        style={{ backgroundColor: colors.ui.background, marginTop: -32 }}>
+        style={{ backgroundColor: colors.ui.background, marginTop: -36 }}>
         <ScrollView
           className="mt-5 flex-1 rounded-xl"
           contentContainerStyle={{ paddingVertical: 16, paddingBottom: 32 }}

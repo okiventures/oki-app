@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
@@ -12,10 +12,19 @@ import { Link } from 'expo-router';
 import { WalletSection } from '../../src/components/handyman/WalletSection';
 import { Modal } from '../../src/components/ui/Modal';
 import { Button } from '../../src/components/ui/Button';
+import { useBookings } from '../../src/context/BookingsContext';
 
 export default function HandymanProfile() {
   const { colors } = useTheme();
+  const { isHandymanOnline } = useBookings();
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [walletLoading, setWalletLoading] = useState(true);
+  const [walletError, setWalletError] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setWalletLoading(false), 1400);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <SafeAreaView
@@ -26,7 +35,15 @@ export default function HandymanProfile() {
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         style={{ backgroundColor: colors.primary['600'] }}>
-        <ScreenHeader title="Worker Profile" />
+        <ScreenHeader
+          title="Worker Profile"
+          badge={
+            <Badge
+              variant={isHandymanOnline ? 'online' : 'offline'}
+              text={isHandymanOnline ? 'Online · Accepting Jobs' : 'Offline · Not Visible'}
+            />
+          }
+        />
 
         <View
           className="flex-1 rounded-t-[32px] pb-9 px-4"
@@ -58,7 +75,21 @@ export default function HandymanProfile() {
           </View>
 
           <View className="mt-6">
-            <WalletSection wallet={MOCK_HANDYMAN_WALLET} />
+            {walletLoading ? (
+              <View className="items-center justify-center py-12 gap-3">
+                <ActivityIndicator size="large" color={colors.primary['600']} />
+                <Text className="text-[13px] text-gray-400">Loading wallet…</Text>
+              </View>
+            ) : walletError ? (
+              <View className="rounded-2xl border border-red-100 bg-red-50 px-4 py-6 items-center gap-3">
+                <Ionicons name="cloud-offline-outline" size={32} color="#EF4444" />
+                <Text className="text-[14px] font-semibold text-red-700">Could not load wallet</Text>
+                <Text className="text-[12px] text-red-500 text-center">Check your connection and try again.</Text>
+                <Button label="Retry" variant="danger" onPress={() => { setWalletError(false); setWalletLoading(true); setTimeout(() => setWalletLoading(false), 1400); }} />
+              </View>
+            ) : (
+              <WalletSection wallet={MOCK_HANDYMAN_WALLET} />
+            )}
           </View>
 
           <Card className="p-0 overflow-hidden mt-4">

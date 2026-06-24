@@ -5,6 +5,7 @@ import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
 import { Ionicons } from '@expo/vector-icons';
 import { SearchBar } from '../../src/components/forms/SearchBar';
+import { ConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 import { MOCK_KYC_REQUESTS, MOCK_ADMIN_USERS } from '../../src/mocks';
 import { formatDate } from '../../src/utils';
 
@@ -23,10 +24,15 @@ const statusBadge = (status: string) => {
 
 const STATUS_OPTIONS = ['All', 'Active', 'Suspended', 'Banned'];
 
+type SuspendTarget = { id: string; name: string } | null;
+type KycTarget = { id: string; name: string; action: 'approve' | 'reject' } | null;
+
 export default function AdminUsers() {
   const [searchValue, setSearchValue] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [suspendTarget, setSuspendTarget] = useState<SuspendTarget>(null);
+  const [kycTarget, setKycTarget] = useState<KycTarget>(null);
 
   const filteredUsers = useMemo(
     () =>
@@ -66,6 +72,7 @@ export default function AdminUsers() {
           value={searchValue}
           onChangeText={setSearchValue}
           placeholder="Search by name, email, or phone"
+          accessibilityLabel="Search users"
         />
 
         <View className="flex-row flex-wrap gap-2">
@@ -73,6 +80,7 @@ export default function AdminUsers() {
             <TouchableOpacity
               key={status}
               onPress={() => setStatusFilter(status)}
+              accessibilityLabel={`Filter by ${status}`}
               className={`rounded-full px-3 py-2 ${statusFilter === status ? 'bg-primary-600' : 'bg-gray-100'}`}>
               <Text className={`${statusFilter === status ? 'text-white' : 'text-gray-700'} text-[12px] font-semibold`}>
                 {status}
@@ -81,6 +89,7 @@ export default function AdminUsers() {
           ))}
         </View>
 
+        {/* KYC Queue */}
         <View>
           <Text className="text-[13px] font-bold text-gray-900 mb-3">Pending KYC Verifications</Text>
           {MOCK_KYC_REQUESTS.map((item) => (
@@ -95,14 +104,26 @@ export default function AdminUsers() {
               </View>
               <View className="items-end gap-2">
                 <Badge text={item.status} variant="warning" />
-                <TouchableOpacity>
-                  <Text className="text-[11px] font-bold text-primary-600">Review</Text>
-                </TouchableOpacity>
+                <View className="flex-row gap-2">
+                  <TouchableOpacity
+                    accessibilityLabel={`Approve KYC for ${item.handymanName}`}
+                    onPress={() => setKycTarget({ id: item.id, name: item.handymanName, action: 'approve' })}
+                    className="rounded-lg bg-green-100 px-2.5 py-1">
+                    <Text className="text-[11px] font-bold text-green-700">Approve</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    accessibilityLabel={`Reject KYC for ${item.handymanName}`}
+                    onPress={() => setKycTarget({ id: item.id, name: item.handymanName, action: 'reject' })}
+                    className="rounded-lg bg-red-100 px-2.5 py-1">
+                    <Text className="text-[11px] font-bold text-red-700">Reject</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </Card>
           ))}
         </View>
 
+        {/* User List */}
         <View>
           <Text className="text-[13px] font-bold text-gray-900 mb-3">Recent Users</Text>
           {filteredUsers.map((user) => {
@@ -111,6 +132,7 @@ export default function AdminUsers() {
               <Card key={user.id} className="mb-3 p-3">
                 <TouchableOpacity
                   onPress={() => setSelectedUserId(isSelected ? null : user.id)}
+                  accessibilityLabel={`${user.name} user details`}
                   className="flex-row items-center justify-between">
                   <View>
                     <Text className="text-[15px] font-bold text-gray-900">{user.name}</Text>
@@ -123,11 +145,16 @@ export default function AdminUsers() {
                     <Text className="text-[12px] text-gray-600">Phone: {user.phone}</Text>
                     <Text className="text-[12px] text-gray-600">Joined {formatDate(user.createdAt)}</Text>
                     <Text className="text-[12px] text-gray-600">Last active {formatDate(user.lastActive || user.createdAt)}</Text>
-                    <View className="flex-row gap-2">
-                      <TouchableOpacity className="flex-1 bg-gray-100 rounded-xl py-2 items-center">
-                        <Text className="text-[12px] font-semibold text-gray-700">Suspend</Text>
+                    <View className="flex-row gap-2 mt-2">
+                      <TouchableOpacity
+                        accessibilityLabel={`Suspend ${user.name}`}
+                        onPress={() => setSuspendTarget({ id: user.id, name: user.name })}
+                        className="flex-1 bg-red-50 border border-red-100 rounded-xl py-2 items-center">
+                        <Text className="text-[12px] font-semibold text-red-600">Suspend</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity className="flex-1 bg-primary-600 rounded-xl py-2 items-center">
+                      <TouchableOpacity
+                        accessibilityLabel={`Message ${user.name}`}
+                        className="flex-1 bg-primary-600 rounded-xl py-2 items-center">
                         <Text className="text-[12px] font-semibold text-white">Message</Text>
                       </TouchableOpacity>
                     </View>
@@ -141,6 +168,34 @@ export default function AdminUsers() {
           )}
         </View>
       </ScrollView>
+
+      {/* Suspend Confirm Dialog */}
+      <ConfirmDialog
+        visible={suspendTarget !== null}
+        title="Suspend this user?"
+        message={`${suspendTarget?.name ?? 'This user'} will lose access to the platform immediately. You can reinstate them at any time.`}
+        confirmLabel="Yes, Suspend"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={() => setSuspendTarget(null)}
+        onCancel={() => setSuspendTarget(null)}
+      />
+
+      {/* KYC Action Confirm Dialog */}
+      <ConfirmDialog
+        visible={kycTarget !== null}
+        title={kycTarget?.action === 'approve' ? 'Approve KYC submission?' : 'Reject KYC submission?'}
+        message={
+          kycTarget?.action === 'approve'
+            ? `${kycTarget?.name ?? 'This handyman'} will be marked as verified and become searchable by clients.`
+            : `${kycTarget?.name ?? 'This handyman'} will be notified of the rejection and asked to resubmit their documents.`
+        }
+        confirmLabel={kycTarget?.action === 'approve' ? 'Approve' : 'Reject'}
+        cancelLabel="Cancel"
+        danger={kycTarget?.action === 'reject'}
+        onConfirm={() => setKycTarget(null)}
+        onCancel={() => setKycTarget(null)}
+      />
     </View>
   );
 }

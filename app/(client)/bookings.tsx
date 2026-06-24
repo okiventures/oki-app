@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, ScrollView } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, ScrollView, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useBookings } from '../../src/context/BookingsContext';
@@ -11,13 +11,49 @@ import { SearchBar } from '../../src/components/forms/SearchBar';
 import { BookingStatus } from '../../src/types';
 import { EmptyState } from '../../src/components/ui/EmptyState';
 import { BookingListSection } from '../../src/components/bookings/BookingListSection';
+
+function BookingSkeletonCard() {
+  const opacity = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [opacity]);
+
+  return (
+    <Animated.View
+      style={{ opacity }}
+      className="mx-5 mb-3 rounded-2xl border border-gray-100 bg-white p-4">
+      <View className="flex-row items-start gap-3">
+        <View className="h-10 w-10 rounded-full bg-gray-200" />
+        <View className="flex-1 gap-2">
+          <View className="h-3 w-28 rounded bg-gray-200" />
+          <View className="h-2.5 w-20 rounded bg-gray-100" />
+        </View>
+        <View className="h-6 w-16 rounded-full bg-gray-200" />
+      </View>
+      <View className="mt-3 h-2.5 w-40 rounded bg-gray-100" />
+      <View className="mt-2 h-2.5 w-32 rounded bg-gray-100" />
+    </Animated.View>
+  );
+}
+
 export default function ClientBookings() {
   const { colors } = useTheme();
   const router = useRouter();
   const { bookings } = useBookings();
   const [searchText, setSearchText] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Filter bookings by search text
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const filteredBookings = bookings.filter((b) => {
     if (!searchText) return true;
     const s = searchText.toLowerCase();
@@ -29,7 +65,6 @@ export default function ClientBookings() {
     );
   });
 
-  // Segment bookings
   const activeBookings = filteredBookings.filter(
     (b) =>
       b.status === BookingStatus.InTransit ||
@@ -54,7 +89,11 @@ export default function ClientBookings() {
     <SafeAreaView
       edges={['top', 'left', 'right']}
       style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
-      <ScreenHeader title="My Bookings" showNotifications onNotificationsPress={() => router.push('/notifications')} />
+      <ScreenHeader
+        title="My Bookings"
+        showNotifications
+        onNotificationsPress={() => router.push('/notifications')}
+      />
 
       <View
         className="flex-1 overflow-hidden rounded-t-[32px]"
@@ -69,10 +108,17 @@ export default function ClientBookings() {
               value={searchText}
               onChangeText={setSearchText}
               placeholder="Search bookings, services or provider…"
+              accessibilityLabel="Search bookings"
             />
           </View>
 
-          {hasAnyBookings ? (
+          {isLoading ? (
+            <View className="mt-1">
+              <BookingSkeletonCard />
+              <BookingSkeletonCard />
+              <BookingSkeletonCard />
+            </View>
+          ) : hasAnyBookings ? (
             <View>
               {activeBookings.length > 0 && (
                 <BookingListSection title="Active Bookings" noHorizontalPadding>

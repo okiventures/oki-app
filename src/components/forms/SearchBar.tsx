@@ -7,6 +7,7 @@ interface SearchBarProps {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
+  accessibilityLabel?: string;
   onLocationPress?: () => void;
   onFilterPress?: () => void;
 }
@@ -15,6 +16,7 @@ export function SearchBar({
   value,
   onChangeText,
   placeholder = 'Search services or handymen…',
+  accessibilityLabel,
   onLocationPress,
   onFilterPress,
 }: SearchBarProps) {
@@ -48,7 +50,7 @@ export function SearchBar({
           }
           underlineColorAndroid="transparent"
           returnKeyType="search"
-          accessibilityLabel={placeholder}
+          accessibilityLabel={accessibilityLabel ?? placeholder}
         />
         {onLocationPress && (
           <TouchableOpacity
