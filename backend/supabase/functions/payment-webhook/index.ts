@@ -16,17 +16,22 @@ serve(async (req: Request) => {
 
   const webhookSecret = Deno.env.get('PAYMENT_WEBHOOK_SECRET');
   if (!webhookSecret) {
-    return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: 'Webhook secret not configured' }), { status: 500 });
+    return new Response(
+      JSON.stringify({ error: 'INTERNAL_ERROR', message: 'Webhook secret not configured' }),
+      { status: 500 }
+    );
   }
 
   const signature = req.headers.get('x-webhook-signature');
   if (signature !== webhookSecret) {
-    return new Response(JSON.stringify({ error: 'FORBIDDEN', message: 'Invalid signature' }), { status: 403 });
+    return new Response(JSON.stringify({ error: 'FORBIDDEN', message: 'Invalid signature' }), {
+      status: 403,
+    });
   }
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
   const payload: PaymentWebhookPayload = await req.json();
@@ -40,21 +45,29 @@ serve(async (req: Request) => {
         .single();
 
       if (fetchError) {
-        return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: fetchError.message }), { status: 500 });
+        return new Response(
+          JSON.stringify({ error: 'INTERNAL_ERROR', message: fetchError.message }),
+          { status: 500 }
+        );
       }
 
       if (!booking) {
-        return new Response(JSON.stringify({ error: 'NOT_FOUND', message: 'Booking not found' }), { status: 404 });
+        return new Response(JSON.stringify({ error: 'NOT_FOUND', message: 'Booking not found' }), {
+          status: 404,
+        });
       }
 
       if (booking.status !== 'COMPLETED') {
-        return new Response(JSON.stringify({
-          error: 'INVALID_STATE_TRANSITION',
-          message: 'Booking must be COMPLETED before payment capture',
-          from_status: booking.status,
-          to_status: 'PAID',
-          reason_code: 'GUARD_NOT_SATISFIED',
-        }), { status: 422 });
+        return new Response(
+          JSON.stringify({
+            error: 'INVALID_STATE_TRANSITION',
+            message: 'Booking must be COMPLETED before payment capture',
+            from_status: booking.status,
+            to_status: 'PAID',
+            reason_code: 'GUARD_NOT_SATISFIED',
+          }),
+          { status: 422 }
+        );
       }
 
       const platformFee = Math.round(payload.amount * 0.1 * 100) / 100;
@@ -66,7 +79,10 @@ serve(async (req: Request) => {
         .eq('id', payload.bookingId);
 
       if (updateError) {
-        return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: updateError.message }), { status: 500 });
+        return new Response(
+          JSON.stringify({ error: 'INTERNAL_ERROR', message: updateError.message }),
+          { status: 500 }
+        );
       }
 
       const { error: paymentInsertError } = await supabase.from('payments').insert({
@@ -80,7 +96,10 @@ serve(async (req: Request) => {
       });
 
       if (paymentInsertError) {
-        return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: paymentInsertError.message }), { status: 500 });
+        return new Response(
+          JSON.stringify({ error: 'INTERNAL_ERROR', message: paymentInsertError.message }),
+          { status: 500 }
+        );
       }
 
       const { error: walletInsertError } = await supabase.from('wallet_transactions').insert({
@@ -92,7 +111,10 @@ serve(async (req: Request) => {
       });
 
       if (walletInsertError) {
-        return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: walletInsertError.message }), { status: 500 });
+        return new Response(
+          JSON.stringify({ error: 'INTERNAL_ERROR', message: walletInsertError.message }),
+          { status: 500 }
+        );
       }
 
       const { error: eventInsertError } = await supabase.from('booking_events').insert({
@@ -100,11 +122,18 @@ serve(async (req: Request) => {
         actor_id: null,
         from_status: 'COMPLETED',
         to_status: 'PAID',
-        metadata: { action: 'CAPTURE_PAYMENT', payment_intent_id: payload.paymentIntentId, platform_fee: platformFee },
+        metadata: {
+          action: 'CAPTURE_PAYMENT',
+          payment_intent_id: payload.paymentIntentId,
+          platform_fee: platformFee,
+        },
       });
 
       if (eventInsertError) {
-        return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: eventInsertError.message }), { status: 500 });
+        return new Response(
+          JSON.stringify({ error: 'INTERNAL_ERROR', message: eventInsertError.message }),
+          { status: 500 }
+        );
       }
 
       break;
@@ -119,14 +148,20 @@ serve(async (req: Request) => {
       });
 
       if (failedPaymentError) {
-        return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: failedPaymentError.message }), { status: 500 });
+        return new Response(
+          JSON.stringify({ error: 'INTERNAL_ERROR', message: failedPaymentError.message }),
+          { status: 500 }
+        );
       }
 
       break;
     }
 
     default:
-      return new Response(JSON.stringify({ error: 'BAD_REQUEST', message: `Unknown event: ${payload.event}` }), { status: 400 });
+      return new Response(
+        JSON.stringify({ error: 'BAD_REQUEST', message: `Unknown event: ${payload.event}` }),
+        { status: 400 }
+      );
   }
 
   return new Response(JSON.stringify({ received: true }), { status: 200 });

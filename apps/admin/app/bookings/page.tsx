@@ -1,50 +1,50 @@
-"use client";
+'use client';
 
-import { useMemo, useState } from "react";
-import { Badge } from "../components/Badge";
-import { Card } from "../components/Card";
-import { Navbar } from "../components/Navbar";
-import { SearchBar } from "../components/SearchBar";
-import { MOCK_BOOKINGS } from "../data/mockData";
-import { formatCurrency, formatDate } from "../utils";
-import { getServiceIcon } from "../utils/icons";
+import { useMemo, useState } from 'react';
+import { Badge } from '../components/Badge';
+import { Card } from '../components/Card';
+import { Navbar } from '../components/Navbar';
+import { SearchBar } from '../components/SearchBar';
+import { MOCK_BOOKINGS } from '../data/mockData';
+import { formatCurrency, formatDate } from '../utils';
+import { getServiceIcon } from '../utils/icons';
 
 const statusVariant = (status: string) => {
   switch (status) {
-    case "Pending":
-    case "Accepted":
-      return "warning";
-    case "InTransit":
-    case "Arrived":
-    case "WorkStarted":
-      return "primary";
-    case "Completed":
-    case "Paid":
-      return "success";
-    case "Cancelled":
-      return "error";
+    case 'Pending':
+    case 'Accepted':
+      return 'warning';
+    case 'InTransit':
+    case 'Arrived':
+    case 'WorkStarted':
+      return 'primary';
+    case 'Completed':
+    case 'Paid':
+      return 'success';
+    case 'Cancelled':
+      return 'error';
     default:
-      return "status";
+      return 'status';
   }
 };
 
-const typeVariant = (type: string) => (type === "OnDemand" ? "primary" : "status");
+const typeVariant = (type: string) => (type === 'OnDemand' ? 'primary' : 'status');
 
 const BOOKING_STATUS_OPTIONS = [
-  "All",
-  "Pending",
-  "Accepted",
-  "InTransit",
-  "Arrived",
-  "WorkStarted",
-  "Completed",
-  "Paid",
-  "Cancelled",
+  'All',
+  'Pending',
+  'Accepted',
+  'InTransit',
+  'Arrived',
+  'WorkStarted',
+  'Completed',
+  'Paid',
+  'Cancelled',
 ];
 
 export default function BookingsPage() {
-  const [searchValue, setSearchValue] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [searchValue, setSearchValue] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
 
   const filteredBookings = useMemo(() => {
@@ -57,15 +57,15 @@ export default function BookingsPage() {
         booking.serviceCategory.toLowerCase().includes(query) ||
         booking.location.toLowerCase().includes(query);
 
-      const matchesStatus = statusFilter === "All" ? true : booking.status === statusFilter;
+      const matchesStatus = statusFilter === 'All' ? true : booking.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
   }, [searchValue, statusFilter]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       <Navbar title="Bookings Management" />
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 space-y-4 overflow-y-auto p-4">
         <div className="mb-3 px-2 text-[13px] font-bold text-gray-900">
           Booking queue and history
         </div>
@@ -80,11 +80,8 @@ export default function BookingsPage() {
               key={status}
               onClick={() => setStatusFilter(status)}
               className={`rounded-full px-3 py-2 ${
-                statusFilter === status
-                  ? "bg-primary-600 text-white"
-                  : "bg-gray-100 text-gray-700"
-              } text-[12px] font-semibold`}
-            >
+                statusFilter === status ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700'
+              } text-[12px] font-semibold`}>
               {status}
             </button>
           ))}
@@ -98,22 +95,23 @@ export default function BookingsPage() {
               <div
                 key={booking.id}
                 onClick={() => setExpandedBookingId(isExpanded ? null : booking.id)}
-                className="mb-3 cursor-pointer"
-              >
+                className="mb-3 cursor-pointer">
                 <Card className="p-4">
                   <div className="mb-2 flex flex-row items-center justify-between">
                     <div className="flex flex-row items-center gap-2">
-                      <div className="h-7 w-7 items-center justify-center rounded-lg bg-gray-900 flex">
-                        <CategoryIcon size={14} className="text-white" fill="currentColor" strokeWidth={0} />
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-900">
+                        <CategoryIcon
+                          size={14}
+                          className="text-white"
+                          fill="currentColor"
+                          strokeWidth={0}
+                        />
                       </div>
                       <p className="text-[15px] font-bold text-gray-900">
                         {booking.serviceCategory}
                       </p>
                     </div>
-                    <Badge
-                      text={booking.bookingType}
-                      variant={typeVariant(booking.bookingType)}
-                    />
+                    <Badge text={booking.bookingType} variant={typeVariant(booking.bookingType)} />
                   </div>
                   <p className="mb-2 text-[13px] text-gray-600">{booking.description}</p>
                   <div className="mb-2 flex flex-row items-center justify-between">
