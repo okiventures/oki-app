@@ -170,26 +170,26 @@ export interface CategoryPalette {
 }
 
 export const SERVICE_CATEGORY_COLORS: Record<string, CategoryPalette> = {
-   // Booking categories (new-booking flow)
-   massage: { icon: '#DB2777', bg: '#FDF2F8', border: '#FBCFE8' },
-   cleaning: { icon: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
-   painting: { icon: '#6D28D9', bg: '#F5F3FF', border: '#DDD6FE' },
-   general: { icon: '#334155', bg: '#F8FAFC', border: '#E2E8F0' },
+  // Booking categories (new-booking flow)
+  massage: { icon: '#DB2777', bg: '#FDF2F8', border: '#FBCFE8' },
+  cleaning: { icon: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
+  painting: { icon: '#6D28D9', bg: '#F5F3FF', border: '#DDD6FE' },
+  general: { icon: '#334155', bg: '#F8FAFC', border: '#E2E8F0' },
 
-   // Dashboard quick-category tiles
-   more: { icon: '#4B5563', bg: '#F3F4F6', border: '#E5E7EB' },
+  // Dashboard quick-category tiles
+  more: { icon: '#4B5563', bg: '#F3F4F6', border: '#E5E7EB' },
 
-   // Generic service categories (used in handyman / admin flows)
-   Plumbing: { icon: '#0284C7', bg: '#E0F2FE', border: '#BAE6FD' },
-   Electrical: { icon: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
-   Carpentry: { icon: '#78350F', bg: '#FEF3C7', border: '#FDE68A' },
-   Cleaning: { icon: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
-   Painting: { icon: '#6D28D9', bg: '#F5F3FF', border: '#DDD6FE' },
-   HVAC: { icon: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC' },
-   Roofing: { icon: '#4B5563', bg: '#F5F5F4', border: '#E7E5E4' },
-   Landscaping: { icon: '#166534', bg: '#F0FDF4', border: '#BBF7D0' },
-   'Appliance Repair': { icon: '#C2410C', bg: '#FFF7ED', border: '#FED7AA' },
-   'General Handyman': { icon: '#334155', bg: '#F8FAFC', border: '#E2E8F0' },
+  // Generic service categories (used in handyman / admin flows)
+  Plumbing: { icon: '#0284C7', bg: '#E0F2FE', border: '#BAE6FD' },
+  Electrical: { icon: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  Carpentry: { icon: '#78350F', bg: '#FEF3C7', border: '#FDE68A' },
+  Cleaning: { icon: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
+  Painting: { icon: '#6D28D9', bg: '#F5F3FF', border: '#DDD6FE' },
+  HVAC: { icon: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC' },
+  Roofing: { icon: '#4B5563', bg: '#F5F5F4', border: '#E7E5E4' },
+  Landscaping: { icon: '#166534', bg: '#F0FDF4', border: '#BBF7D0' },
+  'Appliance Repair': { icon: '#C2410C', bg: '#FFF7ED', border: '#FED7AA' },
+  'General Handyman': { icon: '#334155', bg: '#F8FAFC', border: '#E2E8F0' },
 };
 
 export const SERVICE_CATEGORY_ICONS: Record<string, string> = {

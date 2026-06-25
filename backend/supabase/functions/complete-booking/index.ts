@@ -16,20 +16,23 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), { status: 401 });
   }
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
-    { global: { headers: { Authorization: authHeader } } },
-  );
+  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+    global: { headers: { Authorization: authHeader } },
+  });
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
   if (authError || !user) {
     return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), { status: 401 });
   }
 
   const { bookingId, afterPhotoUrl }: CompleteBookingRequest = await req.json();
   if (!bookingId) {
-    return new Response(JSON.stringify({ error: 'BAD_REQUEST', message: 'bookingId required' }), { status: 400 });
+    return new Response(JSON.stringify({ error: 'BAD_REQUEST', message: 'bookingId required' }), {
+      status: 400,
+    });
   }
 
   const { data: booking, error: fetchError } = await supabase
@@ -39,11 +42,16 @@ serve(async (req: Request) => {
     .single();
 
   if (fetchError || !booking) {
-    return new Response(JSON.stringify({ error: 'NOT_FOUND', message: 'Booking not found' }), { status: 404 });
+    return new Response(JSON.stringify({ error: 'NOT_FOUND', message: 'Booking not found' }), {
+      status: 404,
+    });
   }
 
   if (booking.handyman_id !== user.id) {
-    return new Response(JSON.stringify({ error: 'FORBIDDEN', message: 'Only assigned handyman can complete' }), { status: 403 });
+    return new Response(
+      JSON.stringify({ error: 'FORBIDDEN', message: 'Only assigned handyman can complete' }),
+      { status: 403 }
+    );
   }
 
   const guards: string[] = [];
@@ -52,15 +60,18 @@ serve(async (req: Request) => {
   if (!afterPhotoUrl && !booking.after_photo_url) guards.push('After photo required to complete');
 
   if (guards.length > 0) {
-    return new Response(JSON.stringify({
-      error: 'INVALID_STATE_TRANSITION',
-      message: guards.join('; '),
-      from_status: booking.status,
-      to_status: 'COMPLETED',
-      action: 'COMPLETE',
-      reason_code: 'GUARD_NOT_SATISFIED',
-      details: { failed_guards: guards },
-    }), { status: 422 });
+    return new Response(
+      JSON.stringify({
+        error: 'INVALID_STATE_TRANSITION',
+        message: guards.join('; '),
+        from_status: booking.status,
+        to_status: 'COMPLETED',
+        action: 'COMPLETE',
+        reason_code: 'GUARD_NOT_SATISFIED',
+        details: { failed_guards: guards },
+      }),
+      { status: 422 }
+    );
   }
 
   const { data: updatedBooking, error: updateError } = await supabase
@@ -75,7 +86,9 @@ serve(async (req: Request) => {
     .single();
 
   if (updateError) {
-    return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: updateError.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: updateError.message }), {
+      status: 500,
+    });
   }
 
   await supabase.from('booking_events').insert({

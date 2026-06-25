@@ -11,7 +11,7 @@ import {
   Hammer,
   HelpCircle,
   type LucideIcon,
-} from "lucide-react";
+} from 'lucide-react';
 
 export const SERVICE_CATEGORY_ICON: Record<string, LucideIcon> = {
   Plumbing: Droplets,
@@ -22,8 +22,8 @@ export const SERVICE_CATEGORY_ICON: Record<string, LucideIcon> = {
   HVAC: Thermometer,
   Roofing: Home,
   Landscaping: Leaf,
-  "Appliance Repair": Settings,
-  "General Handyman": Hammer,
+  'Appliance Repair': Settings,
+  'General Handyman': Hammer,
 };
 
 export function getServiceIcon(category: string): LucideIcon {

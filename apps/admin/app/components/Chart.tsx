@@ -15,7 +15,7 @@ export function Chart({ title, data, labels, height = 200 }: ChartProps) {
         {data.map((val, index) => {
           const percentage = (val / max) * 100;
           return (
-            <div key={index} className="flex-1 flex flex-col items-center">
+            <div key={index} className="flex flex-1 flex-col items-center">
               <div
                 className="bg-primary-500 min-h-[4px] w-3/5 rounded-t"
                 style={{ height: `${percentage}%` }}

@@ -4,9 +4,7 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*"
-      ]
+      "@/*": ["src/*"]
     },
     "incremental": true,
     "isolatedModules": true,
@@ -17,16 +15,6 @@
       }
     ]
   },
-  "exclude": [
-    "backend",
-    "packages",
-    "apps"
-  ],
-  "include": [
-    "next-env.d.ts",
-    ".next/types/**/*.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    "nativewind-env.d.ts"
-  ]
+  "exclude": ["backend", "packages", "apps"],
+  "include": ["next-env.d.ts", ".next/types/**/*.ts", "**/*.ts", "**/*.tsx", "nativewind-env.d.ts"]
 }
