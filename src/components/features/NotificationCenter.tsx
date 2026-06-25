@@ -25,7 +25,7 @@ export function NotificationCenter({
         <Ionicons name="notifications-off-outline" size={48} color="#D1D5DB" />
         <Text className="mt-3 text-sm font-semibold text-gray-500">No notifications yet</Text>
         <Text className="mt-1 text-[11px] text-gray-400">
-          We'll let you know when something happens
+          We{"'"}ll let you know when something happens
         </Text>
       </View>
     );
@@ -41,13 +41,15 @@ export function NotificationCenter({
       <FlatList
         data={notifications}
         keyExtractor={(item) => item.id}
-        ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: colors.ui.border }} />}
+        ItemSeparatorComponent={() => (
+          <View style={{ height: 1, backgroundColor: colors.ui.border }} />
+        )}
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() => onMarkRead(item.id)}
-            className="flex-row items-start px-5 py-4 bg-transparent">
+            className="flex-row items-start bg-transparent px-5 py-4">
             <View
-              className="h-2 w-2 rounded-full mt-1.5 mr-3"
+              className="mt-1.5 mr-3 h-2 w-2 rounded-full"
               style={item.isRead ? {} : { backgroundColor: colors.primary['600'] }}
             />
             <View className="flex-1">
@@ -56,7 +58,9 @@ export function NotificationCenter({
                 className={`text-[13px] ${item.isRead ? 'font-normal' : 'font-semibold'} mb-0.5`}>
                 {item.title}
               </Text>
-              <Text style={{ color: colors.ui.textMuted }} className="text-[13px] leading-5">{item.body}</Text>
+              <Text style={{ color: colors.ui.textMuted }} className="text-[13px] leading-5">
+                {item.body}
+              </Text>
               <Text style={{ color: colors.ui.textLight }} className="mt-1 text-[11px]">
                 {formatDateTime(item.createdAt)}
               </Text>

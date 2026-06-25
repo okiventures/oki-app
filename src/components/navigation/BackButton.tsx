@@ -10,7 +10,12 @@ interface BackButtonProps {
   accessibilityLabel?: string;
 }
 
-export function BackButton({ onPress, size = 22, color = '#111827', accessibilityLabel = 'Go back' }: BackButtonProps) {
+export function BackButton({
+  onPress,
+  size = 22,
+  color = '#111827',
+  accessibilityLabel = 'Go back',
+}: BackButtonProps) {
   const router = useRouter();
   const handle = onPress ?? (() => router.back());
 

@@ -8,7 +8,11 @@ interface BookingListSectionProps {
   noHorizontalPadding?: boolean;
 }
 
-export function BookingListSection({ title, children, noHorizontalPadding = false }: BookingListSectionProps) {
+export function BookingListSection({
+  title,
+  children,
+  noHorizontalPadding = false,
+}: BookingListSectionProps) {
   const { colors } = useTheme();
 
   return (

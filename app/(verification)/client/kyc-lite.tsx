@@ -46,13 +46,12 @@ export default function ClientKycLite() {
     address: false,
   });
 
-  const allDone = useMemo(
-    () => Object.values(completed).every(Boolean),
-    [completed]
-  );
+  const allDone = useMemo(() => Object.values(completed).every(Boolean), [completed]);
 
   return (
-    <SafeAreaView edges={["left", "right", "bottom"]} style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+    <SafeAreaView
+      edges={['left', 'right', 'bottom']}
+      style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
       <Navbar title="KYC-lite" showBack />
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 24 }}>
         <View className="mb-4">
@@ -81,7 +80,10 @@ export default function ClientKycLite() {
                   <Text className="text-[15px] font-bold text-gray-900">{item.title}</Text>
                   <Text className="mt-1 text-[12px] text-gray-500">{item.subtitle}</Text>
                   <View className="mt-2 flex-row items-center justify-between">
-                    <Badge variant={isDone ? 'success' : 'warning'} text={isDone ? 'Done' : 'Pending'} />
+                    <Badge
+                      variant={isDone ? 'success' : 'warning'}
+                      text={isDone ? 'Done' : 'Pending'}
+                    />
                     <TouchableOpacity
                       onPress={() =>
                         setCompleted((prev) => ({

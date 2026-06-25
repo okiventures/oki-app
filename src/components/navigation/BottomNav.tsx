@@ -45,8 +45,7 @@ export function BottomNav({ items }: BottomNavProps) {
         borderTopWidth: 1,
         borderTopColor: '#D3D1C7',
         paddingBottom: bottomPadding,
-      }}
-    >
+      }}>
       {items.map((item) => {
         const normalizedRoute = normalize(item.route);
         const isActive =
@@ -66,8 +65,7 @@ export function BottomNav({ items }: BottomNavProps) {
               alignItems: 'center',
               paddingTop: 10,
               paddingBottom: 4,
-            }}
-          >
+            }}>
             <Ionicons
               name={(isActive ? item.activeIcon : item.icon) as never}
               size={22}
@@ -79,8 +77,7 @@ export function BottomNav({ items }: BottomNavProps) {
                 fontSize: 12,
                 fontWeight: isActive ? '500' : '400',
                 marginTop: 3,
-              }}
-            >
+              }}>
               {item.label}
             </Text>
           </TouchableOpacity>

@@ -28,11 +28,15 @@ export function HandymanOnboardingHero({
         paddingTop: compactLayout ? 14 : 16,
         paddingBottom: compactLayout ? 14 : 20,
       }}>
-      <Badge variant="warning" text={`Step ${currentStepIndex + 1} of ${ONBOARDING_STEPS.length}`} />
-      <Text className={`mt-3 font-heading ${compactLayout ? 'text-xl' : 'text-2xl'} text-white`}>
+      <Badge
+        variant="warning"
+        text={`Step ${currentStepIndex + 1} of ${ONBOARDING_STEPS.length}`}
+      />
+      <Text className={`font-heading mt-3 ${compactLayout ? 'text-xl' : 'text-2xl'} text-white`}>
         Apply to work on OKI
       </Text>
-      <Text className={`mt-2 ${compactLayout ? 'text-[12px]' : 'text-[13px]'} leading-5 text-white/80`}>
+      <Text
+        className={`mt-2 ${compactLayout ? 'text-[12px]' : 'text-[13px]'} leading-5 text-white/80`}>
         Complete your profile, choose your services, and upload KYC documents for review.
       </Text>
 
@@ -47,7 +51,8 @@ export function HandymanOnboardingHero({
                 key={step}
                 className="rounded-full px-2.5 py-1"
                 style={{
-                  backgroundColor: isActive || isCompleted ? colors.secondary['500'] : 'rgba(255,255,255,0.12)',
+                  backgroundColor:
+                    isActive || isCompleted ? colors.secondary['500'] : 'rgba(255,255,255,0.12)',
                 }}>
                 <Text
                   className="text-[10px] font-semibold"

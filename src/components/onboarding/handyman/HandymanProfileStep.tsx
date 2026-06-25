@@ -49,7 +49,8 @@ export function HandymanProfileStep({
           Personal details
         </Text>
         <Text className="mt-1 text-[12px]" style={{ color: colors.ui.textMuted }}>
-          These details appear on your handyman profile and help the admin team review your application.
+          These details appear on your handyman profile and help the admin team review your
+          application.
         </Text>
       </View>
 
@@ -60,7 +61,11 @@ export function HandymanProfileStep({
           fillColor={colors.ui.surface}
           value={fullName}
           onChangeText={onFullNameChange}
-          error={fullName.length > 0 && !profileValidation.fullName ? 'Use at least 3 characters.' : undefined}
+          error={
+            fullName.length > 0 && !profileValidation.fullName
+              ? 'Use at least 3 characters.'
+              : undefined
+          }
           helperText={fullName.length === 0 ? 'Minimum 3 characters.' : undefined}
           leftIcon={<Ionicons name="person-outline" size={18} color={colors.ui.textMuted} />}
         />
@@ -71,8 +76,12 @@ export function HandymanProfileStep({
           keyboardType="phone-pad"
           value={phone}
           onChangeText={onPhoneChange}
-          error={phone.length > 0 && !profileValidation.phone ? 'Enter at least 10 digits.' : undefined}
-          helperText={phone.length === 0 ? 'Digits only are counted. Minimum 10 digits.' : undefined}
+          error={
+            phone.length > 0 && !profileValidation.phone ? 'Enter at least 10 digits.' : undefined
+          }
+          helperText={
+            phone.length === 0 ? 'Digits only are counted. Minimum 10 digits.' : undefined
+          }
           leftIcon={<Ionicons name="call-outline" size={18} color={colors.ui.textMuted} />}
         />
         <Input
@@ -81,7 +90,9 @@ export function HandymanProfileStep({
           fillColor={colors.ui.surface}
           value={city}
           onChangeText={onCityChange}
-          error={city.length > 0 && !profileValidation.city ? 'Use at least 3 characters.' : undefined}
+          error={
+            city.length > 0 && !profileValidation.city ? 'Use at least 3 characters.' : undefined
+          }
           helperText={city.length === 0 ? 'Minimum 3 characters.' : undefined}
           leftIcon={<Ionicons name="location-outline" size={18} color={colors.ui.textMuted} />}
         />
@@ -92,8 +103,16 @@ export function HandymanProfileStep({
           keyboardType="number-pad"
           value={yearsExperience}
           onChangeText={onYearsExperienceChange}
-          error={yearsExperience.length > 0 && !profileValidation.yearsExperience ? 'Enter 0 or a higher number.' : undefined}
-          helperText={yearsExperience.length === 0 ? 'Required. Use a whole number like 0, 1, or 5.' : undefined}
+          error={
+            yearsExperience.length > 0 && !profileValidation.yearsExperience
+              ? 'Enter 0 or a higher number.'
+              : undefined
+          }
+          helperText={
+            yearsExperience.length === 0
+              ? 'Required. Use a whole number like 0, 1, or 5.'
+              : undefined
+          }
           leftIcon={<Ionicons name="briefcase-outline" size={18} color={colors.ui.textMuted} />}
         />
         <Input
@@ -104,7 +123,9 @@ export function HandymanProfileStep({
           numberOfLines={4}
           value={bio}
           onChangeText={onBioChange}
-          error={bio.length > 0 && !profileValidation.bio ? 'Use at least 16 characters.' : undefined}
+          error={
+            bio.length > 0 && !profileValidation.bio ? 'Use at least 16 characters.' : undefined
+          }
           helperText={`${bio.trim().length}/16 characters`}
           leftIcon={<Ionicons name="create-outline" size={18} color={colors.ui.textMuted} />}
         />

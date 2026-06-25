@@ -13,23 +13,21 @@ export function Chart({ title, data, labels, type = 'bar', height = 200 }: Chart
   const max = Math.max(...data, 1);
 
   return (
-    <View className="bg-white rounded-xl p-3 border border-gray-100">
-      <Text className="text-sm font-semibold text-gray-900 mb-3">
-        {title}
-      </Text>
-      
+    <View className="rounded-xl border border-gray-100 bg-white p-3">
+      <Text className="mb-3 text-sm font-semibold text-gray-900">{title}</Text>
+
       <View style={{ height }} className="flex-row items-end justify-between pt-2">
         {data.map((val, index) => {
           const percentage = (val / max) * 100;
           return (
-            <View key={index} className="items-center flex-1">
+            <View key={index} className="flex-1 items-center">
               {/* Render Bar */}
-              <View 
-                style={{ height: `${percentage}%` }} 
-                className="w-3/5 bg-primary-500 rounded-t min-h-[4px]" 
+              <View
+                style={{ height: `${percentage}%` }}
+                className="bg-primary-500 min-h-[4px] w-3/5 rounded-t"
               />
               {/* Render Label */}
-              <Text className="text-[10px] text-gray-400 mt-2" numberOfLines={1}>
+              <Text className="mt-2 text-[10px] text-gray-400" numberOfLines={1}>
                 {labels[index]}
               </Text>
             </View>

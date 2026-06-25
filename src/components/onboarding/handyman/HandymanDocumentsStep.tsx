@@ -36,7 +36,9 @@ export function HandymanDocumentsStep({ uploads, onUpload }: DocumentsStepProps)
             <View className="flex-row items-start gap-3">
               <View
                 className="h-12 w-12 items-center justify-center rounded-2xl"
-                style={{ backgroundColor: isComplete ? colors.primary['50'] : colors.ui.background }}>
+                style={{
+                  backgroundColor: isComplete ? colors.primary['50'] : colors.ui.background,
+                }}>
                 <Ionicons
                   name={document.icon}
                   size={20}
@@ -54,7 +56,10 @@ export function HandymanDocumentsStep({ uploads, onUpload }: DocumentsStepProps)
                       {document.subtitle}
                     </Text>
                   </View>
-                  <Badge variant={isComplete ? 'success' : 'warning'} text={isComplete ? 'Ready' : 'Required'} />
+                  <Badge
+                    variant={isComplete ? 'success' : 'warning'}
+                    text={isComplete ? 'Ready' : 'Required'}
+                  />
                 </View>
 
                 <View className="mt-3 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-3">
@@ -62,20 +67,32 @@ export function HandymanDocumentsStep({ uploads, onUpload }: DocumentsStepProps)
                     <View className="gap-2">
                       <View className="flex-row items-center gap-3">
                         {isImage ? (
-                          <Image source={{ uri: upload.uri }} className="h-14 w-14 rounded-2xl" resizeMode="cover" />
+                          <Image
+                            source={{ uri: upload.uri }}
+                            className="h-14 w-14 rounded-2xl"
+                            resizeMode="cover"
+                          />
                         ) : (
                           <View
                             className="h-14 w-14 items-center justify-center rounded-2xl"
                             style={{ backgroundColor: colors.primary['100'] }}>
-                            <Ionicons name="document-text-outline" size={22} color={colors.primary['600']} />
+                            <Ionicons
+                              name="document-text-outline"
+                              size={22}
+                              color={colors.primary['600']}
+                            />
                           </View>
                         )}
                         <View className="flex-1">
-                          <Text className="text-[13px] font-semibold" style={{ color: colors.ui.text }}>
+                          <Text
+                            className="text-[13px] font-semibold"
+                            style={{ color: colors.ui.text }}>
                             {upload.fileName}
                           </Text>
                           <Text className="mt-1 text-[11px]" style={{ color: colors.ui.textMuted }}>
-                            {isComplete ? 'Preview ready for admin review.' : 'Uploading securely...'}
+                            {isComplete
+                              ? 'Preview ready for admin review.'
+                              : 'Uploading securely...'}
                           </Text>
                         </View>
                       </View>
@@ -84,7 +101,10 @@ export function HandymanDocumentsStep({ uploads, onUpload }: DocumentsStepProps)
                         <View className="h-2 overflow-hidden rounded-full bg-gray-200">
                           <View
                             className="h-full rounded-full"
-                            style={{ width: `${upload.progress}%`, backgroundColor: colors.primary['600'] }}
+                            style={{
+                              width: `${upload.progress}%`,
+                              backgroundColor: colors.primary['600'],
+                            }}
                           />
                         </View>
                         <Text className="text-[11px]" style={{ color: colors.ui.textMuted }}>
@@ -115,7 +135,9 @@ export function HandymanDocumentsStep({ uploads, onUpload }: DocumentsStepProps)
                     size={16}
                     color={colors.primary['600']}
                   />
-                  <Text className="text-[12px] font-semibold" style={{ color: colors.primary['600'] }}>
+                  <Text
+                    className="text-[12px] font-semibold"
+                    style={{ color: colors.primary['600'] }}>
                     {isComplete ? 'Replace file' : 'Choose file'}
                   </Text>
                 </Pressable>

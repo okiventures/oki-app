@@ -47,7 +47,7 @@ export const DOCUMENT_OPTIONS = [
   {
     id: 'government-id',
     title: 'Government ID',
-    subtitle: 'Front of UMID, passport, or driver\'s license.',
+    subtitle: "Front of UMID, passport, or driver's license.",
     icon: 'card-outline',
   },
   {
