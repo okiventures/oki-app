@@ -202,10 +202,31 @@
 
 ### **Week 6 · June 11 – June 17 — Scaffolding & Auth**
 
-- [ ] Initialize mobile (Client Handyman) and web (Admin) projects
-  - [ ] Verify Expo project structure is production-ready (EAS Build configured, app.json finalized)
-  - [ ] Scaffold backend project: Node.js (Fastify) or Supabase Edge Functions per ADR
-  - [ ] Configure monorepo or separate repos with shared types package if applicable
+- [x] ~~Initialize mobile (Client Handyman) and web (Admin) projects~~
+  - [x] ~~Verify Expo project structure is production-ready (EAS Build configured, app.json finalized)~~
+  - [x] ~~Configure monorepo with pnpm workspaces: `packages/shared` + `apps/admin` — `pnpm-workspace.yaml`, `packages/shared/`, `apps/admin/`~~
+  - [x] ~~Scaffold shared types package (`@oki/shared`) with theme constants, TypeScript types, and utility functions~~ — `packages/shared/constants/theme.ts`, `packages/shared/types/index.ts`, `packages/shared/utils/index.ts`
+  - [x] ~~Scaffold Admin web app (Next.js 15 + TypeScript + Tailwind CSS + lucide-react)~~ — `apps/admin/`
+- [x] ~~Admin app pages and navigation~~
+  - [x] ~~Dashboard (`page.tsx`): KPI stat cards (total bookings, active handymen, revenue, pending KYC), bar chart (recharts), pending transactions table, activity feed~~
+  - [x] ~~Users (`users/page.tsx`): user search bar, user list table with role/status badges, KYC status indicators~~
+  - [x] ~~Bookings (`bookings/page.tsx`): search + status filter chips (Pending/Accepted/In Transit/Arrived/Work Started/Completed/Paid/Cancelled), expandable booking cards~~
+  - [x] ~~Transactions (`transactions/page.tsx`): search + payment status filter (Authorized/Captured/Failed/Refunded), transaction list with amounts and booking references~~
+  - [x] ~~Disputes (`disputes/page.tsx`): search + dispute status filter (Open/Under Review/Resolved), dispute list with booking context~~
+- [x] ~~Admin UI components~~
+  - [x] ~~`BottomNav.tsx`: fixed bottom tab bar with LayoutDashboard, Users, Calendar (bookings), CreditCard (payments), AlertTriangle (disputes) — lucide-react icons with theme-aware active/inactive colors~~
+  - [x] ~~`Navbar.tsx`: top bar with page title, search trigger, notification bell, and user avatar dropdown~~
+  - [x] ~~`Badge.tsx`: semantic color-mapped status badges for booking states, KYC status, payment status, dispute status~~
+  - [x] ~~`Card.tsx`: reusable stat card with icon, label, value, trend indicator, and loading skeleton~~
+  - [x] ~~`Chart.tsx`: recharts-based bar chart component for booking volume analytics~~
+  - [x] ~~`SearchBar.tsx`: debounced search input with magnifying glass icon and clear button~~
+- [x] ~~Admin mock data~~
+  - [x] ~~Dashboard KPIs, chart data, pending transactions, and activity feed entries — `apps/admin/app/data/mockData.ts`~~
+  - [x] ~~Mock data structures match planned API response shapes for all admin entities~~
+- [x] ~~Path alias and theming integration~~
+  - [x] ~~ThemeContext wired into Admin app via relative import from root `src/context/ThemeContext`~~
+  - [x] ~~Admin tsconfig paths: `@/*` → `./*`, `@oki/shared` → `../../packages/shared`~~
+- [ ] Scaffold backend project: Node.js (Fastify) or Supabase Edge Functions per ADR
 - [x] ~~Set up CI/CD, linting, environment configs~~
   - [x] ~~GitHub Actions: lint + type-check + test pipeline on every PR; block merge on failure~~ — `.github/workflows/ci.yml`, branch protection required in repo settings
   - [x] ~~EAS Build workflow for dev/staging/prod build profiles~~ — `eas.json` (dev/staging/production)
@@ -223,6 +244,10 @@
 
 ### [PASS] Week 6 Success Criteria
 
+- [x] Admin web app runs via `pnpm run admin` on localhost with all 5 tabs navigable
+- [x] BottomNav renders correct active/inactive state with theme-aware colors (red-600 active, gray-400 inactive) and visible outline icons
+- [x] All admin pages render mock data without layout overflow or broken imports
+- [x] Monorepo structure clean: `packages/shared` builds, `apps/admin` compiles, path aliases resolve
 - CI pipeline runs end-to-end on a sample PR and correctly blocks on lint/type errors
 - A new user can sign up, verify via OTP, and receive a valid JWT in under 60 seconds
 - JWT refresh works silently without requiring re-login
