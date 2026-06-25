@@ -1,10 +1,11 @@
+import type { ReactNode } from "react";
 import "./globals.css";
 import BottomNav from "./components/BottomNav";
 
 export default function AdminLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
   return (
     <html lang="en">

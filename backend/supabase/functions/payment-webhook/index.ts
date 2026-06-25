@@ -15,9 +15,12 @@ serve(async (req: Request) => {
   }
 
   const webhookSecret = Deno.env.get('PAYMENT_WEBHOOK_SECRET');
-  const signature = req.headers.get('x-webhook-signature');
+  if (!webhookSecret) {
+    return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: 'Webhook secret not configured' }), { status: 500 });
+  }
 
-  if (webhookSecret && signature !== webhookSecret) {
+  const signature = req.headers.get('x-webhook-signature');
+  if (signature !== webhookSecret) {
     return new Response(JSON.stringify({ error: 'FORBIDDEN', message: 'Invalid signature' }), { status: 403 });
   }
 
@@ -30,11 +33,15 @@ serve(async (req: Request) => {
 
   switch (payload.event) {
     case 'payment_intent.succeeded': {
-      const { data: booking } = await supabase
+      const { data: booking, error: fetchError } = await supabase
         .from('bookings')
         .select('*')
         .eq('id', payload.bookingId)
         .single();
+
+      if (fetchError) {
+        return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: fetchError.message }), { status: 500 });
+      }
 
       if (!booking) {
         return new Response(JSON.stringify({ error: 'NOT_FOUND', message: 'Booking not found' }), { status: 404 });
@@ -62,7 +69,7 @@ serve(async (req: Request) => {
         return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: updateError.message }), { status: 500 });
       }
 
-      await supabase.from('payments').insert({
+      const { error: paymentInsertError } = await supabase.from('payments').insert({
         booking_id: payload.bookingId,
         payment_intent_id: payload.paymentIntentId,
         amount: payload.amount,
@@ -72,7 +79,11 @@ serve(async (req: Request) => {
         captured_at: new Date().toISOString(),
       });
 
-      await supabase.from('wallet_transactions').insert({
+      if (paymentInsertError) {
+        return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: paymentInsertError.message }), { status: 500 });
+      }
+
+      const { error: walletInsertError } = await supabase.from('wallet_transactions').insert({
         handyman_id: booking.handyman_id,
         booking_id: payload.bookingId,
         type: 'CREDIT',
@@ -80,7 +91,11 @@ serve(async (req: Request) => {
         description: `Payment for booking ${payload.bookingId}`,
       });
 
-      await supabase.from('booking_events').insert({
+      if (walletInsertError) {
+        return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: walletInsertError.message }), { status: 500 });
+      }
+
+      const { error: eventInsertError } = await supabase.from('booking_events').insert({
         booking_id: payload.bookingId,
         actor_id: null,
         from_status: 'COMPLETED',
@@ -88,16 +103,24 @@ serve(async (req: Request) => {
         metadata: { action: 'CAPTURE_PAYMENT', payment_intent_id: payload.paymentIntentId, platform_fee: platformFee },
       });
 
+      if (eventInsertError) {
+        return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: eventInsertError.message }), { status: 500 });
+      }
+
       break;
     }
 
     case 'payment_intent.payment_failed': {
-      await supabase.from('payments').insert({
+      const { error: failedPaymentError } = await supabase.from('payments').insert({
         booking_id: payload.bookingId,
         payment_intent_id: payload.paymentIntentId,
         amount: payload.amount,
         status: 'FAILED',
       });
+
+      if (failedPaymentError) {
+        return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: failedPaymentError.message }), { status: 500 });
+      }
 
       break;
     }

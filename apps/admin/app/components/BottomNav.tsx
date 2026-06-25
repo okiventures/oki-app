@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTheme } from "../../../../src/context/ThemeContext";
 import {
   LayoutDashboard,
   Users,
@@ -20,7 +19,6 @@ const tabs = [
 ];
 
 export default function BottomNav() {
-  const { colors } = useTheme();
   const pathname = usePathname();
 
   const isActive = (href: string) => {
@@ -45,11 +43,7 @@ export default function BottomNav() {
               strokeWidth={2}
             />
             <span
-              className="mt-1 text-[11px]"
-              style={{
-                color: active ? colors.primary['600'] : "#9CA3AF",
-                fontWeight: active ? 600 : 400,
-              }}
+              className={`mt-1 text-[11px] ${active ? "text-red-600 font-semibold" : "text-gray-400"}`}
             >
               {tab.label}
             </span>
