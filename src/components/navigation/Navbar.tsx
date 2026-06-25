@@ -1,0 +1,41 @@
+import React from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BackButton } from './BackButton';
+
+interface NavbarProps {
+  title: string;
+  showBack?: boolean;
+  rightIcon?: React.ReactNode;
+  onRightPress?: () => void;
+  transparent?: boolean;
+}
+
+export function Navbar({
+  title,
+  showBack = false,
+  rightIcon,
+  onRightPress,
+  transparent = false,
+}: NavbarProps) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View
+      style={{ paddingTop: insets.top + 12 }}
+      className={`flex-row items-center px-4 pb-4 ${transparent ? 'bg-transparent' : 'border-b border-gray-200 bg-white'}`}>
+      {showBack ? <BackButton /> : <View className="w-[30px]" />}
+      <Text className="font-heading flex-1 text-center text-[17px] text-gray-900">{title}</Text>
+      {rightIcon && onRightPress ? (
+        <TouchableOpacity
+          onPress={onRightPress}
+          accessibilityLabel="Navbar action"
+          className="w-[30px] items-end">
+          {rightIcon}
+        </TouchableOpacity>
+      ) : (
+        <View className="w-[30px]" />
+      )}
+    </View>
+  );
+}

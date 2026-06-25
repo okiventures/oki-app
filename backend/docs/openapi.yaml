@@ -1,0 +1,1790 @@
+openapi: 3.0.3
+info:
+  title: Oki Handyman Marketplace API
+  version: 0.1.0-draft
+  description: |
+    Phase 2 API contract for the Oki handyman marketplace.
+
+    **Auth:** Supabase Auth issues JWT access tokens. Send `Authorization: Bearer <access_token>` on protected routes.
+
+    **Enum casing:** Request/response bodies use `SCREAMING_SNAKE_CASE` for database-backed enums
+    (e.g. `PENDING`, `ON_DEMAND`). Mobile clients may map to PascalCase locally.
+
+    **Related docs:**
+    - [Booking state machine](./booking-state-machine.md)
+    - [Database architecture](./database-architecture.md)
+
+servers:
+  - url: https://api.oki.app/v1
+    description: Production
+  - url: https://staging-api.oki.app/v1
+    description: Staging
+  - url: http://localhost:3000/v1
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Signup, login, token refresh, password reset (Supabase Auth)
+  - name: Profiles
+    description: Client and handyman profile CRUD
+  - name: KYC
+    description: Handyman identity document upload
+  - name: Handymen
+    description: Handyman search and availability
+  - name: Bookings
+    description: Booking lifecycle and state machine
+  - name: Reviews
+    description: Post-job ratings and moderation
+  - name: Wallet
+    description: Handyman earnings ledger and payout requests
+  - name: Admin
+    description: KYC review, user management, payout approval (admin role required)
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ---------------------------------------------------------------------------
+  # Auth
+  # ---------------------------------------------------------------------------
+  /auth/signup:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      description: |
+        Creates a Supabase Auth user and application profile row in `users`.
+        Email or phone OTP verification may be required before the account is fully active.
+      security: []
+      operationId: authSignup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+      responses:
+        '201':
+          description: Account created; session tokens returned (or OTP challenge pending)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email or phone already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: EMAIL_ALREADY_EXISTS
+                message: An account with this email already exists
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate with email/phone and password
+      security: []
+      operationId: authLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: INVALID_CREDENTIALS
+                message: Email or password is incorrect
+        '403':
+          description: Account suspended or banned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: ACCOUNT_SUSPENDED
+                message: Your account has been suspended
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotate access token using refresh token
+      security: []
+      operationId: authRefresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: New access (and optionally refresh) token pair
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Refresh token invalid or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: INVALID_REFRESH_TOKEN
+                message: Refresh token is invalid or has expired
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Request or complete a password reset
+      security: []
+      operationId: authResetPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/ResetPasswordRequestEmail'
+                - $ref: '#/components/schemas/ResetPasswordRequestConfirm'
+      responses:
+        '200':
+          description: Reset email sent, or password updated successfully
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/MessageResponse'
+                  - $ref: '#/components/schemas/AuthSessionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Email not found (may return 200 in production to prevent enumeration)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ---------------------------------------------------------------------------
+  # Profiles
+  # ---------------------------------------------------------------------------
+  /profiles/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ProfileId'
+    get:
+      tags: [Profiles]
+      summary: Get a user profile
+      description: |
+        Returns the caller's own full profile (client or handyman extension).
+        RLS restricts reads to the authenticated user's own `id`.
+      operationId: getProfile
+      responses:
+        '200':
+          description: Profile found
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ClientProfile'
+                  - $ref: '#/components/schemas/HandymanProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Profiles]
+      summary: Update own profile
+      description: Partial update of profile fields. Avatar upload uses multipart or a separate storage signed-URL flow.
+      operationId: updateProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ClientProfile'
+                  - $ref: '#/components/schemas/HandymanProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ---------------------------------------------------------------------------
+  # KYC
+  # ---------------------------------------------------------------------------
+  /kyc/upload:
+    post:
+      tags: [KYC]
+      summary: Upload a KYC document
+      description: |
+        Handyman-only. Accepts JPEG, PNG, or PDF up to 5 MB.
+        Files are stored in a private Supabase Storage bucket; URLs in responses are short-lived signed URLs.
+      operationId: uploadKycDocument
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/KycUploadRequest'
+      responses:
+        '201':
+          description: Document uploaded; KYC submission record created or updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KycSubmission'
+        '400':
+          description: Invalid file type or size
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidType:
+                  value:
+                    error: INVALID_FILE_TYPE
+                    message: Only JPEG, PNG, and PDF files are accepted
+                fileTooLarge:
+                  value:
+                    error: FILE_TOO_LARGE
+                    message: File exceeds the 5 MB limit
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Caller is not a handyman
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ---------------------------------------------------------------------------
+  # Handymen — search & availability
+  # ---------------------------------------------------------------------------
+  /handymen/search:
+    get:
+      tags: [Handymen]
+      summary: Search online handymen near a location
+      description: |
+        PostGIS `ST_DWithin` radius query on `handymen.location`.
+        Returns only `is_online = true` handymen with `kyc_status = APPROVED` offering the requested category.
+        Primary sort: distance ascending; secondary sort: `trust_score` descending.
+      operationId: searchHandymen
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+            minimum: -90
+            maximum: 90
+          example: 14.5995
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+            minimum: -180
+            maximum: 180
+          example: 120.9842
+        - name: radius
+          in: query
+          required: false
+          description: Search radius in kilometers
+          schema:
+            type: number
+            format: double
+            minimum: 0.1
+            default: 10
+          example: 5
+        - name: category
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ServiceCategory'
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Paginated search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HandymanSearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /handymen/{id}/status:
+    parameters:
+      - $ref: '#/components/parameters/HandymanId'
+    patch:
+      tags: [Handymen]
+      summary: Toggle online/offline availability
+      description: Handyman-only; caller must match `{id}`. Updates `is_online` and `last_seen_at`.
+      operationId: updateHandymanStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HandymanStatusRequest'
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HandymanStatusResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ---------------------------------------------------------------------------
+  # Bookings
+  # ---------------------------------------------------------------------------
+  /bookings:
+    post:
+      tags: [Bookings]
+      summary: Create a booking
+      description: |
+        Client-only. Creates a booking in `PENDING` state, authorizes payment hold,
+        and broadcasts to matching online handymen.
+        On payment authorization failure the booking is not created (rolled back).
+      operationId: createBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '201':
+          description: Booking created in PENDING state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Scheduling conflict or double-booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: SCHEDULING_CONFLICT
+                message: The selected handyman is not available at this time
+        '422':
+          description: Validation failed (e.g. scheduled_at in the past)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '402':
+          description: Payment authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: PAYMENT_AUTHORIZATION_FAILED
+                message: Unable to authorize payment for this booking
+
+  /bookings/{id}:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    get:
+      tags: [Bookings]
+      summary: Get booking details
+      description: Client sees own bookings; handyman sees assigned bookings; admin sees all.
+      operationId: getBooking
+      responses:
+        '200':
+          description: Booking detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Bookings]
+      summary: Cancel or delete a booking
+      description: |
+        Client may cancel a `PENDING` booking (equivalent to `PATCH .../state` with `CANCEL`).
+        Returns `422` if booking is past `PENDING`.
+      operationId: deleteBooking
+      responses:
+        '200':
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidStateTransition'
+
+  /bookings/{id}/state:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    patch:
+      tags: [Bookings]
+      summary: Transition booking state
+      description: |
+        All status changes MUST go through this endpoint. See [booking state machine](./booking-state-machine.md).
+        `REJECT` does not change status; booking stays `PENDING` for re-broadcast.
+      operationId: transitionBookingState
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingStateTransitionRequest'
+      responses:
+        '200':
+          description: State transitioned (or rejection recorded for REJECT action)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingStateTransitionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Wrong actor or role mismatch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvalidStateTransitionError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidStateTransition'
+
+  /bookings/{id}/photos:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    post:
+      tags: [Bookings]
+      summary: Upload before/after job photos
+      description: |
+        Handyman-only (assigned to booking). Photos must be uploaded before
+        `START_WORK` (before photo) and `COMPLETE` (after photo) state actions.
+      operationId: uploadBookingPhoto
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [type, file]
+              properties:
+                type:
+                  type: string
+                  enum: [BEFORE, AFTER]
+                file:
+                  type: string
+                  format: binary
+                  description: JPEG or PNG, max 10 MB
+      responses:
+        '201':
+          description: Photo uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [photo_url, type]
+                properties:
+                  photo_url:
+                    type: string
+                    format: uri
+                  type:
+                    type: string
+                    enum: [BEFORE, AFTER]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ---------------------------------------------------------------------------
+  # Reviews
+  # ---------------------------------------------------------------------------
+  /reviews:
+    post:
+      tags: [Reviews]
+      summary: Submit a post-job review
+      description: |
+        Allowed after booking reaches `PAID`. One review per `(booking_id, reviewer_id)` pair.
+        Client rates handyman; handyman rates client.
+      operationId: createReview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReviewRequest'
+      responses:
+        '201':
+          description: Review created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Booking not completed/paid, or caller not a party to the booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Duplicate review for this booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: DUPLICATE_REVIEW
+                message: You have already reviewed this booking
+
+  /reviews/{id}/flag:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Review ID
+    post:
+      tags: [Reviews]
+      summary: Flag a review for moderation
+      description: Any authenticated user may flag a review. Flagged reviews are hidden pending admin review.
+      operationId: flagReview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlagReviewRequest'
+      responses:
+        '200':
+          description: Review flagged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ---------------------------------------------------------------------------
+  # Wallet & payouts
+  # ---------------------------------------------------------------------------
+  /wallet:
+    get:
+      tags: [Wallet]
+      summary: Get handyman wallet summary and transaction history
+      description: Handyman-only. Returns available/pending balances and paginated ledger entries.
+      operationId: getWallet
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Wallet summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /wallet/payout:
+    post:
+      tags: [Wallet]
+      summary: Request a payout
+      description: |
+        Handyman-only. Validates `available_balance >= minimum_payout_threshold`.
+        Creates a payout record in `PENDING` status for admin approval.
+      operationId: requestPayout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayoutRequest'
+      responses:
+        '201':
+          description: Payout request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutRecord'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Below minimum payout threshold or insufficient balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: BELOW_PAYOUT_THRESHOLD
+                message: Available balance is below the minimum payout threshold
+
+  # ---------------------------------------------------------------------------
+  # Admin
+  # ---------------------------------------------------------------------------
+  /admin/handymen/kyc:
+    get:
+      tags: [Admin]
+      summary: List pending KYC submissions
+      description: Admin-only. Paginated queue of handymen awaiting KYC review.
+      operationId: listPendingKyc
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/KycStatus'
+            default: PENDING
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: KYC queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KycQueueResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/handymen/{id}/kyc:
+    parameters:
+      - $ref: '#/components/parameters/HandymanId'
+    patch:
+      tags: [Admin]
+      summary: Approve or reject handyman KYC
+      operationId: adminReviewKyc
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminKycActionRequest'
+      responses:
+        '200':
+          description: KYC status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KycSubmission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/users/{id}/status:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: User ID
+    patch:
+      tags: [Admin]
+      summary: Suspend or reinstate a user
+      operationId: adminUpdateUserStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUserStatusRequest'
+      responses:
+        '200':
+          description: User status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/payouts:
+    get:
+      tags: [Admin]
+      summary: List pending payout requests
+      operationId: listPendingPayouts
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/PayoutStatus'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        '200':
+          description: Payout queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutQueueResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/payouts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags: [Admin]
+      summary: Approve or decline a payout request
+      operationId: adminReviewPayout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminPayoutActionRequest'
+      responses:
+        '200':
+          description: Payout status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutRecord'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+# =============================================================================
+# Components
+# =============================================================================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase Auth access token. Example header — `Authorization: Bearer eyJhbG...`
+
+  parameters:
+    BookingId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ProfileId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Must match authenticated user's ID (RLS)
+    HandymanId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Malformed request or validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: VALIDATION_ERROR
+            message: Request body failed validation
+            details:
+              field: email
+              issue: must be a valid email address
+    Unauthorized:
+      description: Missing or invalid JWT
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: UNAUTHORIZED
+            message: Authentication required
+    Forbidden:
+      description: Authenticated but not permitted (role mismatch, RLS denial, suspended account)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: FORBIDDEN
+            message: You do not have permission to perform this action
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: NOT_FOUND
+            message: Resource not found
+    InvalidStateTransition:
+      description: Booking FSM guard or transition failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/InvalidStateTransitionError'
+
+  schemas:
+    # --- Primitives & enums ---
+    Uuid:
+      type: string
+      format: uuid
+
+    DateTime:
+      type: string
+      format: date-time
+
+    UserType:
+      type: string
+      enum: [client, handyman, admin]
+
+    UserStatus:
+      type: string
+      enum: [ACTIVE, SUSPENDED, BANNED]
+
+    ServiceCategory:
+      type: string
+      enum:
+        - Plumbing
+        - Electrical
+        - Carpentry
+        - Cleaning
+        - Painting
+        - HVAC
+        - Roofing
+        - Landscaping
+        - Appliance Repair
+        - General Handyman
+
+    BookingStatus:
+      type: string
+      enum:
+        - PENDING
+        - ACCEPTED
+        - IN_TRANSIT
+        - ARRIVED
+        - WORK_STARTED
+        - COMPLETED
+        - PAID
+        - CANCELLED
+
+    BookingType:
+      type: string
+      enum: [ON_DEMAND, SCHEDULED]
+
+    BookingAction:
+      type: string
+      enum:
+        - ACCEPT
+        - REJECT
+        - CANCEL
+        - START_TRANSIT
+        - MARK_ARRIVED
+        - START_WORK
+        - COMPLETE
+
+    KycStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED, RESUBMIT]
+
+    PayoutStatus:
+      type: string
+      enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+
+    PaymentStatus:
+      type: string
+      enum: [AUTHORIZED, CAPTURED, FAILED, REFUNDED]
+
+    WalletTxType:
+      type: string
+      enum: [CREDIT, DEBIT]
+
+    GeoPoint:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat:
+          type: number
+          format: double
+        lng:
+          type: number
+          format: double
+
+    # --- Errors ---
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          description: Machine-readable error code
+        message:
+          type: string
+          description: Human-readable summary
+        details:
+          type: object
+          additionalProperties: true
+
+    InvalidStateTransitionError:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          required: [from_status, to_status, action, reason_code]
+          properties:
+            error:
+              type: string
+              enum: [INVALID_STATE_TRANSITION]
+            from_status:
+              $ref: '#/components/schemas/BookingStatus'
+            to_status:
+              $ref: '#/components/schemas/BookingStatus'
+            action:
+              $ref: '#/components/schemas/BookingAction'
+            reason_code:
+              type: string
+              enum:
+                - TRANSITION_NOT_ALLOWED
+                - GUARD_NOT_SATISFIED
+                - WRONG_ACTOR
+                - BOOKING_TERMINAL
+                - PAYMENT_NOT_CAPTURED
+
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    # --- Auth ---
+    SignupRequest:
+      type: object
+      required: [email, password, user_type, full_name]
+      properties:
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          description: E.164 format, optional if email provided
+        password:
+          type: string
+          format: password
+          minLength: 8
+        user_type:
+          type: string
+          enum: [client, handyman]
+        full_name:
+          type: string
+          minLength: 1
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        password:
+          type: string
+          format: password
+      oneOf:
+        - required: [email, password]
+        - required: [phone, password]
+
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+
+    ResetPasswordRequestEmail:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    ResetPasswordRequestConfirm:
+      type: object
+      required: [token, new_password]
+      properties:
+        token:
+          type: string
+          description: Token from password-reset email deep link
+        new_password:
+          type: string
+          format: password
+          minLength: 8
+
+    AuthSessionResponse:
+      type: object
+      required: [access_token, refresh_token, expires_in, user]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          description: Access token TTL in seconds
+        token_type:
+          type: string
+          default: bearer
+        user:
+          $ref: '#/components/schemas/User'
+
+    # --- Users & profiles ---
+    User:
+      type: object
+      required: [id, full_name, email, user_type, user_status, created_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        photo_url:
+          type: string
+          format: uri
+        user_type:
+          $ref: '#/components/schemas/UserType'
+        user_status:
+          $ref: '#/components/schemas/UserStatus'
+        created_at:
+          $ref: '#/components/schemas/DateTime'
+        last_active_at:
+          $ref: '#/components/schemas/DateTime'
+
+    SavedAddress:
+      type: object
+      required: [id, label, address_text, latitude, longitude, is_default]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        label:
+          type: string
+        address_text:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        is_default:
+          type: boolean
+
+    ClientProfile:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            saved_addresses:
+              type: array
+              items:
+                $ref: '#/components/schemas/SavedAddress'
+
+    HandymanProfile:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            bio:
+              type: string
+            service_categories:
+              type: array
+              items:
+                $ref: '#/components/schemas/ServiceCategory'
+            hourly_rate:
+              type: number
+              format: double
+            years_experience:
+              type: integer
+            trust_score:
+              type: number
+              format: double
+              minimum: 1
+              maximum: 5
+            review_count:
+              type: integer
+            jobs_completed:
+              type: integer
+            is_online:
+              type: boolean
+            kyc_status:
+              $ref: '#/components/schemas/KycStatus'
+            wallet_balance:
+              type: number
+              format: double
+            certifications:
+              type: array
+              items:
+                type: string
+
+    ProfileUpdateRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+        phone:
+          type: string
+        photo_url:
+          type: string
+          format: uri
+        bio:
+          type: string
+          description: Handyman only
+        hourly_rate:
+          type: number
+          format: double
+          description: Handyman only
+        service_categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceCategory'
+          description: Handyman only
+        years_experience:
+          type: integer
+          description: Handyman only
+        certifications:
+          type: array
+          items:
+            type: string
+          description: Handyman only
+
+    # --- KYC ---
+    KycDocumentType:
+      type: string
+      enum: [GOVERNMENT_ID, SELFIE, PROOF_OF_ADDRESS]
+
+    KycUploadRequest:
+      type: object
+      required: [document_type, file]
+      properties:
+        document_type:
+          $ref: '#/components/schemas/KycDocumentType'
+        file:
+          type: string
+          format: binary
+
+    KycSubmission:
+      type: object
+      required: [id, handyman_id, document_type, status, submitted_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        handyman_id:
+          $ref: '#/components/schemas/Uuid'
+        handyman_name:
+          type: string
+        document_type:
+          $ref: '#/components/schemas/KycDocumentType'
+        front_id_url:
+          type: string
+          format: uri
+          description: Short-lived signed URL
+        back_id_url:
+          type: string
+          format: uri
+        selfie_url:
+          type: string
+          format: uri
+        status:
+          $ref: '#/components/schemas/KycStatus'
+        rejection_reason:
+          type: string
+        submitted_at:
+          $ref: '#/components/schemas/DateTime'
+        reviewed_at:
+          $ref: '#/components/schemas/DateTime'
+
+    KycQueueResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/KycSubmission'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    AdminKycActionRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [APPROVE, REJECT]
+        reason:
+          type: string
+          description: Required when action is REJECT
+
+    # --- Handyman search ---
+    HandymanSearchResult:
+      type: object
+      required: [id, full_name, distance_m, service_categories, hourly_rate, trust_score, is_online]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        full_name:
+          type: string
+        photo_url:
+          type: string
+          format: uri
+        distance_m:
+          type: number
+          description: Distance from search origin in meters
+        service_categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceCategory'
+        hourly_rate:
+          type: number
+        trust_score:
+          type: number
+        review_count:
+          type: integer
+        is_online:
+          type: boolean
+
+    HandymanSearchResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/HandymanSearchResult'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    HandymanStatusRequest:
+      type: object
+      required: [is_online]
+      properties:
+        is_online:
+          type: boolean
+
+    HandymanStatusResponse:
+      type: object
+      required: [id, is_online, last_seen_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        is_online:
+          type: boolean
+        last_seen_at:
+          $ref: '#/components/schemas/DateTime'
+
+    # --- Bookings ---
+    CreateBookingRequest:
+      type: object
+      required: [service_category, booking_type, description, location, amount, payment_method_id]
+      properties:
+        service_category:
+          $ref: '#/components/schemas/ServiceCategory'
+        booking_type:
+          $ref: '#/components/schemas/BookingType'
+        description:
+          type: string
+          minLength: 1
+        address_text:
+          type: string
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+        amount:
+          type: number
+          format: double
+          minimum: 0
+        scheduled_at:
+          $ref: '#/components/schemas/DateTime'
+          description: Required when booking_type is SCHEDULED; must be ≥ 2 hours in the future
+        handyman_id:
+          $ref: '#/components/schemas/Uuid'
+          description: Optional for scheduled bookings with a pre-selected handyman
+        payment_method_id:
+          type: string
+          description: Client payment method reference for authorization hold
+        photos:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Optional job reference photos
+
+    Booking:
+      type: object
+      required:
+        - id
+        - client_id
+        - service_category
+        - booking_type
+        - status
+        - description
+        - address_text
+        - location
+        - amount
+        - platform_fee
+        - net_amount
+        - created_at
+        - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        client_id:
+          $ref: '#/components/schemas/Uuid'
+        client_name:
+          type: string
+        handyman_id:
+          $ref: '#/components/schemas/Uuid'
+        handyman_name:
+          type: string
+        service_category:
+          $ref: '#/components/schemas/ServiceCategory'
+        booking_type:
+          $ref: '#/components/schemas/BookingType'
+        status:
+          $ref: '#/components/schemas/BookingStatus'
+        description:
+          type: string
+        address_text:
+          type: string
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+        amount:
+          type: number
+        platform_fee:
+          type: number
+        net_amount:
+          type: number
+        scheduled_at:
+          $ref: '#/components/schemas/DateTime'
+        request_expires_at:
+          $ref: '#/components/schemas/DateTime'
+        before_photo_url:
+          type: string
+          format: uri
+        after_photo_url:
+          type: string
+          format: uri
+        photos:
+          type: array
+          items:
+            type: string
+            format: uri
+        notes:
+          type: string
+        created_at:
+          $ref: '#/components/schemas/DateTime'
+        updated_at:
+          $ref: '#/components/schemas/DateTime'
+
+    PaymentSummary:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        amount_authorized:
+          type: number
+        amount_captured:
+          type: number
+        currency:
+          type: string
+          default: PHP
+
+    BookingEvent:
+      type: object
+      required: [id, booking_id, to_status, created_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        booking_id:
+          $ref: '#/components/schemas/Uuid'
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        from_status:
+          $ref: '#/components/schemas/BookingStatus'
+        to_status:
+          $ref: '#/components/schemas/BookingStatus'
+        metadata:
+          type: object
+          additionalProperties: true
+        created_at:
+          $ref: '#/components/schemas/DateTime'
+
+    BookingDetailResponse:
+      type: object
+      required: [booking]
+      properties:
+        booking:
+          $ref: '#/components/schemas/Booking'
+        payment:
+          $ref: '#/components/schemas/PaymentSummary'
+        latest_event:
+          $ref: '#/components/schemas/BookingEvent'
+
+    BookingStateTransitionRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          $ref: '#/components/schemas/BookingAction'
+        metadata:
+          type: object
+          properties:
+            reason:
+              type: string
+            location:
+              $ref: '#/components/schemas/GeoPoint'
+
+    BookingStateTransitionResponse:
+      type: object
+      required: [booking, event]
+      properties:
+        booking:
+          $ref: '#/components/schemas/Booking'
+        event:
+          $ref: '#/components/schemas/BookingEvent'
+
+    # --- Reviews ---
+    CreateReviewRequest:
+      type: object
+      required: [booking_id, reviewee_id, rating]
+      properties:
+        booking_id:
+          $ref: '#/components/schemas/Uuid'
+        reviewee_id:
+          $ref: '#/components/schemas/Uuid'
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+        photos:
+          type: array
+          items:
+            type: string
+            format: uri
+
+    Review:
+      type: object
+      required: [id, booking_id, reviewer_id, reviewee_id, rating, created_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        booking_id:
+          $ref: '#/components/schemas/Uuid'
+        reviewer_id:
+          $ref: '#/components/schemas/Uuid'
+        reviewer_name:
+          type: string
+        reviewer_photo_url:
+          type: string
+          format: uri
+        reviewee_id:
+          $ref: '#/components/schemas/Uuid'
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+        photos:
+          type: array
+          items:
+            type: string
+            format: uri
+        created_at:
+          $ref: '#/components/schemas/DateTime'
+
+    FlagReviewRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+
+    # --- Wallet ---
+    WalletTransaction:
+      type: object
+      required: [id, tx_type, amount, description, created_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        booking_id:
+          $ref: '#/components/schemas/Uuid'
+        booking_reference:
+          type: string
+        tx_type:
+          $ref: '#/components/schemas/WalletTxType'
+        amount:
+          type: number
+        balance_after:
+          type: number
+        description:
+          type: string
+        created_at:
+          $ref: '#/components/schemas/DateTime'
+
+    WalletResponse:
+      type: object
+      required:
+        - available_balance
+        - pending_balance
+        - minimum_payout_threshold
+        - transactions
+        - pagination
+      properties:
+        available_balance:
+          type: number
+        pending_balance:
+          type: number
+        minimum_payout_threshold:
+          type: number
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/WalletTransaction'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    PayoutRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: number
+          format: double
+          minimum: 0
+          description: Must not exceed available_balance
+
+    PayoutRecord:
+      type: object
+      required: [id, handyman_id, amount, status, created_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        handyman_id:
+          $ref: '#/components/schemas/Uuid'
+        handyman_name:
+          type: string
+        amount:
+          type: number
+        status:
+          $ref: '#/components/schemas/PayoutStatus'
+        created_at:
+          $ref: '#/components/schemas/DateTime'
+        processed_at:
+          $ref: '#/components/schemas/DateTime'
+
+    PayoutQueueResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PayoutRecord'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    AdminPayoutActionRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [APPROVE, DECLINE]
+        reason:
+          type: string
+          description: Required when action is DECLINE
+
+    # --- Admin user management ---
+    AdminUserStatusRequest:
+      type: object
+      required: [action, reason]
+      properties:
+        action:
+          type: string
+          enum: [SUSPEND, REINSTATE]
+        reason:
+          type: string
+          minLength: 1
+
+    # --- Shared ---
+    Pagination:
+      type: object
+      required: [page, limit, total, total_pages]
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer

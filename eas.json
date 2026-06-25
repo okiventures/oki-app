@@ -1,0 +1,43 @@
+{
+  "cli": {
+    "version": ">= 19.0.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "APP_ENV": "development"
+      }
+    },
+    "staging": {
+      "distribution": "internal",
+      "env": {
+        "APP_ENV": "staging"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "buildConfiguration": "Release"
+      }
+    },
+    "production": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "env": {
+        "APP_ENV": "production"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "buildConfiguration": "Release"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

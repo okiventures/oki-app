@@ -3,22 +3,24 @@
     "name": "oki-app",
     "slug": "oki-app",
     "version": "1.0.0",
-
+    "scheme": "oki-app",
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
-
     "experiments": {
       "tsconfigPaths": true
     },
-
-    "plugins": [],
-
+    "plugins": ["expo-router", "expo-font", "expo-web-browser"],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/53647ae6-4e11-41a7-9f55-c58fd6b1b09d"
+    }
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-
-    "userInterfaceStyle": "light",
-
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -26,12 +28,24 @@
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.okiapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
+      },
+      "package": "com.anonymous.okiapp"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "53647ae6-4e11-41a7-9f55-c58fd6b1b09d"
       }
     }
   }
