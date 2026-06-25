@@ -200,7 +200,7 @@ export function BookingPaymentTab({
           <Text className="font-semibold" style={{ color: colors.ui.text }}>
             5% platform fee
           </Text>{' '}
-          is applied to support OKI&apos;s secure payment processing and worker vetting program.
+          is applied to support OKI{"'"}s secure payment processing and worker vetting program.
         </Text>
       </View>
 

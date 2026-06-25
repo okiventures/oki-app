@@ -22,9 +22,9 @@ npm test                 # jest (watch mode)
 
 ## Architecture
 
-- **Entry**: `App.tsx` (no Expo Router yet — single entry)
-- **Components**: `components/` (no `src/` dir yet)
-- **Imports**: bare `components/ScreenContent` (alias `@/*` → `src/*` defined but `src/` absent)
+- **Entry**: `expo-router/entry` (routes live under `app/`)
+- **Components**: `components/` and `src/components/`
+- **Imports**: `components/*` points to the root `components/` dir; TS alias `@/*` → `src/*`
 - **Styles**: NativeWind via `className` string literals; styles defined as `const styles = {}` at component bottom
 - **CSS**: `global.css` imports Tailwind v4 layers + NativeWind theme at app root
 
