@@ -1,0 +1,135 @@
+import React from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../context/ThemeContext';
+import { NEW_BOOKING_CATEGORIES } from './NewBookingConstants';
+
+interface CategoryStepProps {
+  selected: string | null;
+  selectedSubService: string | null;
+  onSelect: (id: string) => void;
+  onSelectSubService: (id: string) => void;
+}
+
+export function NewBookingCategoryStep({
+  selected,
+  selectedSubService,
+  onSelect,
+  onSelectSubService,
+}: CategoryStepProps) {
+  const { colors } = useTheme();
+
+  const activeCat = NEW_BOOKING_CATEGORIES.find((c) => c.id === selected) ?? null;
+
+  return (
+    <View className="flex-1">
+      <Text className="mb-1 text-[22px] font-bold" style={{ color: colors.ui.text }}>
+        What do you need help with?
+      </Text>
+      <Text className="mb-5 text-sm" style={{ color: colors.ui.textMuted }}>
+        Select a service category to get started.
+      </Text>
+
+      <View className="mb-5 flex-row flex-wrap gap-3">
+        {NEW_BOOKING_CATEGORIES.map((cat) => {
+          const isSelected = selected === cat.id;
+          return (
+            <TouchableOpacity
+              key={cat.id}
+              onPress={() => {
+                onSelect(cat.id);
+                onSelectSubService('');
+              }}
+              activeOpacity={0.8}
+              className="mb-1 overflow-hidden rounded-2xl"
+              style={{
+                width: '46%',
+                backgroundColor: cat.color,
+                shadowColor: cat.color,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: isSelected ? 0.3 : 0.1,
+                shadowRadius: 8,
+                elevation: isSelected ? 4 : 1,
+                transform: [{ scale: isSelected ? 1.04 : 1 }],
+              }}>
+              <Ionicons
+                name={cat.icon as never}
+                size={90}
+                color="#FFFFFF"
+                style={{ position: 'absolute', right: -20, top: -5, opacity: 0.15 }}
+              />
+              {isSelected && (
+                <View className="absolute top-3 right-3 z-10 h-6 w-6 items-center justify-center rounded-full bg-white">
+                  <Ionicons name="checkmark" size={16} color={cat.color} />
+                </View>
+              )}
+              <View className="min-h-[90px] justify-end p-4 pt-5">
+                <Text className="text-[17px] font-semibold text-white" numberOfLines={2}>
+                  {cat.name}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {activeCat && (
+        <View>
+          <View className="mb-3 flex-row items-center gap-2">
+            <View className="h-px flex-1" style={{ backgroundColor: colors.ui.border }} />
+            <Text className="text-xs font-bold" style={{ color: colors.ui.textMuted }}>
+              Choose a service
+            </Text>
+            <View className="h-px flex-1" style={{ backgroundColor: colors.ui.border }} />
+          </View>
+
+          <View className="gap-2">
+            {activeCat.subServices.map((svc) => {
+              const isSelected = selectedSubService === svc.id;
+              return (
+                <TouchableOpacity
+                  key={svc.id}
+                  onPress={() => onSelectSubService(svc.id)}
+                  activeOpacity={0.75}
+                  className="flex-row items-center rounded-2xl border px-4 py-3.5"
+                  style={{
+                    borderColor: isSelected ? activeCat.color : colors.ui.border,
+                    backgroundColor: isSelected ? activeCat.color + '12' : colors.ui.surface,
+                    borderWidth: isSelected ? 1.5 : 1,
+                  }}>
+                  <View className="flex-1">
+                    <Text
+                      className="text-[14px] font-semibold"
+                      style={{ color: isSelected ? activeCat.color : colors.ui.text }}>
+                      {svc.name}
+                    </Text>
+                    <Text className="mt-0.5 text-[12px]" style={{ color: colors.ui.textMuted }}>
+                      {svc.description}
+                    </Text>
+                  </View>
+                  <View className="ml-3 items-end">
+                    <Text
+                      className="text-[11px] font-medium"
+                      style={{ color: colors.ui.textMuted }}>
+                      Starts at
+                    </Text>
+                    <Text
+                      className="text-[15px] font-bold"
+                      style={{ color: isSelected ? activeCat.color : colors.ui.text }}>
+                      ₱{svc.startingPrice}
+                    </Text>
+                  </View>
+                  {isSelected && (
+                    <View className="ml-3">
+                      <Ionicons name="checkmark-circle" size={20} color={activeCat.color} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}

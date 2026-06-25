@@ -2,6 +2,13 @@ node_modules/
 .expo/
 dist/
 npm-debug.*
+
+# Environment
+.env
+.env.development
+.env.staging
+.env.production
+.env.local
 *.jks
 *.p8
 *.p12
@@ -21,3 +28,6 @@ android
 
 # Temporary files created by Metro to check the health of the file watcher
 .metro-health-check*
+
+# guide files
+App_Development_Guide.md
