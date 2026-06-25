@@ -5,21 +5,16 @@ import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 
-interface BottomNavItem {
+interface NavItem {
   key: string;
   label: string;
-  icon: string;
-  activeIcon: string;
+  icon: string; // This will be the outline icon used for both states
   route: string;
 }
 
-interface BottomNavProps {
-  items: BottomNavItem[];
-}
-
-export function BottomNav({ items }: BottomNavProps) {
+export function BottomNav({ items }: { items: NavItem[] }) {
   const { colors } = useTheme();
-  const router = useRouter();
+  const { push } = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, 8);
@@ -56,7 +51,7 @@ export function BottomNav({ items }: BottomNavProps) {
         return (
           <TouchableOpacity
             key={item.key}
-            onPress={() => router.push(item.route as never)}
+            onPress={() => push(item.route as never)}
             accessibilityRole="tab"
             accessibilityLabel={item.label}
             accessibilityState={{ selected: isActive }}
@@ -67,13 +62,13 @@ export function BottomNav({ items }: BottomNavProps) {
               paddingBottom: 4,
             }}>
             <Ionicons
-              name={(isActive ? item.activeIcon : item.icon) as never}
+              name={item.icon as never}
               size={22}
-              color={isActive ? colors.primary['600'] : '#9CA3AF'}
+              color={isActive ? colors.primary['600'] : colors.ui.textLight}
             />
             <Text
               style={{
-                color: isActive ? colors.primary['600'] : '#9CA3AF',
+                color: isActive ? colors.primary['600'] : colors.ui.textLight,
                 fontSize: 12,
                 fontWeight: isActive ? '500' : '400',
                 marginTop: 3,

@@ -8,28 +8,24 @@ export default function HandymanLayout() {
       key: 'index',
       label: 'Dashboard',
       icon: 'grid-outline',
-      activeIcon: 'grid',
       route: '/(handyman)',
     },
     {
       key: 'requests',
       label: 'Requests',
       icon: 'notifications-outline',
-      activeIcon: 'notifications',
       route: '/(handyman)/requests',
     },
     {
       key: 'schedule',
       label: 'Schedule',
       icon: 'calendar-outline',
-      activeIcon: 'calendar',
       route: '/(handyman)/schedule',
     },
     {
       key: 'profile',
       label: 'Profile',
       icon: 'person-outline',
-      activeIcon: 'person',
       route: '/(handyman)/profile',
     },
   ];
