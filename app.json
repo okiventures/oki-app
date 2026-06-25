@@ -16,6 +16,12 @@
       "expo-font",
       "expo-web-browser"
     ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/${EXPO_PUBLIC_EAS_PROJECT_ID}"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
