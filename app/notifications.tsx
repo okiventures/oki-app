@@ -52,9 +52,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
 
   const handleMarkRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
   };
 
   const handleMarkAllRead = () => {
@@ -70,7 +68,7 @@ export default function NotificationsPage() {
       <View
         className="flex-1 overflow-hidden rounded-t-[32px]"
         style={{ backgroundColor: colors.ui.background, marginTop: -32 }}>
-        <View className="flex-1 mt-5">
+        <View className="mt-5 flex-1">
           <NotificationCenter
             notifications={notifications}
             onMarkRead={handleMarkRead}

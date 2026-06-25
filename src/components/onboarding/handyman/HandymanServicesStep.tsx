@@ -30,7 +30,8 @@ export function HandymanServicesStep({
           Services and pricing
         </Text>
         <Text className="mt-1 text-[12px]" style={{ color: colors.ui.textMuted }}>
-          Select every category you can handle and set your starting price so clients see the right expectations.
+          Select every category you can handle and set your starting price so clients see the right
+          expectations.
         </Text>
       </Card>
 
@@ -66,7 +67,10 @@ export function HandymanServicesStep({
                       {service.hint}
                     </Text>
                   </View>
-                  <Badge variant={selected ? 'success' : 'warning'} text={selected ? 'Selected' : 'Add'} />
+                  <Badge
+                    variant={selected ? 'success' : 'warning'}
+                    text={selected ? 'Selected' : 'Add'}
+                  />
                 </View>
               </View>
             </Pressable>
@@ -81,7 +85,9 @@ export function HandymanServicesStep({
                   value={enteredPrice}
                   onChangeText={(value) => onPriceChange(service.category, value)}
                   leftIcon={
-                    <Text style={{ color: colors.ui.textMuted }} className="text-[14px] font-semibold">
+                    <Text
+                      style={{ color: colors.ui.textMuted }}
+                      className="text-[14px] font-semibold">
                       ₱
                     </Text>
                   }

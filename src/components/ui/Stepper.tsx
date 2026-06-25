@@ -12,7 +12,7 @@ export function Stepper({ steps, currentStep, primaryColor, primaryLight }: Step
   const currentIdx = steps.indexOf(currentStep);
 
   return (
-    <View className="flex-row items-center px-1 my-3">
+    <View className="my-3 flex-row items-center px-1">
       {steps.map((step, idx) => {
         const isCompleted = idx < currentIdx;
         const isActive = idx === currentIdx;
@@ -53,10 +53,7 @@ export function Stepper({ steps, currentStep, primaryColor, primaryLight }: Step
             </View>
 
             {idx < steps.length - 1 && (
-              <View
-                className="mb-3.5 flex-1"
-                style={{ height: 1.5, backgroundColor: lineColor }}
-              />
+              <View className="mb-3.5 flex-1" style={{ height: 1.5, backgroundColor: lineColor }} />
             )}
           </React.Fragment>
         );

@@ -26,8 +26,8 @@ Closes # <!-- issue/ticket number if applicable -->
 
 ### Code Quality
 
-- [x] ~~No TypeScript errors (`tsc --noEmit` passes in strict mode)~~ — CI enforces
-- [x] ~~No ESLint warnings or errors~~ — CI enforces
+- [ ] No TypeScript errors (`tsc --noEmit` passes in strict mode)
+- [ ] No ESLint warnings or errors
 - [ ] Follows existing naming conventions (PascalCase components, camelCase hooks/utils)
 - [ ] No duplicated code — reused existing components/hooks where possible
 - [ ] No `console.log` or debug statements left in

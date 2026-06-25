@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Animated, Pressable } from 'react-native';
+import React from 'react';
+import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Booking, BookingStatus } from '../../types';
 import { ActiveBooking, ActiveBookingStep } from '../../mocks/dashboard';

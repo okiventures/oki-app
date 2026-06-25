@@ -1,5 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -60,7 +67,11 @@ export default function ClientOnboarding() {
                 value={fullName}
                 fillColor="#FFFFFF"
                 onChangeText={setFullName}
-                error={fullName.length > 0 && !profileValidation.fullName ? 'Use at least 2 characters.' : undefined}
+                error={
+                  fullName.length > 0 && !profileValidation.fullName
+                    ? 'Use at least 2 characters.'
+                    : undefined
+                }
                 helperText={fullName.length === 0 ? 'Minimum 2 characters.' : undefined}
                 leftIcon={<Ionicons name="person-outline" size={18} color="#9CA3AF" />}
               />
@@ -71,8 +82,14 @@ export default function ClientOnboarding() {
                 fillColor="#FFFFFF"
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
-                error={phone.length > 0 && !profileValidation.phone ? 'Enter at least 7 digits.' : undefined}
-                helperText={phone.length === 0 ? 'Digits only are counted. Minimum 7 digits.' : undefined}
+                error={
+                  phone.length > 0 && !profileValidation.phone
+                    ? 'Enter at least 7 digits.'
+                    : undefined
+                }
+                helperText={
+                  phone.length === 0 ? 'Digits only are counted. Minimum 7 digits.' : undefined
+                }
                 leftIcon={<Ionicons name="call-outline" size={18} color="#9CA3AF" />}
               />
               <Input
@@ -81,7 +98,11 @@ export default function ClientOnboarding() {
                 value={location}
                 fillColor="#FFFFFF"
                 onChangeText={setLocation}
-                error={location.length > 0 && !profileValidation.location ? 'Use at least 3 characters.' : undefined}
+                error={
+                  location.length > 0 && !profileValidation.location
+                    ? 'Use at least 3 characters.'
+                    : undefined
+                }
                 helperText={location.length === 0 ? 'Minimum 3 characters.' : undefined}
                 leftIcon={<Ionicons name="location-outline" size={18} color="#9CA3AF" />}
               />

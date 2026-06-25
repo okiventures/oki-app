@@ -17,16 +17,17 @@ interface TableProps<T> {
 
 export function Table<T>({ columns, data, onRowPress, keyExtractor }: TableProps<T>) {
   return (
-    <View className="bg-white rounded-lg overflow-hidden border border-gray-100">
+    <View className="overflow-hidden rounded-lg border border-gray-100 bg-white">
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View>
           {/* Header Row */}
-          <View className="flex-row bg-gray-50 border-b border-gray-200">
+          <View className="flex-row border-b border-gray-200 bg-gray-50">
             {columns.map((col) => (
-              <View key={col.key} style={{ width: col.width || 120 }} className="p-2 justify-center">
-                <Text className="text-[11px] font-bold text-gray-500 uppercase">
-                  {col.title}
-                </Text>
+              <View
+                key={col.key}
+                style={{ width: col.width || 120 }}
+                className="justify-center p-2">
+                <Text className="text-[11px] font-bold text-gray-500 uppercase">{col.title}</Text>
               </View>
             ))}
           </View>
@@ -37,10 +38,12 @@ export function Table<T>({ columns, data, onRowPress, keyExtractor }: TableProps
               key={keyExtractor(row)}
               activeOpacity={onRowPress ? 0.7 : 1}
               onPress={() => onRowPress?.(row)}
-              className={`flex-row border-b ${i === data.length - 1 ? 'border-b-0' : 'border-gray-100'} bg-white`}
-            >
+              className={`flex-row border-b ${i === data.length - 1 ? 'border-b-0' : 'border-gray-100'} bg-white`}>
               {columns.map((col) => (
-                <View key={col.key} style={{ width: col.width || 120 }} className="p-2 justify-center">
+                <View
+                  key={col.key}
+                  style={{ width: col.width || 120 }}
+                  className="justify-center p-2">
                   {col.render ? (
                     col.render(row)
                   ) : (
@@ -52,10 +55,10 @@ export function Table<T>({ columns, data, onRowPress, keyExtractor }: TableProps
               ))}
             </TouchableOpacity>
           ))}
-          
+
           {/* Empty State */}
           {data.length === 0 && (
-            <View className="p-4 items-center">
+            <View className="items-center p-4">
               <Text className="text-[13px] text-gray-400">No data available</Text>
             </View>
           )}

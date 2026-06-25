@@ -55,19 +55,22 @@ export default function AdminDisputes() {
         contentContainerStyle={{ padding: 16 }}
         ListHeaderComponent={
           <>
-            <Text className="text-[13px] font-bold text-gray-900 mb-3 px-1">Active Resolutions</Text>
+            <Text className="mb-3 px-1 text-[13px] font-bold text-gray-900">
+              Active Resolutions
+            </Text>
             <SearchBar
               value={searchValue}
               onChangeText={setSearchValue}
               placeholder="Search by dispute ID, booking, client, or worker"
             />
-            <View className="flex-row flex-wrap gap-2 mt-3 mb-4">
+            <View className="mt-3 mb-4 flex-row flex-wrap gap-2">
               {DISPUTE_STATUS_OPTIONS.map((status) => (
                 <TouchableOpacity
                   key={status}
                   onPress={() => setStatusFilter(status)}
                   className={`rounded-full px-3 py-2 ${statusFilter === status ? 'bg-primary-600' : 'bg-gray-100'}`}>
-                  <Text className={`${statusFilter === status ? 'text-white' : 'text-gray-700'} text-[12px] font-semibold`}>
+                  <Text
+                    className={`${statusFilter === status ? 'text-white' : 'text-gray-700'} text-[12px] font-semibold`}>
                     {status}
                   </Text>
                 </TouchableOpacity>
@@ -76,7 +79,9 @@ export default function AdminDisputes() {
           </>
         }
         ListEmptyComponent={
-          <Text className="text-[12px] text-gray-500 px-1">No disputes match your search or filter.</Text>
+          <Text className="px-1 text-[12px] text-gray-500">
+            No disputes match your search or filter.
+          </Text>
         }
         renderItem={({ item }) => {
           const isExpanded = expandedDisputeId === item.id;
@@ -86,28 +91,37 @@ export default function AdminDisputes() {
               activeOpacity={0.9}
               className="mb-3">
               <Card className="p-3">
-                <View className="flex-row items-center justify-between mb-2">
+                <View className="mb-2 flex-row items-center justify-between">
                   <Badge text={item.status} variant={statusVariant(item.status)} />
                   <Text className="text-[11px] text-gray-400">ID: {item.id}</Text>
                 </View>
-                <Text className="text-[15px] font-bold text-gray-900 mb-1">{item.reason}</Text>
-                <Text className="text-[13px] text-gray-600 mb-3">
-                  <Text className="font-semibold text-gray-800">{item.clientName}</Text> reported <Text className="font-semibold text-gray-800">{item.handymanName}</Text>
+                <Text className="mb-1 text-[15px] font-bold text-gray-900">{item.reason}</Text>
+                <Text className="mb-3 text-[13px] text-gray-600">
+                  <Text className="font-semibold text-gray-800">{item.clientName}</Text> reported{' '}
+                  <Text className="font-semibold text-gray-800">{item.handymanName}</Text>
                 </Text>
                 <View className="flex-row gap-2">
-                  <TouchableOpacity className="flex-1 bg-gray-100 py-2 rounded-md items-center">
+                  <TouchableOpacity className="flex-1 items-center rounded-md bg-gray-100 py-2">
                     <Text className="text-[13px] font-bold text-gray-700">Details</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity className="flex-1 bg-gray-900 py-2 rounded-md items-center">
+                  <TouchableOpacity className="flex-1 items-center rounded-md bg-gray-900 py-2">
                     <Text className="text-[13px] font-bold text-white">Resolve</Text>
                   </TouchableOpacity>
                 </View>
                 {isExpanded && (
                   <View className="mt-3 space-y-2 border-t border-gray-100 pt-3">
-                    <Text className="text-[12px] text-gray-600">Booking reference: {item.bookingId}</Text>
-                    <Text className="text-[12px] text-gray-600">Reported at: {formatDateTime(item.createdAt)}</Text>
-                    <Text className="text-[12px] text-gray-600">Evidence: Chat log and uploaded photos available.</Text>
-                    <Text className="text-[12px] text-gray-600">Admin actions: Confirm refund, request more information, or close dispute.</Text>
+                    <Text className="text-[12px] text-gray-600">
+                      Booking reference: {item.bookingId}
+                    </Text>
+                    <Text className="text-[12px] text-gray-600">
+                      Reported at: {formatDateTime(item.createdAt)}
+                    </Text>
+                    <Text className="text-[12px] text-gray-600">
+                      Evidence: Chat log and uploaded photos available.
+                    </Text>
+                    <Text className="text-[12px] text-gray-600">
+                      Admin actions: Confirm refund, request more information, or close dispute.
+                    </Text>
                   </View>
                 )}
               </Card>

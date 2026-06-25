@@ -32,12 +32,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return (
         <View className="flex-1 items-center justify-center p-4">
           <Ionicons name="alert-circle-outline" size={56} color="#EF4444" />
-          <Text className="text-base font-bold text-gray-900 mt-3 text-center">Something went wrong</Text>
-          <Text className="text-[13px] text-gray-500 mt-2 text-center leading-5">
+          <Text className="mt-3 text-center text-base font-bold text-gray-900">
+            Something went wrong
+          </Text>
+          <Text className="mt-2 text-center text-[13px] leading-5 text-gray-500">
             {this.props.fallbackMessage ?? 'An unexpected error occurred. Please try again.'}
           </Text>
-          <TouchableOpacity onPress={this.handleRetry} className="mt-4 bg-blue-500 px-4 py-2 rounded-lg">
-            <Text className="text-white text-[15px] font-semibold">Try Again</Text>
+          <TouchableOpacity
+            onPress={this.handleRetry}
+            className="mt-4 rounded-lg bg-blue-500 px-4 py-2">
+            <Text className="text-[15px] font-semibold text-white">Try Again</Text>
           </TouchableOpacity>
         </View>
       );

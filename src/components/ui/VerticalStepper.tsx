@@ -3,7 +3,6 @@ import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BookingStatus } from '../../types';
 import { TimelineEvent } from '../../mocks/bookingDetails';
-import { BOOKING_STATUS_COLORS } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
 
 interface VerticalStepperProps {
@@ -63,11 +62,6 @@ export function VerticalStepper({
         const isFuture = !isCompleted && !isActive;
         const isLast = idx === events.length - 1;
 
-        const dotColor = isActive
-          ? primaryColor
-          : isCompleted
-            ? '#10B981'
-            : '#D1D5DB';
         const iconColor = isActive ? primaryColor : isCompleted ? '#10B981' : '#9CA3AF';
         const iconName = (STATUS_ICONS[event.status] ?? 'ellipse-outline') as any;
 
@@ -79,11 +73,7 @@ export function VerticalStepper({
                   width: 32,
                   height: 32,
                   borderRadius: 16,
-                  backgroundColor: isActive
-                    ? primaryLight
-                    : isCompleted
-                      ? '#D1FAE5'
-                      : '#F3F4F6',
+                  backgroundColor: isActive ? primaryLight : isCompleted ? '#D1FAE5' : '#F3F4F6',
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderWidth: isActive ? 2 : 0,
@@ -111,27 +101,27 @@ export function VerticalStepper({
               )}
             </View>
 
-            <View
-              className="flex-1 pb-5 pl-3"
-              style={{ opacity: isFuture ? 0.45 : 1 }}>
+            <View className="flex-1 pb-5 pl-3" style={{ opacity: isFuture ? 0.45 : 1 }}>
               <View className="flex-row items-start justify-between">
                 <Text
-                  className="text-[13px] font-semibold flex-1 pr-2"
+                  className="flex-1 pr-2 text-[13px] font-semibold"
                   style={{
-                    color: isActive ? primaryColor : isCompleted ? colors.ui.text : colors.ui.textMuted,
+                    color: isActive
+                      ? primaryColor
+                      : isCompleted
+                        ? colors.ui.text
+                        : colors.ui.textMuted,
                   }}>
                   {event.label}
                 </Text>
                 {event.timestamp && (
-                  <Text
-                    className="text-[11px] font-normal"
-                    style={{ color: colors.ui.textLight }}>
+                  <Text className="text-[11px] font-normal" style={{ color: colors.ui.textLight }}>
                     {formatTimestamp(event.timestamp)}
                   </Text>
                 )}
               </View>
               <Text
-                className="mt-0.5 text-[12px] font-normal leading-[17px]"
+                className="mt-0.5 text-[12px] leading-[17px] font-normal"
                 style={{ color: colors.ui.textMuted }}>
                 {event.description}
               </Text>
