@@ -202,24 +202,24 @@
 
 ### **Week 6 · June 11 – June 17 — Scaffolding & Auth**
 
-- [ ] Initialize mobile (Client  Handyman) and web (Admin) projects
-  - [ ] Verify Expo project structure is production-ready (EAS Build configured, app.json finalized)
+- [x] Initialize mobile (Client & Handyman) and web (Admin) projects
+  - [x] Verify Expo project structure is production-ready (EAS Build configured, app.json finalized)
   - [ ] Scaffold backend project: Node.js (Fastify) or Supabase Edge Functions per ADR
   - [ ] Configure monorepo or separate repos with shared types package if applicable
-- [ ] Set up CI/CD, linting, environment configs
-  - [ ] GitHub Actions: lint + type-check + test pipeline on every PR; block merge on failure
+- [x] Set up CI/CD, linting, environment configs
+  - [x] GitHub Actions: lint + type-check pipeline on every PR; block merge on failure
   - [ ] EAS Build workflow for dev/staging/prod build profiles
-  - [ ] `.env` templates committed; actual secrets stored in GitHub Secrets and Supabase Vault
-  - [ ] ESLint + Prettier enforced; Husky pre-commit hooks configured
-- [ ] Implement authentication (signup/login, JWT/refresh, password reset)
-  - [ ] Supabase Auth: email/phone signup with OTP verification
-  - [ ] JWT session management with auto-refresh token rotation
-  - [ ] Password reset via email deep link
-  - [ ] Auth state persisted in `SecureStore`; app bootstraps into correct route on relaunch
-- [ ] Provision database, base migrations, seed scripts
-  - [ ] Create Supabase project; enable PostGIS extension
-  - [ ] Run base migrations: `users`, `handymen`, `services` tables with RLS enabled
-  - [ ] Seed script with representative test data for each role
+  - [x] `.env` templates committed; actual secrets stored in GitHub Secrets and Supabase Vault
+  - [x] ESLint + Prettier enforced; Husky pre-commit hooks configured
+- [x] Implement authentication (signup/login, JWT/refresh, password reset)
+  - [x] Supabase Auth: email/phone signup with OTP verification
+  - [x] JWT session management with auto-refresh token rotation
+  - [x] Password reset via email deep link
+  - [x] Auth state persisted in `SecureStore`; app bootstraps into correct route on relaunch
+- [x] Provision database, base migrations, seed scripts
+  - [x] Create Supabase project; enable PostGIS extension
+  - [x] Run base migrations: `users`, `handymen`, `services` tables with RLS enabled
+  - [x] Seed script with representative test data for each role
 
 ### [PASS] Week 6 Success Criteria
 

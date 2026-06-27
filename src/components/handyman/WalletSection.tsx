@@ -26,7 +26,11 @@ function getPayoutBadgeVariant(stage: PayoutRequestStage): 'primary' | 'warning'
   return 'primary';
 }
 
-function getTransactionIcon(type: WalletTransactionEntry['type']): { name: keyof typeof Ionicons.glyphMap; color: string; bg: string } {
+function getTransactionIcon(type: WalletTransactionEntry['type']): {
+  name: keyof typeof Ionicons.glyphMap;
+  color: string;
+  bg: string;
+} {
   if (type === 'Credit') {
     return {
       name: 'arrow-down-outline',
@@ -50,18 +54,26 @@ export function WalletSection({ wallet, onRequestPayout }: WalletSectionProps) {
   return (
     <View className="mb-4 gap-4">
       <Card className="bg-gray-900 p-4">
-        <Text className="text-[12px] font-medium uppercase tracking-[0.8px] text-gray-400">Wallet</Text>
-        <Text className="font-heading mt-2 text-3xl text-black">{formatCurrency(wallet.availableBalance)}</Text>
+        <Text className="text-[12px] font-medium tracking-[0.8px] text-gray-400 uppercase">
+          Wallet
+        </Text>
+        <Text className="font-heading mt-2 text-3xl text-black">
+          {formatCurrency(wallet.availableBalance)}
+        </Text>
         <Text className="mt-1 text-[12px] text-gray-900">Available balance</Text>
 
         <View className="mt-4 flex-row gap-3">
           <View className="flex-1 rounded-xl bg-white/10 px-3 py-3">
-            <Text className="text-[11px] uppercase tracking-[0.8px] text-gray-900">Available</Text>
-            <Text className="mt-1 text-[15px] font-bold text-black">{formatCurrency(wallet.availableBalance)}</Text>
+            <Text className="text-[11px] tracking-[0.8px] text-gray-900 uppercase">Available</Text>
+            <Text className="mt-1 text-[15px] font-bold text-black">
+              {formatCurrency(wallet.availableBalance)}
+            </Text>
           </View>
           <View className="flex-1 rounded-xl bg-white/10 px-3 py-3">
-            <Text className="text-[11px] uppercase tracking-[0.8px] text-gray-900">Pending</Text>
-            <Text className="mt-1 text-[15px] font-bold text-black">{formatCurrency(wallet.pendingBalance)}</Text>
+            <Text className="text-[11px] tracking-[0.8px] text-gray-900 uppercase">Pending</Text>
+            <Text className="mt-1 text-[15px] font-bold text-black">
+              {formatCurrency(wallet.pendingBalance)}
+            </Text>
           </View>
         </View>
 
@@ -74,7 +86,8 @@ export function WalletSection({ wallet, onRequestPayout }: WalletSectionProps) {
           />
           {isPayoutEligible ? (
             <Text className="text-center text-[11px] text-gray-300">
-              You can request payout now. Minimum threshold is {formatCurrency(wallet.minimumPayoutThreshold)}.
+              You can request payout now. Minimum threshold is{' '}
+              {formatCurrency(wallet.minimumPayoutThreshold)}.
             </Text>
           ) : (
             <Text className="text-center text-[11px] text-amber-300">
@@ -97,18 +110,25 @@ export function WalletSection({ wallet, onRequestPayout }: WalletSectionProps) {
             const amountColor = entry.type === 'Credit' ? 'text-green-700' : 'text-red-700';
 
             return (
-              <View key={entry.id} className="flex-row items-center gap-3 rounded-2xl border border-gray-100 px-3 py-3">
+              <View
+                key={entry.id}
+                className="flex-row items-center gap-3 rounded-2xl border border-gray-100 px-3 py-3">
                 <View className={`h-10 w-10 items-center justify-center rounded-full ${icon.bg}`}>
                   <Ionicons name={icon.name} size={18} color={icon.color} />
                 </View>
 
                 <View className="flex-1">
-                  <Text className="text-[13px] font-semibold text-gray-900">{entry.description}</Text>
-                  <Text className="mt-0.5 text-[11px] text-gray-500">{entry.bookingReference} · {formatDate(entry.createdAt)}</Text>
+                  <Text className="text-[13px] font-semibold text-gray-900">
+                    {entry.description}
+                  </Text>
+                  <Text className="mt-0.5 text-[11px] text-gray-500">
+                    {entry.bookingReference} · {formatDate(entry.createdAt)}
+                  </Text>
                 </View>
 
                 <Text className={`text-[13px] font-bold ${amountColor}`}>
-                  {amountPrefix}{formatCurrency(entry.amount)}
+                  {amountPrefix}
+                  {formatCurrency(entry.amount)}
                 </Text>
               </View>
             );
@@ -140,7 +160,8 @@ export function WalletSection({ wallet, onRequestPayout }: WalletSectionProps) {
                     {isCompleted ? (
                       <Ionicons name="checkmark" size={14} color="#FFFFFF" />
                     ) : (
-                      <Text className={`text-[11px] font-bold ${isCurrent ? 'text-white' : 'text-gray-500'}`}>
+                      <Text
+                        className={`text-[11px] font-bold ${isCurrent ? 'text-white' : 'text-gray-500'}`}>
                         {index + 1}
                       </Text>
                     )}

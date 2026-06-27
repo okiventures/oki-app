@@ -72,9 +72,7 @@ export function PromoCard({ promo, onClaimPress }: PromoCardProps) {
             backgroundColor: colors.secondary['50'],
             borderColor: colors.secondary['200'],
           }}>
-          <Text
-            className="text-xs font-semibold"
-            style={{ color: colors.secondary['600'] }}>
+          <Text className="text-xs font-semibold" style={{ color: colors.secondary['600'] }}>
             Claim
           </Text>
         </TouchableOpacity>

@@ -47,7 +47,7 @@ export default function AdminUsers() {
     confirmLabel: 'Confirm',
     cancelLabel: 'Cancel',
     danger: false,
-    onConfirm: () => { },
+    onConfirm: () => {},
   });
 
   const filteredUsers = useMemo(
@@ -59,8 +59,7 @@ export default function AdminUsers() {
           user.email.toLowerCase().includes(query) ||
           user.phone.toLowerCase().includes(query);
 
-        const matchesStatus =
-          statusFilter === 'All' ? true : user.status === statusFilter;
+        const matchesStatus = statusFilter === 'All' ? true : user.status === statusFilter;
 
         return matchesSearch && matchesStatus;
       }),
@@ -114,7 +113,7 @@ export default function AdminUsers() {
     });
   };
 
-  const userColumns: TableColumn<typeof users[number]>[] = [
+  const userColumns: TableColumn<(typeof users)[number]>[] = [
     {
       key: 'name',
       title: 'Name',
@@ -143,7 +142,9 @@ export default function AdminUsers() {
       key: 'joined',
       title: 'Joined',
       width: 120,
-      render: (user) => <Text className="text-[12px] text-gray-600">{formatDate(user.createdAt)}</Text>,
+      render: (user) => (
+        <Text className="text-[12px] text-gray-600">{formatDate(user.createdAt)}</Text>
+      ),
     },
     {
       key: 'actions',
@@ -152,8 +153,7 @@ export default function AdminUsers() {
       render: (user) => (
         <TouchableOpacity
           onPress={() => handleSuspendUser(user.id)}
-          className="rounded-full border border-red-200 bg-red-50 px-3 py-2"
-        >
+          className="rounded-full border border-red-200 bg-red-50 px-3 py-2">
           <Text className="text-[12px] font-semibold text-red-600">Suspend</Text>
         </TouchableOpacity>
       ),
@@ -166,14 +166,14 @@ export default function AdminUsers() {
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
         <View className="flex-row gap-2">
           <Card className="flex-1 p-3">
-            <Text className="text-[11px] text-gray-500 font-medium">Total Users</Text>
-            <Text className="font-heading text-lg text-gray-900 mt-1">{users.length}</Text>
-            <Text className="text-[10px] text-gray-500 font-bold mt-1">Clients + Workers</Text>
+            <Text className="text-[11px] font-medium text-gray-500">Total Users</Text>
+            <Text className="font-heading mt-1 text-lg text-gray-900">{users.length}</Text>
+            <Text className="mt-1 text-[10px] font-bold text-gray-500">Clients + Workers</Text>
           </Card>
           <Card className="flex-1 p-3">
-            <Text className="text-[11px] text-gray-500 font-medium">Pending KYC</Text>
-            <Text className="font-heading text-lg text-gray-900 mt-1">{kycRequests.length}</Text>
-            <Text className="text-[10px] text-amber-700 font-bold mt-1">Needs review</Text>
+            <Text className="text-[11px] font-medium text-gray-500">Pending KYC</Text>
+            <Text className="font-heading mt-1 text-lg text-gray-900">{kycRequests.length}</Text>
+            <Text className="mt-1 text-[10px] font-bold text-amber-700">Needs review</Text>
           </Card>
         </View>
 
@@ -189,7 +189,8 @@ export default function AdminUsers() {
               key={status}
               onPress={() => setStatusFilter(status)}
               className={`rounded-full px-3 py-2 ${statusFilter === status ? 'bg-primary-600' : 'bg-gray-100'}`}>
-              <Text className={`${statusFilter === status ? 'text-white' : 'text-gray-700'} text-[12px] font-semibold`}>
+              <Text
+                className={`${statusFilter === status ? 'text-white' : 'text-gray-700'} text-[12px] font-semibold`}>
                 {status}
               </Text>
             </TouchableOpacity>
@@ -197,34 +198,38 @@ export default function AdminUsers() {
         </View>
 
         <View>
-          <Text className="text-[13px] font-bold text-gray-900 mb-3">Pending KYC Verifications</Text>
+          <Text className="mb-3 text-[13px] font-bold text-gray-900">
+            Pending KYC Verifications
+          </Text>
           {kycRequests.length === 0 && (
             <Text className="text-[12px] text-gray-500">No pending KYC requests available.</Text>
           )}
           {kycRequests.map((item) => (
             <Card key={item.id} className="mb-3 p-3">
               <View className="flex-row items-start gap-3">
-                <View className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center">
+                <View className="h-10 w-10 items-center justify-center rounded-full bg-gray-100">
                   <Ionicons name="document-text-outline" size={18} color="#6B7280" />
                 </View>
                 <View className="flex-1">
                   <Text className="text-[15px] font-bold text-gray-900">{item.handymanName}</Text>
-                  <Text className="text-[11px] text-gray-500 mt-0.5">{item.serviceCategory}</Text>
-                  <Text className="text-[11px] text-gray-400 mt-1">Submitted {formatDate(item.submittedAt)}</Text>
-                  <Text className="text-[11px] text-gray-500 mt-1">Risk score: {item.riskScore}</Text>
+                  <Text className="mt-0.5 text-[11px] text-gray-500">{item.serviceCategory}</Text>
+                  <Text className="mt-1 text-[11px] text-gray-400">
+                    Submitted {formatDate(item.submittedAt)}
+                  </Text>
+                  <Text className="mt-1 text-[11px] text-gray-500">
+                    Risk score: {item.riskScore}
+                  </Text>
                 </View>
               </View>
               <View className="mt-4 flex-row gap-2">
                 <TouchableOpacity
                   onPress={() => handleApproveRequest(item.id)}
-                  className="flex-1 rounded-full bg-emerald-600 py-2 items-center"
-                >
+                  className="flex-1 items-center rounded-full bg-emerald-600 py-2">
                   <Text className="text-[12px] font-semibold text-white">Approve</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleRejectRequest(item.id)}
-                  className="flex-1 rounded-full bg-red-50 py-2 items-center"
-                >
+                  className="flex-1 items-center rounded-full bg-red-50 py-2">
                   <Text className="text-[12px] font-semibold text-red-600">Reject</Text>
                 </TouchableOpacity>
               </View>
@@ -233,7 +238,7 @@ export default function AdminUsers() {
         </View>
 
         <View>
-          <Text className="text-[13px] font-bold text-gray-900 mb-3">Recent Users</Text>
+          <Text className="mb-3 text-[13px] font-bold text-gray-900">Recent Users</Text>
           <Table
             columns={userColumns}
             data={filteredUsers}
@@ -243,19 +248,22 @@ export default function AdminUsers() {
 
           {selectedUser && (
             <Card className="mt-4 p-4">
-              <Text className="text-[14px] font-bold text-gray-900 mb-2">{selectedUser.name}</Text>
-              <Text className="text-[12px] text-gray-600 mb-1">Email: {selectedUser.email}</Text>
-              <Text className="text-[12px] text-gray-600 mb-1">Phone: {selectedUser.phone}</Text>
-              <Text className="text-[12px] text-gray-600 mb-1">Joined: {formatDate(selectedUser.createdAt)}</Text>
-              <Text className="text-[12px] text-gray-600 mb-3">Last active: {formatDate(selectedUser.lastActive || selectedUser.createdAt)}</Text>
+              <Text className="mb-2 text-[14px] font-bold text-gray-900">{selectedUser.name}</Text>
+              <Text className="mb-1 text-[12px] text-gray-600">Email: {selectedUser.email}</Text>
+              <Text className="mb-1 text-[12px] text-gray-600">Phone: {selectedUser.phone}</Text>
+              <Text className="mb-1 text-[12px] text-gray-600">
+                Joined: {formatDate(selectedUser.createdAt)}
+              </Text>
+              <Text className="mb-3 text-[12px] text-gray-600">
+                Last active: {formatDate(selectedUser.lastActive || selectedUser.createdAt)}
+              </Text>
               <View className="flex-row gap-2">
                 <TouchableOpacity
                   onPress={() => handleSuspendUser(selectedUser.id)}
-                  className="flex-1 rounded-full bg-red-50 py-2 items-center"
-                >
+                  className="flex-1 items-center rounded-full bg-red-50 py-2">
                   <Text className="text-[12px] font-semibold text-red-600">Suspend</Text>
                 </TouchableOpacity>
-                <TouchableOpacity className="flex-1 rounded-full bg-primary-600 py-2 items-center">
+                <TouchableOpacity className="bg-primary-600 flex-1 items-center rounded-full py-2">
                   <Text className="text-[12px] font-semibold text-white">Message</Text>
                 </TouchableOpacity>
               </View>

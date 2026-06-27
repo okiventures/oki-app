@@ -54,10 +54,14 @@ export default function ClientBookings() {
     <SafeAreaView
       edges={['top', 'left', 'right']}
       style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
-      <ScreenHeader title="My Bookings" showNotifications onNotificationsPress={() => router.push('/notifications')} />
+      <ScreenHeader
+        title="My Bookings"
+        showNotifications
+        onNotificationsPress={() => router.push('/notifications')}
+      />
 
       <View
-        className="flex-1 overflow-hidden rounded-t-[32px]"
+        className="flex-1 overflow-hidden rounded-t-4xl"
         style={{ backgroundColor: colors.ui.background, marginTop: -32 }}>
         <ScrollView
           className="mt-5 flex-1 rounded-xl"

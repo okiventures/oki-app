@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
-import { NEW_BOOKING_CATEGORIES, NEW_BOOKING_HOURS } from './NewBookingConstants';
+import { NEW_BOOKING_CATEGORIES } from './NewBookingConstants';
 
 interface ReviewStepProps {
   mode: 'now' | 'later';
@@ -107,9 +107,7 @@ export function NewBookingReviewStep({
         className="mt-4 flex-row items-center gap-3 rounded-2xl p-4"
         style={{ backgroundColor: colors.primary['50'] }}>
         <Ionicons name="information-circle-outline" size={18} color={colors.primary['600']} />
-        <Text
-          className="flex-1 text-[12px] leading-4"
-          style={{ color: colors.primary['700'] }}>
+        <Text className="flex-1 text-[12px] leading-4" style={{ color: colors.primary['700'] }}>
           Final price will be quoted by the handyman after assessing the job on-site.
         </Text>
       </View>

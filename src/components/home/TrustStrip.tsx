@@ -21,9 +21,7 @@ function StatColumn({ icon, iconColor, value, label }: StatColumnProps) {
         <Ionicons name={icon as never} size={13} color={iconColor} />
         <Text className="text-base font-medium text-[#1C1917]">{value}</Text>
       </View>
-      <Text className="text-center text-[10px] font-normal text-[#8A8780]">
-        {label}
-      </Text>
+      <Text className="text-center text-[10px] font-normal text-[#8A8780]">{label}</Text>
     </View>
   );
 }

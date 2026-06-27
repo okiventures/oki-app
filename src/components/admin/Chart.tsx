@@ -41,12 +41,12 @@ export function Chart({
   const [activeLabel, setActiveLabel] = useState<number | null>(null);
 
   return (
-    <View className="bg-white rounded-xl p-3 border border-gray-100">
-      <Text className="text-sm font-semibold text-gray-900 mb-2">{title}</Text>
-      <View className="flex-row gap-3 mb-3 flex-wrap">
+    <View className="rounded-xl border border-gray-100 bg-white p-3">
+      <Text className="mb-2 text-sm font-semibold text-gray-900">{title}</Text>
+      <View className="mb-3 flex-row flex-wrap gap-3">
         {chartSeries.map((serie) => (
           <View key={serie.name} className="flex-row items-center gap-2">
-            <View style={{ backgroundColor: serie.color }} className="w-2 h-2 rounded-full" />
+            <View style={{ backgroundColor: serie.color }} className="h-2 w-2 rounded-full" />
             <Text className="text-[11px] text-gray-500">{serie.name}</Text>
           </View>
         ))}
@@ -61,10 +61,10 @@ export function Chart({
           ))}
         </View>
 
-        <View className="flex-1 h-full flex-row items-end justify-between">
+        <View className="h-full flex-1 flex-row items-end justify-between">
           {labels.map((label, labelIndex) => (
-            <View key={label} className="items-center flex-1">
-              <View className="flex-row items-end justify-center gap-1 h-full w-full">
+            <View key={label} className="flex-1 items-center">
+              <View className="h-full w-full flex-row items-end justify-center gap-1">
                 {chartSeries.map((serie) => {
                   const value = serie.data[labelIndex] ?? 0;
                   const barHeight = Math.max((value / maxValue) * 100, 10);
@@ -83,11 +83,11 @@ export function Chart({
                   );
                 })}
               </View>
-              <Text className="text-[10px] text-gray-400 mt-2" numberOfLines={1}>
+              <Text className="mt-2 text-[10px] text-gray-400" numberOfLines={1}>
                 {label}
               </Text>
               {activeLabel === labelIndex && (
-                <View className="mt-2 rounded-2xl bg-gray-100 px-2 py-1 w-full">
+                <View className="mt-2 w-full rounded-2xl bg-gray-100 px-2 py-1">
                   {chartSeries.map((serie) => (
                     <Text key={serie.name} className="text-[10px] text-gray-700">
                       {serie.name}: {serie.data[labelIndex] ?? 0}
@@ -100,7 +100,7 @@ export function Chart({
         </View>
       </View>
 
-      <View className="flex-row justify-between mt-3">
+      <View className="mt-3 flex-row justify-between">
         <Text className="text-[11px] text-gray-400">{yAxisLabel}</Text>
         <Text className="text-[11px] text-gray-400">{xAxisLabel}</Text>
       </View>

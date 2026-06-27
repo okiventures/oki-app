@@ -29,9 +29,8 @@ export default function HandymanProfile() {
         <ScreenHeader title="Worker Profile" />
 
         <View
-          className="flex-1 rounded-t-[32px] pb-9 px-4"
+          className="flex-1 rounded-t-[32px] px-4 pb-9"
           style={{ backgroundColor: colors.ui.background, marginTop: -32 }}>
-          
           <View className="items-center" style={{ marginTop: -40 }}>
             <View
               className="rounded-full border-4 border-white"
@@ -48,7 +47,9 @@ export default function HandymanProfile() {
             <View className="mt-1 flex-row items-center gap-1">
               <Ionicons name="star" size={14} color="#EAB308" />
               <Text className="text-[13px] font-bold text-gray-700">{MOCK_HANDYMAN.rating}</Text>
-              <Text className="text-[13px] text-gray-500">({MOCK_HANDYMAN.reviewCount} reviews)</Text>
+              <Text className="text-[13px] text-gray-500">
+                ({MOCK_HANDYMAN.reviewCount} reviews)
+              </Text>
             </View>
             <View className="mt-3 flex-row flex-wrap justify-center gap-2">
               {MOCK_HANDYMAN.skills.map((skill) => (
@@ -61,38 +62,44 @@ export default function HandymanProfile() {
             <WalletSection wallet={MOCK_HANDYMAN_WALLET} />
           </View>
 
-          <Card className="p-0 overflow-hidden mt-4">
+          <Card className="mt-4 overflow-hidden p-0">
             <Link href="/(handyman)/past-jobs" asChild>
-              <TouchableOpacity className="flex-row items-center p-4 border-b border-gray-100">
-                <View className="h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: colors.primary['50'] }}>
+              <TouchableOpacity className="flex-row items-center border-b border-gray-100 p-4">
+                <View
+                  className="h-10 w-10 items-center justify-center rounded-full"
+                  style={{ backgroundColor: colors.primary['50'] }}>
                   <Ionicons name="albums-outline" size={18} color={colors.primary['600']} />
                 </View>
                 <View className="ml-4 flex-1">
                   <Text className="text-[15px] font-bold text-gray-900">Past Jobs</Text>
-                  <Text className="text-[11px] text-gray-500 mt-0.5">Your Previous Jobs</Text>
+                  <Text className="mt-0.5 text-[11px] text-gray-500">Your Previous Jobs</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
               </TouchableOpacity>
             </Link>
 
-            <TouchableOpacity className="flex-row items-center p-4 border-b border-gray-100">
-              <View className="h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: colors.primary['50'] }}>
+            <TouchableOpacity className="flex-row items-center border-b border-gray-100 p-4">
+              <View
+                className="h-10 w-10 items-center justify-center rounded-full"
+                style={{ backgroundColor: colors.primary['50'] }}>
                 <Ionicons name="settings-outline" size={18} color={colors.primary['600']} />
               </View>
               <View className="ml-4 flex-1">
                 <Text className="text-[15px] font-bold text-gray-900">Settings</Text>
-                <Text className="text-[11px] text-gray-500 mt-0.5">App preferences</Text>
+                <Text className="mt-0.5 text-[11px] text-gray-500">App preferences</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
             </TouchableOpacity>
-            
+
             <TouchableOpacity className="flex-row items-center p-4">
-              <View className="h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: colors.primary['50'] }}>
+              <View
+                className="h-10 w-10 items-center justify-center rounded-full"
+                style={{ backgroundColor: colors.primary['50'] }}>
                 <Ionicons name="help-buoy-outline" size={18} color={colors.primary['600']} />
               </View>
               <View className="ml-4 flex-1">
                 <Text className="text-[15px] font-bold text-gray-900">Help & Support</Text>
-                <Text className="text-[11px] text-gray-500 mt-0.5">Contact Oki Support</Text>
+                <Text className="mt-0.5 text-[11px] text-gray-500">Contact Oki Support</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
             </TouchableOpacity>

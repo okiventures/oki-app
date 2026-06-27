@@ -1,13 +1,34 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { BottomNav } from '../../src/components/navigation/BottomNav';
+import { useProtectedRoute } from '../../src/hooks/useProtectedRoute';
 
 export default function ClientLayout() {
+  useProtectedRoute('client');
+
   const items = [
     { key: 'index', label: 'Home', icon: 'home-outline', activeIcon: 'home', route: '/(client)' },
-    { key: 'bookings', label: 'Bookings', icon: 'calendar-outline', activeIcon: 'calendar', route: '/(client)/bookings' },
-    { key: 'messages', label: 'Messages', icon: 'chatbubble-outline', activeIcon: 'chatbubble', route: '/(client)/messages' },
-    { key: 'profile', label: 'Profile', icon: 'person-outline', activeIcon: 'person', route: '/(client)/profile' },
+    {
+      key: 'bookings',
+      label: 'Bookings',
+      icon: 'calendar-outline',
+      activeIcon: 'calendar',
+      route: '/(client)/bookings',
+    },
+    {
+      key: 'messages',
+      label: 'Messages',
+      icon: 'chatbubble-outline',
+      activeIcon: 'chatbubble',
+      route: '/(client)/messages',
+    },
+    {
+      key: 'profile',
+      label: 'Profile',
+      icon: 'person-outline',
+      activeIcon: 'person',
+      route: '/(client)/profile',
+    },
   ];
 
   return (
@@ -20,4 +41,3 @@ export default function ClientLayout() {
     </Tabs>
   );
 }
-

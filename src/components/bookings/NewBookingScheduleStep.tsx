@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { CalendarPicker } from '../ui/CalendarPicker';
@@ -67,7 +67,7 @@ export function NewBookingScheduleStep({
             <Text
               className="text-center text-[14px] leading-5"
               style={{ color: colors.primary['800'] }}>
-              We'll match you with the nearest available handyman right away.
+              We&apos;ll match you with the nearest available handyman right away.
             </Text>
           </View>
 

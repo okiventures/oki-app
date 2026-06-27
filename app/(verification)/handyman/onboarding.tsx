@@ -1,5 +1,11 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View, useWindowDimensions } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -65,7 +71,7 @@ export default function HandymanOnboarding() {
 
   return (
     <SafeAreaView
-      edges={["left", "right", "bottom"]}
+      edges={['left', 'right', 'bottom']}
       style={{ flex: 1, backgroundColor: colors.ui.background }}>
       <Navbar title="Handyman Onboarding" showBack={currentStepIndex === 0} />
 
@@ -119,13 +125,16 @@ export default function HandymanOnboarding() {
               ) : null}
 
               {currentStep === 'Pending' ? (
-                <HandymanPendingStep selectedServices={selectedServices} servicePricing={servicePricing} />
+                <HandymanPendingStep
+                  selectedServices={selectedServices}
+                  servicePricing={servicePricing}
+                />
               ) : null}
             </View>
           </ScrollView>
 
           <View
-            className="border-t border-gray-200 px-4 pb-4 pt-3"
+            className="border-t border-gray-200 px-4 pt-3 pb-4"
             style={{ backgroundColor: colors.ui.background }}>
             <View className="flex-row gap-3" style={{ width: '100%' }}>
               {currentStep !== 'Pending' ? (
@@ -141,7 +150,13 @@ export default function HandymanOnboarding() {
 
               <View style={{ flex: 1 }}>
                 <Button
-                  label={currentStep === 'Documents' ? 'Submit Application' : currentStep === 'Pending' ? 'Go to Dashboard' : 'Continue'}
+                  label={
+                    currentStep === 'Documents'
+                      ? 'Submit Application'
+                      : currentStep === 'Pending'
+                        ? 'Go to Dashboard'
+                        : 'Continue'
+                  }
                   onPress={handleContinue}
                   fullWidth
                   disabled={!canContinue}

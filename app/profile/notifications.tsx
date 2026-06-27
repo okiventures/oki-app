@@ -27,12 +27,14 @@ export default function NotificationSettings() {
         style={{ backgroundColor: colors.ui.background }}>
         <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingTop: 32 }}>
           <View className="gap-6">
-            <View className="flex-row items-center justify-between py-3 border-b" style={{ borderColor: colors.ui.border, backgroundColor: colors.ui.background }}>
+            <View
+              className="flex-row items-center justify-between border-b py-3"
+              style={{ borderColor: colors.ui.border, backgroundColor: colors.ui.background }}>
               <View className="flex-1 pr-4">
                 <Text className="text-[15px] font-bold" style={{ color: colors.ui.text }}>
                   Push Notifications
                 </Text>
-                <Text className="text-xs mt-1" style={{ color: colors.ui.textMuted }}>
+                <Text className="mt-1 text-xs" style={{ color: colors.ui.textMuted }}>
                   Receive instant notifications for bookings, messages, and updates on your device.
                 </Text>
               </View>
@@ -43,12 +45,14 @@ export default function NotificationSettings() {
               />
             </View>
 
-            <View className="flex-row items-center justify-between py-3 border-b" style={{ borderColor: colors.ui.border, backgroundColor: colors.ui.background }}>
+            <View
+              className="flex-row items-center justify-between border-b py-3"
+              style={{ borderColor: colors.ui.border, backgroundColor: colors.ui.background }}>
               <View className="flex-1 pr-4">
                 <Text className="text-[15px] font-bold" style={{ color: colors.ui.text }}>
                   Email Notifications
                 </Text>
-                <Text className="text-xs mt-1" style={{ color: colors.ui.textMuted }}>
+                <Text className="mt-1 text-xs" style={{ color: colors.ui.textMuted }}>
                   Receive copy of booking receipts, monthly statements, and account activity alerts.
                 </Text>
               </View>
@@ -59,12 +63,14 @@ export default function NotificationSettings() {
               />
             </View>
 
-            <View className="flex-row items-center justify-between py-3 border-b" style={{ borderColor: colors.ui.border, backgroundColor: colors.ui.background }}>
+            <View
+              className="flex-row items-center justify-between border-b py-3"
+              style={{ borderColor: colors.ui.border, backgroundColor: colors.ui.background }}>
               <View className="flex-1 pr-4">
                 <Text className="text-[15px] font-bold" style={{ color: colors.ui.text }}>
                   SMS Notifications
                 </Text>
-                <Text className="text-xs mt-1" style={{ color: colors.ui.textMuted }}>
+                <Text className="mt-1 text-xs" style={{ color: colors.ui.textMuted }}>
                   Receive text messages for booking reminders and emergency provider communications.
                 </Text>
               </View>
@@ -75,12 +81,14 @@ export default function NotificationSettings() {
               />
             </View>
 
-            <View className="flex-row items-center justify-between py-3 border-b" style={{ borderColor: colors.ui.border, backgroundColor: colors.ui.background }}>
+            <View
+              className="flex-row items-center justify-between border-b py-3"
+              style={{ borderColor: colors.ui.border, backgroundColor: colors.ui.background }}>
               <View className="flex-1 pr-4">
                 <Text className="text-[15px] font-bold" style={{ color: colors.ui.text }}>
                   Booking Updates
                 </Text>
-                <Text className="text-xs mt-1" style={{ color: colors.ui.textMuted }}>
+                <Text className="mt-1 text-xs" style={{ color: colors.ui.textMuted }}>
                   Alerts about booking status changes, arrivals, job starts, and completions.
                 </Text>
               </View>
@@ -91,12 +99,14 @@ export default function NotificationSettings() {
               />
             </View>
 
-            <View className="flex-row items-center justify-between py-3 border-b" style={{ borderColor: colors.ui.border, backgroundColor: colors.ui.background }}>
+            <View
+              className="flex-row items-center justify-between border-b py-3"
+              style={{ borderColor: colors.ui.border, backgroundColor: colors.ui.background }}>
               <View className="flex-1 pr-4">
                 <Text className="text-[15px] font-bold" style={{ color: colors.ui.text }}>
                   Promotional Alerts
                 </Text>
-                <Text className="text-xs mt-1" style={{ color: colors.ui.textMuted }}>
+                <Text className="mt-1 text-xs" style={{ color: colors.ui.textMuted }}>
                   Stay updated on seasonal discounts, promos, and new service category offerings.
                 </Text>
               </View>

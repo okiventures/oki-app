@@ -14,16 +14,30 @@ interface ConfirmDialogProps {
   danger?: boolean;
 }
 
-export function ConfirmDialog({ visible, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', onConfirm, onCancel, danger = false }: ConfirmDialogProps) {
+export function ConfirmDialog({
+  visible,
+  title,
+  message,
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
+  onConfirm,
+  onCancel,
+  danger = false,
+}: ConfirmDialogProps) {
   return (
     <Modal visible={visible} onClose={onCancel} title={title}>
-      <Text className="text-[15px] text-gray-700 leading-6 mb-5">{message}</Text>
+      <Text className="mb-5 text-[15px] leading-6 text-gray-700">{message}</Text>
       <View className="flex-row gap-2">
         <View className="flex-1">
           <Button label={cancelLabel} onPress={onCancel} variant="tertiary" fullWidth />
         </View>
         <View className="flex-1">
-          <Button label={confirmLabel} onPress={onConfirm} variant={danger ? 'danger' : 'primary'} fullWidth />
+          <Button
+            label={confirmLabel}
+            onPress={onConfirm}
+            variant={danger ? 'danger' : 'primary'}
+            fullWidth
+          />
         </View>
       </View>
     </Modal>

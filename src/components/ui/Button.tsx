@@ -1,10 +1,17 @@
-import { TouchableOpacity, Text, ActivityIndicator, View, ViewStyle, TextStyle } from 'react-native';
+import {
+  TouchableOpacity,
+  Text,
+  ActivityIndicator,
+  View,
+  ViewStyle,
+  TextStyle,
+} from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 
 type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'danger';
 
 interface ButtonProps {
-  label: string;
+  label?: string;
   onPress: () => void;
   variant?: ButtonVariant;
 
@@ -80,11 +87,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={label}
       className={`flex-row items-center justify-center rounded-full px-3 py-1.5 ${!fullWidth ? 'self-auto' : ''}`}
-      style={[
-        fullWidth ? { width: '100%', alignSelf: 'stretch' } : null,
-        buttonStyle,
-        style,
-      ]}>
+      style={[fullWidth ? { width: '100%', alignSelf: 'stretch' } : null, buttonStyle, style]}>
       {loading ? (
         <ActivityIndicator
           size="small"

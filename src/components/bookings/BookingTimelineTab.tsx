@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { BookingDetail } from '../../mocks/bookingDetails';
 import { VerticalStepper } from '../ui/VerticalStepper';

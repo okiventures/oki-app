@@ -17,13 +17,16 @@ interface TableProps<T> {
 
 export function Table<T>({ columns, data, onRowPress, keyExtractor }: TableProps<T>) {
   return (
-    <View className="bg-white rounded-xl overflow-hidden border border-gray-100">
+    <View className="overflow-hidden rounded-xl border border-gray-100 bg-white">
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View className="min-w-[720px]">
-          <View className="flex-row bg-gray-50 border-b border-gray-200">
+          <View className="flex-row border-b border-gray-200 bg-gray-50">
             {columns.map((col) => (
-              <View key={col.key} style={{ minWidth: col.width || 140, width: col.width || 140 }} className="p-3 justify-center">
-                <Text className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.08em]">
+              <View
+                key={col.key}
+                style={{ minWidth: col.width || 140, width: col.width || 140 }}
+                className="justify-center p-3">
+                <Text className="text-[11px] font-semibold tracking-[0.08em] text-gray-500 uppercase">
                   {col.title}
                 </Text>
               </View>
@@ -36,10 +39,12 @@ export function Table<T>({ columns, data, onRowPress, keyExtractor }: TableProps
                 key={keyExtractor(row)}
                 activeOpacity={onRowPress ? 0.7 : 1}
                 onPress={() => onRowPress?.(row)}
-                className={`flex-row border-b ${index === data.length - 1 ? 'border-b-0' : 'border-gray-100'} ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-              >
+                className={`flex-row border-b ${index === data.length - 1 ? 'border-b-0' : 'border-gray-100'} ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                 {columns.map((col) => (
-                  <View key={col.key} style={{ minWidth: col.width || 140, width: col.width || 140 }} className="p-3 justify-center">
+                  <View
+                    key={col.key}
+                    style={{ minWidth: col.width || 140, width: col.width || 140 }}
+                    className="justify-center p-3">
                     {col.render ? (
                       col.render(row)
                     ) : (
@@ -52,7 +57,7 @@ export function Table<T>({ columns, data, onRowPress, keyExtractor }: TableProps
               </TouchableOpacity>
             ))
           ) : (
-            <View className="p-4 items-center">
+            <View className="items-center p-4">
               <Text className="text-[13px] text-gray-400">No records to display</Text>
             </View>
           )}

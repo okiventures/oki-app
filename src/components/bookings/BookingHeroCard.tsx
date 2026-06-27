@@ -5,7 +5,11 @@ import { useTheme } from '../../context/ThemeContext';
 import { BookingDetail } from '../../mocks/bookingDetails';
 import { Avatar } from '../ui/Avatar';
 import { Card } from '../ui/Card';
-import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, SERVICE_CATEGORY_ICONS } from '../../constants/theme';
+import {
+  BOOKING_STATUS_COLORS,
+  BOOKING_STATUS_LABELS,
+  SERVICE_CATEGORY_ICONS,
+} from '../../constants/theme';
 
 interface BookingHeroCardProps {
   booking: BookingDetail;

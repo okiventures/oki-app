@@ -11,7 +11,7 @@ interface BookingPaymentTabProps {
   onReceiptPress?: () => void;
 }
 
-import { formatDate, SectionLabel } from './BookingShared';
+import { formatDate, SectionLabel } from './BookingShared'; // eslint-disable-line import/first
 
 const PAYMENT_ICONS: Record<string, string> = {
   GCash: 'phone-portrait-outline',
@@ -201,7 +201,7 @@ export function BookingPaymentTab({
           <Text className="font-semibold" style={{ color: colors.ui.text }}>
             5% platform fee
           </Text>{' '}
-          is applied to support OKI's secure payment processing and worker vetting program.
+          is applied to support OKI&apos;s secure payment processing and worker vetting program.
         </Text>
       </View>
 

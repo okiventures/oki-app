@@ -291,13 +291,24 @@ CREATE TRIGGER trg_disputes_updated_at
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.users (id, email, full_name, user_type)
+  INSERT INTO public.users (id, email, phone, full_name, user_type)
   VALUES (
     NEW.id,
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data ->> 'full_name', split_part(NEW.email, '@', 1)),
+    COALESCE(NEW.email, NEW.phone || '@phone.oki.app'),
+    NEW.phone,
+    COALESCE(
+      NEW.raw_user_meta_data ->> 'full_name',
+      NULLIF(split_part(COALESCE(NEW.email, ''), '@', 1), ''),
+      'User'
+    ),
     COALESCE((NEW.raw_user_meta_data ->> 'user_type')::user_type, 'client')
   );
+
+  IF NEW.raw_user_meta_data->>'user_type' = 'handyman' THEN
+    INSERT INTO public.handymen (id)
+    VALUES (NEW.id);
+  END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;

@@ -39,9 +39,10 @@ export function ScheduleCalendar({ bookings, selectedDate, onSelectDate }: Sched
         .filter((booking) => isSameDay(new Date(booking.scheduledAt as string), selectedDate))
         .sort(
           (left, right) =>
-            new Date(left.scheduledAt as string).getTime() - new Date(right.scheduledAt as string).getTime(),
+            new Date(left.scheduledAt as string).getTime() -
+            new Date(right.scheduledAt as string).getTime()
         ),
-    [bookings, selectedDate],
+    [bookings, selectedDate]
   );
 
   const weekDays = useMemo(() => getWeekDays(new Date()), []);
@@ -58,7 +59,7 @@ export function ScheduleCalendar({ bookings, selectedDate, onSelectDate }: Sched
             (booking) =>
               booking.scheduledAt &&
               booking.status !== BookingStatus.Cancelled &&
-              isSameDay(new Date(booking.scheduledAt), date),
+              isSameDay(new Date(booking.scheduledAt), date)
           );
 
           return (
@@ -66,13 +67,16 @@ export function ScheduleCalendar({ bookings, selectedDate, onSelectDate }: Sched
               key={date.toISOString()}
               onPress={() => onSelectDate(date)}
               className={`w-[72px] rounded-2xl border px-3 py-3 ${isSelected ? 'border-primary-600 bg-primary-50' : 'border-gray-200 bg-white'}`}>
-              <Text className={`text-center text-[11px] font-medium ${isSelected ? 'text-primary-700' : 'text-gray-500'}`}>
+              <Text
+                className={`text-center text-[11px] font-medium ${isSelected ? 'text-primary-700' : 'text-gray-500'}`}>
                 {date.toLocaleDateString('en-PH', { weekday: 'short' })}
               </Text>
-              <Text className={`mt-1 text-center text-[18px] font-bold ${isSelected ? 'text-primary-700' : 'text-gray-900'}`}>
+              <Text
+                className={`mt-1 text-center text-[18px] font-bold ${isSelected ? 'text-primary-700' : 'text-gray-900'}`}>
                 {date.getDate()}
               </Text>
-              <Text className={`mt-1 text-center text-[11px] ${isSelected ? 'text-primary-700' : 'text-gray-500'}`}>
+              <Text
+                className={`mt-1 text-center text-[11px] ${isSelected ? 'text-primary-700' : 'text-gray-500'}`}>
                 {dayBookings.length} booked
               </Text>
             </Pressable>
@@ -114,7 +118,9 @@ export function ScheduleCalendar({ bookings, selectedDate, onSelectDate }: Sched
                           <Text className="mt-1 text-[12px] text-gray-600">
                             {formatTime(booking.scheduledAt as string)} · {booking.location}
                           </Text>
-                          <Text className="mt-1 text-[11px] font-medium" style={{ color: statusColor }}>
+                          <Text
+                            className="mt-1 text-[11px] font-medium"
+                            style={{ color: statusColor }}>
                             {BOOKING_STATUS_LABELS[booking.status] ?? booking.status}
                           </Text>
                         </View>
@@ -122,7 +128,9 @@ export function ScheduleCalendar({ bookings, selectedDate, onSelectDate }: Sched
                     })
                   ) : (
                     <View className="rounded-2xl border border-dashed border-gray-200 px-3 py-3">
-                      <Text className="text-[12px] text-gray-400">No booking reserved for this slot.</Text>
+                      <Text className="text-[12px] text-gray-400">
+                        No booking reserved for this slot.
+                      </Text>
                     </View>
                   )}
                 </View>

@@ -20,9 +20,7 @@ export function CategoryGrid({ categories, onCategoryPress }: CategoryGridProps)
 
   return (
     <View className="mx-5 mb-5">
-      <Text
-        className="mb-2.5 text-sm font-medium"
-        style={{ color: colors.ui.text }}>
+      <Text className="mb-2.5 text-sm font-medium" style={{ color: colors.ui.text }}>
         Services
       </Text>
 
