@@ -173,7 +173,6 @@ export default function AdminUsers() {
           <Card className="flex-1 p-3">
             <Text className="text-[11px] font-medium text-gray-500">Pending KYC</Text>
             <Text className="font-heading mt-1 text-lg text-gray-900">{kycRequests.length}</Text>
-            <Text className="mt-1 text-[10px] font-bold text-amber-700">Needs review</Text>
           </Card>
         </View>
 

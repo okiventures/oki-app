@@ -4,14 +4,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { BookingDetail } from '../../mocks/bookingDetails';
 import { Button } from '../ui/Button';
+import { formatDate, SectionLabel } from './BookingShared';
 
 interface BookingPaymentTabProps {
   booking: BookingDetail;
   onPayNowPress?: () => void;
   onReceiptPress?: () => void;
 }
-
-import { formatDate, SectionLabel } from './BookingShared'; // eslint-disable-line import/first
 
 const PAYMENT_ICONS: Record<string, string> = {
   GCash: 'phone-portrait-outline',

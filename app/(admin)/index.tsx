@@ -4,15 +4,17 @@ import { Navbar } from '../../src/components/navigation/Navbar';
 import { Card } from '../../src/components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
 import { Chart } from '../../src/components/admin/Chart';
-import { MOCK_ADMIN_CHART_DATA, MOCK_ADMIN_FEED, MOCK_TRANSACTIONS } from '../../src/mocks';
-import { useAdmin } from '../../src/context/AdminContext';
+import {
+  MOCK_ADMIN_STATS,
+  MOCK_ADMIN_CHART_DATA,
+  MOCK_ADMIN_FEED,
+  MOCK_TRANSACTIONS,
+} from '../../src/mocks';
 import { useAuth } from '../../src/context/AuthContext';
 import { formatCurrency, formatDateTime } from '../../src/utils';
 
 export default function AdminDashboard() {
-  const { users, pendingKycCount, activeDisputesCount } = useAdmin();
   const { logout } = useAuth();
-  const activeUsers = users.filter((user) => user.status === 'Active').length;
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -23,17 +25,21 @@ export default function AdminDashboard() {
             <Ionicons name="people" size={20} color="#4F46E5" className="mb-2" />
             <Text className="text-[11px] font-medium text-gray-500">Active Users</Text>
             <Text className="font-heading mt-1 text-lg text-gray-900">
-              {activeUsers.toLocaleString()}
+              {MOCK_ADMIN_STATS.activeUsers.toLocaleString()}
             </Text>
-            <Text className="mt-1 text-[10px] font-bold text-green-600">Updated live</Text>
+            <Text className="mt-1 text-[10px] font-bold text-green-600">
+              {MOCK_ADMIN_STATS.activeUsersGrowth}
+            </Text>
           </Card>
           <Card className="flex-1 p-3">
             <Ionicons name="cash" size={20} color="#10B981" className="mb-2" />
             <Text className="text-[11px] font-medium text-gray-500">Revenue</Text>
             <Text className="font-heading mt-1 text-lg text-gray-900">
-              {formatCurrency(285400)}
+              {formatCurrency(MOCK_ADMIN_STATS.totalRevenue)}
             </Text>
-            <Text className="mt-1 text-[10px] font-bold text-green-600">+8.5%</Text>
+            <Text className="mt-1 text-[10px] font-bold text-green-600">
+              {MOCK_ADMIN_STATS.revenueGrowth}
+            </Text>
           </Card>
         </View>
 
@@ -41,14 +47,17 @@ export default function AdminDashboard() {
           <Card className="flex-1 p-3">
             <Ionicons name="alert-circle" size={20} color="#EF4444" className="mb-2" />
             <Text className="text-[11px] font-medium text-gray-500">Active Disputes</Text>
-            <Text className="font-heading mt-1 text-lg text-gray-900">{activeDisputesCount}</Text>
+            <Text className="font-heading mt-1 text-lg text-gray-900">
+              {MOCK_ADMIN_STATS.activeDisputes}
+            </Text>
             <Text className="mt-1 text-[10px] font-bold text-red-600">Needs Attention</Text>
           </Card>
           <Card className="flex-1 p-3">
             <Ionicons name="document-text" size={20} color="#F59E0B" className="mb-2" />
             <Text className="text-[11px] font-medium text-gray-500">Pending KYC</Text>
-            <Text className="font-heading mt-1 text-lg text-gray-900">{pendingKycCount}</Text>
-            <Text className="mt-1 text-[10px] font-bold text-gray-500">In Queue</Text>
+            <Text className="font-heading mt-1 text-lg text-gray-900">
+              {MOCK_ADMIN_STATS.pendingKYC}
+            </Text>
           </Card>
         </View>
 

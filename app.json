@@ -12,6 +12,12 @@
       "tsconfigPaths": true
     },
     "plugins": ["expo-router", "expo-font", "expo-web-browser"],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/53647ae6-4e11-41a7-9f55-c58fd6b1b09d"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",

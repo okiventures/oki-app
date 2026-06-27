@@ -25,6 +25,7 @@ Closes # <!-- issue/ticket number if applicable -->
 <!-- Tick off what applies to this PR. Remove sections that are not relevant. -->
 
 ### Code Quality
+
 - [ ] No TypeScript errors (`tsc --noEmit` passes in strict mode)
 - [ ] No ESLint warnings or errors
 - [ ] Follows existing naming conventions (PascalCase components, camelCase hooks/utils)
@@ -32,22 +33,26 @@ Closes # <!-- issue/ticket number if applicable -->
 - [ ] No `console.log` or debug statements left in
 
 ### UI / Components
+
 - [ ] Follows the NativeWind + Tailwind design token system (`src/constants/theme.ts`)
 - [ ] Responsive on both iOS and Android (tested on simulator/emulator)
 - [ ] Empty states, loading states, and error states are handled
 - [ ] Uses existing shared components (`src/components/ui/`, `src/components/forms/`) where applicable
 
 ### Routing & Navigation
+
 - [ ] Route group is correct: `(auth)`, `(client)`, `(handyman)`, or `(admin)`
 - [ ] Navigation guards / redirect logic is correct for role
 - [ ] Deep link or back-navigation behavior is verified
 
 ### Data & State
+
 - [ ] Mock data updated in `src/mocks/` if new entity shape was introduced
 - [ ] Types updated in `src/types/index.ts` for any new data structures
 - [ ] No hardcoded strings that should be constants or tokens
 
 ### Testing
+
 - [ ] Manually tested the happy path on iOS
 - [ ] Manually tested the happy path on Android
 - [ ] Edge cases tested (empty data, long strings, network error state)
@@ -59,7 +64,7 @@ Closes # <!-- issue/ticket number if applicable -->
 <!-- Required for UI changes. Attach before/after screenshots or a short recording. -->
 
 | Before | After |
-|--------|-------|
+| ------ | ----- |
 |        |       |
 
 ---

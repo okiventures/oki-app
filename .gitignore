@@ -2,6 +2,13 @@ node_modules/
 .expo/
 dist/
 npm-debug.*
+
+# Environment
+.env
+.env.development
+.env.staging
+.env.production
+.env.local
 *.jks
 *.p8
 *.p12
@@ -25,7 +32,7 @@ android
 # guide files
 App_Development_Guide.md
 PR.md
-
+AGENTS.md
 
 # Environment files
 .env

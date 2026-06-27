@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Navbar } from '../../src/components/navigation/Navbar';
 import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
@@ -98,7 +98,7 @@ export default function AdminDisputes() {
   return (
     <View className="flex-1 bg-gray-50">
       <Navbar title="Disputes" />
-      <View className="px-4 py-4">
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
         <Text className="mb-3 text-[13px] font-bold text-gray-900">Active Resolutions</Text>
         <SearchBar
           value={searchValue}
@@ -164,7 +164,7 @@ export default function AdminDisputes() {
             </Text>
           </Card>
         )}
-      </View>
+      </ScrollView>
     </View>
   );
 }
