@@ -24,6 +24,8 @@ android
 
 # guide files
 App_Development_Guide.md
+PR.md
+
 
 # Environment files
 .env
