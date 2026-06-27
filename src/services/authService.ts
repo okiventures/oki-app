@@ -69,15 +69,15 @@ export async function signup(payload: SignupPayload): Promise<SignupResult> {
 
   const { data, error } = payload.email
     ? await supabase.auth.signUp({
-      email: payload.email,
-      password: payload.password,
-      options: { data: metadata },
-    })
+        email: payload.email,
+        password: payload.password,
+        options: { data: metadata },
+      })
     : await supabase.auth.signUp({
-      phone: payload.phone!,
-      password: payload.password,
-      options: { data: metadata },
-    });
+        phone: payload.phone!,
+        password: payload.password,
+        options: { data: metadata },
+      });
 
   if (error) throw new Error(error.message);
 
@@ -109,13 +109,13 @@ export async function signup(payload: SignupPayload): Promise<SignupResult> {
 export async function login(payload: LoginPayload) {
   const { data, error } = payload.email
     ? await supabase.auth.signInWithPassword({
-      email: payload.email,
-      password: payload.password,
-    })
+        email: payload.email,
+        password: payload.password,
+      })
     : await supabase.auth.signInWithPassword({
-      phone: payload.phone!,
-      password: payload.password,
-    });
+        phone: payload.phone!,
+        password: payload.password,
+      });
 
   if (error) throw new Error(error.message);
   if (!data.session) throw new Error('No session returned from login');

@@ -72,24 +72,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     // 1. Get initial session
-    supabase.auth.getSession()
+    supabase.auth
+      .getSession()
       .then(({ data }) => {
         if (!mounted) return;
         setSession(formatSessionFromSupabase(data.session));
       })
-      .catch(() => { })
+      .catch(() => {})
       .finally(() => {
         if (mounted) setIsLoading(false);
       });
 
     // 2. Listen for future auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, supabaseSession) => {
-        if (mounted) {
-          setSession(formatSessionFromSupabase(supabaseSession));
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, supabaseSession) => {
+      if (mounted) {
+        setSession(formatSessionFromSupabase(supabaseSession));
       }
-    );
+    });
 
     return () => {
       mounted = false;
