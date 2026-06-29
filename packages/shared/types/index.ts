@@ -3,14 +3,14 @@ export type UserType = 'client' | 'handyman' | 'admin';
 export type ColorScheme = 'crimson' | 'teal' | 'indigo';
 
 export enum BookingStatus {
-  Pending = 'Pending',
-  Accepted = 'Accepted',
-  InTransit = 'InTransit',
-  Arrived = 'Arrived',
-  WorkStarted = 'WorkStarted',
-  Completed = 'Completed',
-  Paid = 'Paid',
-  Cancelled = 'Cancelled',
+  Pending = 'PENDING',
+  Accepted = 'ACCEPTED',
+  InTransit = 'IN_TRANSIT',
+  Arrived = 'ARRIVED',
+  WorkStarted = 'WORK_STARTED',
+  Completed = 'COMPLETED',
+  Paid = 'PAID',
+  Cancelled = 'CANCELLED',
 }
 
 export enum ServiceCategory {

@@ -73,65 +73,18 @@ serve(async (req: Request) => {
       const platformFee = Math.round(payload.amount * 0.1 * 100) / 100;
       const netAmount = payload.amount - platformFee;
 
-      const { error: updateError } = await supabase
-        .from('bookings')
-        .update({ status: 'PAID', updated_at: new Date().toISOString() })
-        .eq('id', payload.bookingId);
-
-      if (updateError) {
-        return new Response(
-          JSON.stringify({ error: 'INTERNAL_ERROR', message: updateError.message }),
-          { status: 500 }
-        );
-      }
-
-      const { error: paymentInsertError } = await supabase.from('payments').insert({
+      const { error: transactionError } = await supabase.rpc('execute_payment_transaction', {
         booking_id: payload.bookingId,
         payment_intent_id: payload.paymentIntentId,
         amount: payload.amount,
         platform_fee: platformFee,
         net_amount: netAmount,
-        status: 'CAPTURED',
-        captured_at: new Date().toISOString(),
-      });
-
-      if (paymentInsertError) {
-        return new Response(
-          JSON.stringify({ error: 'INTERNAL_ERROR', message: paymentInsertError.message }),
-          { status: 500 }
-        );
-      }
-
-      const { error: walletInsertError } = await supabase.from('wallet_transactions').insert({
         handyman_id: booking.handyman_id,
-        booking_id: payload.bookingId,
-        type: 'CREDIT',
-        amount: netAmount,
-        description: `Payment for booking ${payload.bookingId}`,
       });
 
-      if (walletInsertError) {
+      if (transactionError) {
         return new Response(
-          JSON.stringify({ error: 'INTERNAL_ERROR', message: walletInsertError.message }),
-          { status: 500 }
-        );
-      }
-
-      const { error: eventInsertError } = await supabase.from('booking_events').insert({
-        booking_id: payload.bookingId,
-        actor_id: null,
-        from_status: 'COMPLETED',
-        to_status: 'PAID',
-        metadata: {
-          action: 'CAPTURE_PAYMENT',
-          payment_intent_id: payload.paymentIntentId,
-          platform_fee: platformFee,
-        },
-      });
-
-      if (eventInsertError) {
-        return new Response(
-          JSON.stringify({ error: 'INTERNAL_ERROR', message: eventInsertError.message }),
+          JSON.stringify({ error: 'INTERNAL_ERROR', message: transactionError.message }),
           { status: 500 }
         );
       }

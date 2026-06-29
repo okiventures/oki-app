@@ -85,6 +85,7 @@ serve(async (req: Request) => {
     .from('bookings')
     .update({ status: 'ACCEPTED', handyman_id: user.id, updated_at: new Date().toISOString() })
     .eq('id', bookingId)
+    .eq('status', 'PENDING')
     .select()
     .single();
 
@@ -92,6 +93,21 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: updateError.message }), {
       status: 500,
     });
+  }
+
+  if (!updatedBooking) {
+    return new Response(
+      JSON.stringify({
+        error: 'INVALID_STATE_TRANSITION',
+        message: 'Booking was accepted by another handyman',
+        from_status: 'PENDING',
+        to_status: 'ACCEPTED',
+        action: 'ACCEPT',
+        reason_code: 'GUARD_NOT_SATISFIED',
+        details: { failed_guards: ['Booking no longer PENDING or already assigned'] },
+      }),
+      { status: 409 }
+    );
   }
 
   await supabase.from('booking_events').insert({
