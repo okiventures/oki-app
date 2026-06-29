@@ -67,6 +67,7 @@ export default function AdminAuthScreen() {
           userType: 'admin',
           fullName: fullName.trim(),
           companyCode: companyCode.trim(),
+          companyName: companyName.trim(),
         });
         if (result.emailConfirmationRequired) {
           router.replace('/(auth)/email-confirm');

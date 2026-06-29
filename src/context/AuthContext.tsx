@@ -29,6 +29,7 @@ interface AuthContextType {
     userType: 'client' | 'handyman' | 'admin';
     fullName: string;
     companyCode?: string;
+    companyName?: string;
   }) => Promise<SignupResult>;
   login: (params: { email?: string; phone?: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;

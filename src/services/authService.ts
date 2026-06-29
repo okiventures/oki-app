@@ -26,6 +26,7 @@ interface SignupPayload {
   userType: 'client' | 'handyman' | 'admin';
   fullName: string;
   companyCode?: string;
+  companyName?: string;
 }
 
 interface LoginPayload {
@@ -65,6 +66,10 @@ export async function signup(payload: SignupPayload): Promise<SignupResult> {
 
   if (payload.companyCode) {
     metadata.company_code = payload.companyCode;
+  }
+
+  if (payload.companyName) {
+    metadata.company_name = payload.companyName;
   }
 
   const { data, error } = payload.email
