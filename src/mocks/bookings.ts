@@ -1,6 +1,5 @@
 import { Booking, BookingStatus, BookingType, ServiceCategory } from '../types';
 
-
 export const MOCK_BOOKINGS: Booking[] = [
   {
     id: 'b1',

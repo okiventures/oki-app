@@ -14,7 +14,7 @@ export function LoadingSpinner({ label, fullScreen = false, size = 'large' }: Lo
   return (
     <View className={`items-center justify-center gap-2 ${fullScreen ? 'flex-1 bg-white' : ''}`}>
       <ActivityIndicator size={size} color={colors.primary['600']} />
-      {label && <Text className="text-[13px] text-gray-500 font-medium">{label}</Text>}
+      {label && <Text className="text-[13px] font-medium text-gray-500">{label}</Text>}
     </View>
   );
 }

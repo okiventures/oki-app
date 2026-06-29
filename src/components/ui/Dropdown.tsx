@@ -1,12 +1,5 @@
 import React, { useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
-  ScrollView,
-  useWindowDimensions,
-} from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -75,7 +68,7 @@ export function Dropdown({
           <View>
             {label ? (
               <Text
-                className="mb-1 text-[11px] font-semibold uppercase tracking-wide"
+                className="mb-1 text-[11px] font-semibold tracking-wide uppercase"
                 style={{ color: colors.ui.textMuted }}>
                 {label}
               </Text>
@@ -100,10 +93,7 @@ export function Dropdown({
         transparent
         animationType="fade"
         onRequestClose={() => setVisible(false)}>
-        <TouchableOpacity
-          className="flex-1"
-          activeOpacity={1}
-          onPress={() => setVisible(false)}>
+        <TouchableOpacity className="flex-1" activeOpacity={1} onPress={() => setVisible(false)}>
           <View
             style={[
               listStyle,

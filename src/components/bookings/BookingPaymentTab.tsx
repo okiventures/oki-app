@@ -4,14 +4,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { BookingDetail } from '../../mocks/bookingDetails';
 import { Button } from '../ui/Button';
+import { formatDate, SectionLabel } from './BookingShared';
 
 interface BookingPaymentTabProps {
   booking: BookingDetail;
   onPayNowPress?: () => void;
   onReceiptPress?: () => void;
 }
-
-import { formatDate, SectionLabel } from './BookingShared';
 
 const PAYMENT_ICONS: Record<string, string> = {
   GCash: 'phone-portrait-outline',
@@ -201,7 +200,7 @@ export function BookingPaymentTab({
           <Text className="font-semibold" style={{ color: colors.ui.text }}>
             5% platform fee
           </Text>{' '}
-          is applied to support OKI's secure payment processing and worker vetting program.
+          is applied to support OKI{"'"}s secure payment processing and worker vetting program.
         </Text>
       </View>
 

@@ -26,12 +26,14 @@ export function IconButton({
     lg: 'w-10 h-10 rounded-xl',
   };
 
-  const bgClass = 
+  const bgClass =
     variant === 'filled'
-      ? danger ? 'bg-red-600' : 'bg-primary-600'
+      ? danger
+        ? 'bg-red-600'
+        : 'bg-primary-600'
       : variant === 'outline'
-      ? 'bg-transparent border border-primary-600'
-      : 'bg-transparent';
+        ? 'bg-transparent border border-primary-600'
+        : 'bg-transparent';
 
   return (
     <TouchableOpacity
@@ -39,8 +41,7 @@ export function IconButton({
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      className={`${dimensionClasses[size]} ${bgClass} items-center justify-center ${disabled ? 'opacity-50' : 'opacity-100'}`}
-    >
+      className={`${dimensionClasses[size]} ${bgClass} items-center justify-center ${disabled ? 'opacity-50' : 'opacity-100'}`}>
       <View>{icon}</View>
     </TouchableOpacity>
   );

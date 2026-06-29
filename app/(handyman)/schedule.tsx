@@ -5,7 +5,6 @@ import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { BookingCard } from '../../src/components/cards/BookingCard';
 import { useBookings } from '../../src/context/BookingsContext';
-import { BookingStatus } from '../../src/types';
 import { ScheduleCalendar } from '../../src/components/handyman/ScheduleCalendar';
 import { EmptyState } from '../../src/components/ui/EmptyState';
 
@@ -53,7 +52,12 @@ export default function HandymanSchedule() {
             <View>
               {selectedDayBookings.length > 0 ? (
                 selectedDayBookings.map((booking) => (
-                  <BookingCard key={booking.id} booking={booking} userType="handyman" onPress={() => {}} />
+                  <BookingCard
+                    key={booking.id}
+                    booking={booking}
+                    userType="handyman"
+                    onPress={() => {}}
+                  />
                 ))
               ) : (
                 <EmptyState

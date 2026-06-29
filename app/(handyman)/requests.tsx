@@ -3,10 +3,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
-import {
-  ACTIVE_HANDYMAN_BOOKING_STATUSES,
-  useBookings,
-} from '../../src/context/BookingsContext';
+import { ACTIVE_HANDYMAN_BOOKING_STATUSES, useBookings } from '../../src/context/BookingsContext';
 import { Booking } from '../../src/types';
 import { ActiveJobWorkflowCard } from '../../src/components/handyman/ActiveJobWorkflowCard';
 import { RequestInboxCard } from '../../src/components/handyman/RequestInboxCard';
@@ -27,7 +24,7 @@ export default function HandymanRequests() {
 
   const myBookings = useMemo(
     () => bookings.filter((booking) => booking.handymanId === HANDYMAN_ID),
-    [bookings],
+    [bookings]
   );
 
   const incomingRequests = myBookings
@@ -35,13 +32,13 @@ export default function HandymanRequests() {
     .sort(
       (left, right) =>
         new Date(left.requestExpiresAt ?? left.createdAt).getTime() -
-        new Date(right.requestExpiresAt ?? right.createdAt).getTime(),
+        new Date(right.requestExpiresAt ?? right.createdAt).getTime()
     );
 
   const activeJob = myBookings
     .filter((booking) => ACTIVE_HANDYMAN_BOOKING_STATUSES.includes(booking.status))
     .sort(
-      (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
+      (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
     )[0];
 
   const requestCountLabel =
@@ -79,11 +76,14 @@ export default function HandymanRequests() {
           style={{ backgroundColor: colors.ui.background }}>
           {activeJob ? (
             <View className="mb-4">
-              <ActiveJobWorkflowCard booking={activeJob} onAdvance={() => advanceBooking(activeJob.id)} />
+              <ActiveJobWorkflowCard
+                booking={activeJob}
+                onAdvance={() => advanceBooking(activeJob.id)}
+              />
             </View>
           ) : null}
 
-          <View className="mb-3 mt-1 px-1">
+          <View className="mt-1 mb-3 px-1">
             <Text className="text-[18px] font-bold text-gray-900">Request Inbox</Text>
             <Text className="mt-1 text-[13px] text-gray-500">{requestCountLabel}</Text>
           </View>
@@ -109,7 +109,9 @@ export default function HandymanRequests() {
 
       <ConfirmDialog
         visible={pendingAction !== null}
-        title={pendingAction?.type === 'accept' ? 'Accept booking request?' : 'Decline booking request?'}
+        title={
+          pendingAction?.type === 'accept' ? 'Accept booking request?' : 'Decline booking request?'
+        }
         message={
           pendingAction?.type === 'accept'
             ? 'This request will move to Accepted for both the handyman queue and the client booking list.'

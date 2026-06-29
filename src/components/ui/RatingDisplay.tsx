@@ -9,10 +9,15 @@ interface RatingDisplayProps {
   showCount?: boolean;
 }
 
-export function RatingDisplay({ rating, reviewCount, size = 'md', showCount = true }: RatingDisplayProps) {
+export function RatingDisplay({
+  rating,
+  reviewCount,
+  size = 'md',
+  showCount = true,
+}: RatingDisplayProps) {
   const starSize = { sm: 12, md: 15, lg: 18 }[size];
   const fontSizeClass = { sm: 'text-[11px]', md: 'text-[13px]', lg: 'text-sm' }[size];
-  
+
   const stars = Array.from({ length: 5 }, (_, i) => {
     if (i + 1 <= Math.floor(rating)) return 'star';
     if (i < rating) return 'star-half';
@@ -26,7 +31,7 @@ export function RatingDisplay({ rating, reviewCount, size = 'md', showCount = tr
           <Ionicons key={i} name={icon as never} size={starSize} color="#F59E0B" />
         ))}
       </View>
-      <Text className={`${fontSizeClass} font-semibold text-gray-700 ml-0.5`}>
+      <Text className={`${fontSizeClass} ml-0.5 font-semibold text-gray-700`}>
         {rating.toFixed(1)}
       </Text>
       {showCount && reviewCount !== undefined && (
