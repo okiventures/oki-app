@@ -4,3 +4,5 @@ packages:
 allowBuilds:
   sharp: true
   unrs-resolver: true
+patchedDependencies:
+  '@react-native/jest-preset@0.85.3': patches/@react-native__jest-preset@0.85.3.patch
