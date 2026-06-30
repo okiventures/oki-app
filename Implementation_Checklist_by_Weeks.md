@@ -235,10 +235,10 @@
 ### **Week 7 · June 18 – June 24 — User Profiles & KYC Backend**
 
 - [ ] [STANDUP] **Standup 3 — June 17**
-- [ ] Profile CRUD for Client and Handyman
-  - [ ] `GET /profiles/:id` and `PATCH /profiles/:id` endpoints with RLS (own record only)
-  - [ ] Avatar upload to Supabase Storage with public CDN URL stored on profile
-  - [ ] Handyman profile includes: bio, services, hourly rate, rating average, location
+- [x] Profile CRUD for Client and Handyman
+  - [x] `GET /profiles/:id` and `PATCH /profiles/:id` endpoints with RLS (own record only)
+  - [x] Avatar upload to Supabase Storage with public CDN URL stored on profile
+  - [x] Handyman profile includes: bio, services, hourly rate, rating average, location
 - [ ] KYC document upload (storage, signed URLs)
   - [ ] `POST /kyc/upload` endpoint: validate file type (JPEG/PNG/PDF), max 5 MB, reject all others
   - [ ] Store documents in private Supabase Storage bucket

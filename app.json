@@ -3,7 +3,7 @@
     "name": "oki-app",
     "slug": "oki-app",
     "version": "1.0.0",
-    "scheme": "oki-app",
+    "scheme": "oki",
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
