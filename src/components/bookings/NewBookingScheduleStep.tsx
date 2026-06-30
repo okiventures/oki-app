@@ -67,7 +67,7 @@ export function NewBookingScheduleStep({
             <Text
               className="text-center text-[14px] leading-5"
               style={{ color: colors.primary['800'] }}>
-              We{"'"}ll match you with the nearest available handyman right away.
+              We&apos;ll match you with the nearest available handyman right away.
             </Text>
           </View>
 

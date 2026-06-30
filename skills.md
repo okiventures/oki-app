@@ -51,7 +51,7 @@ style={{
 <SafeAreaView className="flex-1" style={{ backgroundColor: colors.ui.background }}>
   {/* Coloured header band */}
   <View
-    className="rounded-b-3xl px-5 pb-10 pt-4"
+    className="rounded-b-3xl px-5 pt-4 pb-10"
     style={{ backgroundColor: colors.primary['600'] }}>
     ...
   </View>
@@ -91,9 +91,7 @@ style={{
       ...
     </ScrollView>
 
-    <View>
-      ...footer actions...
-    </View>
+    <View>...footer actions...</View>
   </View>
 </SafeAreaView>
 ```
@@ -168,15 +166,15 @@ style={{
 
 ### Onboarding (`src/components/onboarding/`)
 
-| Component Path                                    | Purpose                                                    |
-| ------------------------------------------------- | ---------------------------------------------------------- |
-| `handyman/HandymanOnboardingHero`                 | Header band and step progress UI for handyman onboarding   |
-| `handyman/HandymanProfileStep`                    | Personal details step for handyman onboarding              |
-| `handyman/HandymanServicesStep`                   | Service selection and pricing step                         |
-| `handyman/HandymanDocumentsStep`                  | KYC upload step                                            |
-| `handyman/HandymanPendingStep`                    | Submission confirmation and pending review step            |
-| `handyman/shared`                                 | Shared onboarding constants and types for the handyman flow |
-| `handyman/useHandymanOnboardingFlow`              | Flow state, validation, upload orchestration, and step actions |
+| Component Path                       | Purpose                                                        |
+| ------------------------------------ | -------------------------------------------------------------- |
+| `handyman/HandymanOnboardingHero`    | Header band and step progress UI for handyman onboarding       |
+| `handyman/HandymanProfileStep`       | Personal details step for handyman onboarding                  |
+| `handyman/HandymanServicesStep`      | Service selection and pricing step                             |
+| `handyman/HandymanDocumentsStep`     | KYC upload step                                                |
+| `handyman/HandymanPendingStep`       | Submission confirmation and pending review step                |
+| `handyman/shared`                    | Shared onboarding constants and types for the handyman flow    |
+| `handyman/useHandymanOnboardingFlow` | Flow state, validation, upload orchestration, and step actions |
 
 ### Forms (`src/components/forms/`)
 
@@ -225,7 +223,7 @@ Use the pattern from `bookings.tsx` and `profile.tsx`:
 
 ```tsx
 <Text
-  className="text-[11px] font-semibold uppercase tracking-widest"
+  className="text-[11px] font-semibold tracking-widest uppercase"
   style={{ color: colors.ui.textMuted }}>
   Section Title
 </Text>
@@ -249,15 +247,15 @@ Use the shared `Modal` component for all confirmation dialogs:
 
 ## Conventions Summary
 
-| Concern        | Rule                                                                |
-| -------------- | ------------------------------------------------------------------- |
-| Colors         | Always via `useTheme().colors`                                      |
-| Layout         | NativeWind className first                                          |
-| Dynamic styles | Inline `style` prop only                                            |
-| Shadows        | Inline `style` only (not expressible in NativeWind)                 |
-| Page wrap      | `SafeAreaView` from `react-native-safe-area-context`                |
+| Concern        | Rule                                                                    |
+| -------------- | ----------------------------------------------------------------------- |
+| Colors         | Always via `useTheme().colors`                                          |
+| Layout         | NativeWind className first                                              |
+| Dynamic styles | Inline `style` prop only                                                |
+| Shadows        | Inline `style` only (not expressible in NativeWind)                     |
+| Page wrap      | `SafeAreaView` from `react-native-safe-area-context`                    |
 | Bottom inset   | Owned by `BottomNav` inside tab shells; screens should not duplicate it |
-| Top inset      | Owned by `Navbar` when a screen uses the shared navbar              |
-| Buttons        | `Pressable` preferred; `Button` / `IconButton` for semantic actions |
-| Modals         | Shared `Modal` component                                            |
-| Mock data      | `src/mocks/` — import from barrel `../../src/mocks`                 |
+| Top inset      | Owned by `Navbar` when a screen uses the shared navbar                  |
+| Buttons        | `Pressable` preferred; `Button` / `IconButton` for semantic actions     |
+| Modals         | Shared `Modal` component                                                |
+| Mock data      | `src/mocks/` — import from barrel `../../src/mocks`                     |

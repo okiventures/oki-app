@@ -25,7 +25,7 @@ export function NotificationCenter({
         <Ionicons name="notifications-off-outline" size={48} color="#D1D5DB" />
         <Text className="mt-3 text-sm font-semibold text-gray-500">No notifications yet</Text>
         <Text className="mt-1 text-[11px] text-gray-400">
-          We{"'"}ll let you know when something happens
+          We&apos;ll let you know when something happens
         </Text>
       </View>
     );

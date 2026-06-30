@@ -140,10 +140,10 @@
   - [ ] Consistent header layout with Online/Offline `Badge` across all Handyman tabs
   - [ ] Animate state transition on active job card CTA change
   - [ ] Loading state on wallet balance fetch; error state on network failure
-- [ ] Polish and refine Admin dashboard screens
-  - [ ] Responsive `Table` layout for User Management and Dispute Center (`src/components/admin/Table.tsx`)
-  - [ ] Chart axis labels, color legend, and tooltips for readability
-  - [ ] `ConfirmDialog` on all destructive actions: Reject KYC, Suspend User
+- [x] Polish and refine Admin dashboard screens
+  - [x] Responsive `Table` layout for User Management and Dispute Center (`src/components/admin/Table.tsx`)
+  - [x] Chart axis labels, color legend, and tooltips for readability
+  - [x] `ConfirmDialog` on all destructive actions: Reject KYC, Suspend User
 - [ ] End-to-end interactive navigation test across all role flows
   - [ ] Manual test pass: Client full booking flow (search → book → status tracking)
   - [ ] Manual test pass: Handyman full flow (receive request → accept → complete job)
@@ -173,17 +173,17 @@
   - [x] Define guard conditions per transition (e.g., payment captured before `PAID`; photo required before `WORK_STARTED`)
   - [x] Document invalid transitions and expected API error response (422 + reason)
   - [x] Publish FSM diagram to shared project docs (`backend/docs/booking-state-machine.md`)
-- [ ] API contract / OpenAPI draft
-  - [ ] Auth: `POST /auth/signup`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/reset-password`
-  - [ ] Bookings: `POST /bookings`, `GET /bookings/:id`, `PATCH /bookings/:id/state`, `DELETE /bookings/:id`
-  - [ ] Search: `GET /handymen/search?lat&lng&radius&category&page`
-  - [ ] KYC, profiles, wallet, payout, admin, and review endpoints
-  - [ ] Document request/response schemas, required auth headers, and error codes for each endpoint
-- [ ] Tech stack lock-in for backend services
-  - [ ] Confirm: Supabase (PostgreSQL + PostGIS + Auth + Storage + Realtime)
-  - [ ] Backend API layer decision documented as an ADR: Supabase Edge Functions vs Node.js (Fastify)
+- [x] API contract / OpenAPI draft
+  - [x] Auth: `POST /auth/signup`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/reset-password`
+  - [x] Bookings: `POST /bookings`, `GET /bookings/:id`, `PATCH /bookings/:id/state`, `DELETE /bookings/:id`
+  - [x] Search: `GET /handymen/search?lat&lng&radius&category&page`
+  - [x] KYC, profiles, wallet, payout, admin, and review endpoints
+  - [x] Document request/response schemas, required auth headers, and error codes for each endpoint
+- [x] Tech stack lock-in for backend services
+  - [x] Confirm: Supabase (PostgreSQL + PostGIS + Auth + Storage + Realtime)
+  - [x] Backend API layer decision documented as an ADR: Supabase Edge Functions vs Node.js (Fastify)
   - [ ] Payment provider selected (Stripe or local equivalent) with sandbox credentials provisioned
-  - [ ] Notification stack: Expo Push + Resend (email) + Twilio (SMS)
+  - [x] Notification stack: Expo Push + Resend (email) + Twilio (SMS)
   - [ ] Secrets management strategy: Supabase Vault for all third-party API keys
 - [ ] [MILESTONE] **Milestone:** All role screens implemented + database architecture approved
 
@@ -202,24 +202,24 @@
 
 ### **Week 6 · June 11 – June 17 — Scaffolding & Auth**
 
-- [x] ~~Initialize mobile (Client Handyman) and web (Admin) projects~~
+- [x] ~~Initialize mobile (Client & Handyman) and web (Admin) projects~~
   - [x] ~~Verify Expo project structure is production-ready (EAS Build configured, app.json finalized)~~
   - [x] ~~Scaffold backend project: Node.js (Fastify) or Supabase Edge Functions per ADR~~ — Supabase Edge Functions chosen, ADR at `backend/docs/adr-001-backend-api-layer.md`
   - [x] ~~Configure monorepo or separate repos with shared types package if applicable~~
 - [x] ~~Set up CI/CD, linting, environment configs~~
-  - [x] ~~GitHub Actions: lint + type-check + test pipeline on every PR; block merge on failure~~ — `.github/workflows/ci.yml`, branch protection required in repo settings
-  - [x] ~~EAS Build workflow for dev/staging/prod build profiles~~ — `eas.json` (dev/staging/production)
+  - [x] ~~GitHub Actions: lint + type-check + test pipeline on every PR; block merge on failure~~ — `.github/workflows/ci.yml`
+  - [x] ~~EAS Build workflow for dev/staging/prod build profiles~~ — `eas.json`
   - [x] ~~`.env` templates committed; actual secrets stored in GitHub Secrets and Supabase Vault~~ — `.env.example`
   - [x] ~~ESLint + Prettier enforced; Husky pre-commit hooks configured~~ — `.husky/pre-commit` → `npx lint-staged`
-- [ ] Implement authentication (signup/login, JWT/refresh, password reset)
-  - [ ] Supabase Auth: email/phone signup with OTP verification
-  - [ ] JWT session management with auto-refresh token rotation
-  - [ ] Password reset via email deep link
-  - [ ] Auth state persisted in `SecureStore`; app bootstraps into correct route on relaunch
-- [ ] Provision database, base migrations, seed scripts
-  - [ ] Create Supabase project; enable PostGIS extension
-  - [ ] Run base migrations: `users`, `handymen`, `services` tables with RLS enabled
-  - [ ] Seed script with representative test data for each role
+- [x] Implement authentication (signup/login, JWT/refresh, password reset)
+  - [x] Supabase Auth: email/phone signup with OTP verification
+  - [x] JWT session management with auto-refresh token rotation
+  - [x] Password reset via email deep link
+  - [x] Auth state persisted; app bootstraps into correct route on relaunch
+- [x] Provision database, base migrations, seed scripts
+  - [x] Create Supabase project; enable PostGIS extension
+  - [x] Run base migrations: `users`, `handymen`, `services` tables with RLS enabled
+  - [x] Seed script with representative test data for each role
 
 ### [PASS] Week 6 Success Criteria
 

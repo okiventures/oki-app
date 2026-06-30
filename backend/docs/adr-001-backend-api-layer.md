@@ -2,7 +2,7 @@
 
 **Status:** Accepted  
 **Date:** 2026-06-25  
-**Deciders:** Oki engineering team  
+**Deciders:** Oki engineering team
 
 ---
 
@@ -11,6 +11,7 @@
 The platform requires a backend API layer to handle booking lifecycle, payments, KYC verification, and admin operations. The database and auth are already on Supabase (PostgreSQL 15+ with PostGIS).
 
 Two credible options were evaluated:
+
 - **Supabase Edge Functions** (Deno runtime, deployed alongside the database)
 - **Node.js with Fastify** (standalone server, self-hosted or cloud-deployed)
 
@@ -30,11 +31,11 @@ Two credible options were evaluated:
 
 ### Node.js (Fastify)
 
-| Pro | Con |
-|-----|-----|
-| Full Node.js ecosystem and npm packages | Separate hosting, scaling, and monitoring |
-| Familiar debugging and local dev tooling | Higher infrastructure cost and maintenance |
-| Long-running server for WebSocket state | Duplicates auth middleware already in Supabase |
+| Pro                                      | Con                                            |
+| ---------------------------------------- | ---------------------------------------------- |
+| Full Node.js ecosystem and npm packages  | Separate hosting, scaling, and monitoring      |
+| Familiar debugging and local dev tooling | Higher infrastructure cost and maintenance     |
+| Long-running server for WebSocket state  | Duplicates auth middleware already in Supabase |
 
 Fastify remains a viable fallback if Edge Functions prove insufficient for complex workflows, but the current roadmap does not require features beyond what Edge Functions support.
 

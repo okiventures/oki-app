@@ -1,0 +1,103 @@
+diff --git a/jest/mock.js b/jest/mock.js
+index 05eb87e543fba63d7924c81d5594c68506e2992c..7f9ef25e225a5924c4eecbaff6ec38b8f744c43d 100644
+--- a/jest/mock.js
++++ b/jest/mock.js
+@@ -1,14 +1,10 @@
+ /**
+- * Copyright (c) Meta Platforms, Inc. and affiliates.
+- *
+- * This source code is licensed under the MIT license found in the
+- * LICENSE file in the root directory of this source tree.
+- *
+- * @flow strict
+- * @format
+- * @oncall react_native
++ * CJS-compatible version of @react-native/jest-preset/jest/mock.js
++ * Patched for pnpm compatibility — removes ESM syntax and Flow type annotations.
+  */
+ 
++'use strict';
++
+ /**
+  * Mocks the module referenced by `moduleRef` (expected to begin with `m#`)
+  * while enforcing type safety of mock factories.
+@@ -16,10 +12,7 @@
+  * If `factoryRef` is provided, it is expected to reference a module that
+  * exports the same type signature as the module referenced by `moduleRef`.
+  */
+-export default function mock<TModuleRef: $Flow$ModuleRef<unknown>>(
+-  moduleRef: TModuleRef,
+-  factoryRef?: NoInfer<TModuleRef>,
+-): void {
++function mock(moduleRef, factoryRef) {
+   // NOTE: Jest's `babel-plugin-jest-hoist` requires that the second argument to
+   // `jest.mock` be an inline function, so structure this code accordingly.
+   if (factoryRef === undefined) {
+@@ -28,12 +21,13 @@ export default function mock<TModuleRef: $Flow$ModuleRef<unknown>>(
+     // NOTE: Jest's `babel-plugin-jest-hoist` requires that module factories
+     // only reference local variables or variables starting with "mock", so be
+     // careful when renaming this `mockFactory` variable.
+-    const mockFactory = deref(factoryRef);
+-    jest.mock(deref(moduleRef), () => jest.requireActual(mockFactory));
++    var mockFactory = deref(factoryRef);
++    jest.mock(deref(moduleRef), function () { return jest.requireActual(mockFactory); });
+   }
+ }
+ 
+-function deref(ref: $Flow$ModuleRef<unknown>): string {
+-  // $FlowFixMe[incompatible-type]
+-  return (ref as string).substring(2);
++function deref(ref) {
++  return ref.substring(2);
+ }
++
++module.exports = mock;
+diff --git a/jest/setup.js b/jest/setup.js
+index 29f86698a1299d1801639475fd348cf3014aea78..b0b1c3c37bc5fb7fcd42e1378ddadece153ac02a 100644
+--- a/jest/setup.js
++++ b/jest/setup.js
+@@ -13,9 +13,15 @@ global.IS_REACT_ACT_ENVIRONMENT = true;
+ // mode are no longer supported by React Native.
+ global.IS_REACT_NATIVE_TEST_ENVIRONMENT = true;
+ 
+-import '@react-native/js-polyfills/error-guard';
++// @react-native/js-polyfills/error-guard has Flow types incompatible with pnpm strict CJS
++// The error guard is not critical for tests — wrap in try-catch
++try {
++  require('@react-native/js-polyfills/error-guard');
++} catch (e) {
++  // ignore
++}
+ 
+-import mock from './mock';
++const mock = require('./mock');
+ 
+ // $FlowFixMe[cannot-write]
+ Object.defineProperties(global, {
+@@ -28,7 +34,7 @@ Object.defineProperties(global, {
+   cancelAnimationFrame: {
+     configurable: true,
+     enumerable: true,
+-    value(id: TimeoutID): void {
++    value: function (id) {
+       return clearTimeout(id);
+     },
+     writable: true,
+@@ -51,14 +57,14 @@ Object.defineProperties(global, {
+   regeneratorRuntime: {
+     configurable: true,
+     enumerable: true,
+-    value: jest.requireActual<unknown>('regenerator-runtime/runtime'),
++    value: jest.requireActual('regenerator-runtime/runtime'),
+     writable: true,
+   },
+   requestAnimationFrame: {
+     configurable: true,
+     enumerable: true,
+-    value(callback: number => void): TimeoutID {
+-      return setTimeout(() => callback(jest.now()), 0);
++    value: function (callback) {
++      return setTimeout(function () { return callback(jest.now()); }, 0);
+     },
+     writable: true,
+   },

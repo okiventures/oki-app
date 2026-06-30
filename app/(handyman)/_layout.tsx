@@ -1,8 +1,11 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { BottomNav } from '../../src/components/navigation/BottomNav';
+import { useProtectedRoute } from '../../src/hooks/useProtectedRoute';
 
 export default function HandymanLayout() {
+  useProtectedRoute('handyman');
+
   const items = [
     {
       key: 'index',

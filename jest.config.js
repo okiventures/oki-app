@@ -1,8 +1,20 @@
+const path = require('path');
+
+// Manual Jest configuration — avoids @react-native/jest-preset's ESM/Flow type
+// files that are incompatible with pnpm's strict CJS module resolution.
 module.exports = {
-  preset: 'jest-expo',
+  // Use babel-jest for TypeScript/JSX transformation (same as jest-expo)
+  transform: {
+    '\\.[jt]sx?$': 'babel-jest',
+  },
+  // Must match jest-expo's transformIgnorePatterns (including .pnpm for pnpm)
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|react-native-reanimated(.*)|react-native-css)',
+    '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|standard-navigation))',
+    '/node_modules/react-native-reanimated/plugin/',
+    '/node_modules/@react-native/babel-preset/',
   ],
+  // Minimal setup — our CJS-compatible file (no RN mocks needed for basic tests)
+  setupFiles: ['<rootDir>/__tests__/jest-setup.cjs'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   collectCoverageFrom: ['**/*.{ts,tsx}', '!**/node_modules/**', '!**/dist/**'],
   moduleNameMapper: {

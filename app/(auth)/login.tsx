@@ -10,16 +10,20 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/context/ThemeContext';
+import { useAuth } from '../../src/context/AuthContext';
 import { Card } from '../../src/components/ui/Card';
 import { Form } from '../../src/components/forms/Form';
 import { Input } from '../../src/components/forms/Input';
 import { Button } from '../../src/components/ui/Button';
+import { Toast } from '../../src/components/ui/Toast';
 
 export default function ClientLogin() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { login, isSigningIn, error, clearError } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showError, setShowError] = useState(false);
   const phoneDigits = identifier.replace(/\D/g, '');
 
   const identifierIsValid = useMemo(() => {
@@ -36,9 +40,24 @@ export default function ClientLogin() {
   }, [identifier, phoneDigits.length]);
 
   const canContinue = useMemo(
-    () => identifierIsValid && password.trim().length > 0,
-    [identifierIsValid, password]
+    () => identifierIsValid && password.trim().length > 0 && !isSigningIn,
+    [identifierIsValid, password, isSigningIn]
   );
+
+  const handleLogin = async () => {
+    try {
+      clearError();
+      const isEmail = identifier.includes('@');
+      await login({
+        email: isEmail ? identifier.trim() : undefined,
+        phone: !isEmail ? identifier.replace(/\D/g, '') : undefined,
+        password: password.trim(),
+      });
+      // Navigation happens automatically via AuthContext and root layout
+    } catch {
+      setShowError(true);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -86,7 +105,9 @@ export default function ClientLogin() {
                 secureToggle
                 leftIcon={<Ionicons name="lock-closed-outline" size={18} color="#9CA3AF" />}
               />
-              <TouchableOpacity className="items-end">
+              <TouchableOpacity
+                className="items-end"
+                onPress={() => router.push('/forgot-password')}>
                 <Text className="text-[12px] font-semibold text-gray-500">Forgot password?</Text>
               </TouchableOpacity>
             </View>
@@ -94,11 +115,33 @@ export default function ClientLogin() {
 
           <Button
             label="Continue"
-            onPress={() => router.replace('/(auth)/onboarding')}
+            onPress={handleLogin}
             fullWidth
+            loading={isSigningIn}
             disabled={!canContinue}
           />
+
+          <View className="items-center">
+            <Text className="text-center text-[13px] text-gray-600">
+              Don&apos;t have an account?{' '}
+              <Text
+                onPress={() => router.push('/(auth)/onboarding')}
+                className="text-primary-600 font-semibold">
+                Sign up
+              </Text>
+            </Text>
+          </View>
         </Card>
+
+        {showError && error && (
+          <Toast
+            toast={{ id: 'error', message: error, type: 'error' }}
+            onDismiss={() => {
+              setShowError(false);
+              clearError();
+            }}
+          />
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

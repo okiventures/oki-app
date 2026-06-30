@@ -32,3 +32,10 @@ android
 
 # guide files
 App_Development_Guide.md
+PR.md
+AGENTS.md
+
+# Environment files
+.env
+.env.local
+.env.*.local
