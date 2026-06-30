@@ -202,10 +202,10 @@
 
 ### **Week 6 · June 11 – June 17 — Scaffolding & Auth**
 
-- [ ] Initialize mobile (Client Handyman) and web (Admin) projects
-  - [ ] Verify Expo project structure is production-ready (EAS Build configured, app.json finalized)
-  - [ ] Scaffold backend project: Node.js (Fastify) or Supabase Edge Functions per ADR
-  - [ ] Configure monorepo or separate repos with shared types package if applicable
+- [x] ~~Initialize mobile (Client Handyman) and web (Admin) projects~~
+  - [x] ~~Verify Expo project structure is production-ready (EAS Build configured, app.json finalized)~~
+  - [x] ~~Scaffold backend project: Node.js (Fastify) or Supabase Edge Functions per ADR~~ — Supabase Edge Functions chosen, ADR at `backend/docs/adr-001-backend-api-layer.md`
+  - [x] ~~Configure monorepo or separate repos with shared types package if applicable~~
 - [x] ~~Set up CI/CD, linting, environment configs~~
   - [x] ~~GitHub Actions: lint + type-check + test pipeline on every PR; block merge on failure~~ — `.github/workflows/ci.yml`, branch protection required in repo settings
   - [x] ~~EAS Build workflow for dev/staging/prod build profiles~~ — `eas.json` (dev/staging/production)

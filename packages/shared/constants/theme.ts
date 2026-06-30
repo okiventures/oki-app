@@ -1,21 +1,24 @@
-import { ColorScheme } from '../types';
+import type { ColorScheme } from '../types';
 
-export const COLOR_SCHEMES: Record<
-  ColorScheme,
-  {
-    primary: Record<string, string>;
-    secondary: Record<string, string>;
-    ui: {
-      background: string;
-      surface: string;
-      border: string;
-      text: string;
-      textMuted: string;
-      textLight: string;
-    };
-    label: string;
-  }
-> = {
+export interface ColorSchemeDefinition {
+  primary: Record<string, string>;
+  secondary: Record<string, string>;
+  ui: {
+    background: string;
+    surface: string;
+    border: string;
+    text: string;
+    textMuted: string;
+    textLight: string;
+  };
+  label: string;
+}
+
+export function getSchemeColors(scheme: ColorScheme): ColorSchemeDefinition {
+  return COLOR_SCHEMES[scheme];
+}
+
+export const COLOR_SCHEMES: Record<ColorScheme, ColorSchemeDefinition> = {
   crimson: {
     label: 'Crimson & Amber',
     primary: {
@@ -123,10 +126,6 @@ export const COLOR_SCHEMES: Record<
   },
 };
 
-// ─── Semantic / status colors ───────────────────────────────────────────────
-// These are intentionally fixed (not theme-dependent) so that statuses always
-// carry universally recognised meaning regardless of brand colour.
-
 export const BOOKING_STATUS_LABELS: Record<string, string> = {
   Pending: 'Pending',
   Accepted: 'Accepted',
@@ -156,55 +155,28 @@ export const MEMBERSHIP_TIER_COLORS: Record<string, string> = {
   Platinum: '#E5E4E2',
 };
 
-// ─── Service / category palette ──────────────────────────────────────────────
-// Each category has a fixed semantic colour palette that persists across themes.
-// Components should pull from here instead of hardcoding hex values.
-
 export interface CategoryPalette {
-  /** Icon / foreground colour */
   icon: string;
-  /** Chip / card background */
   bg: string;
-  /** Subtle border (optional use) */
   border: string;
 }
 
 export const SERVICE_CATEGORY_COLORS: Record<string, CategoryPalette> = {
-  // Booking categories (new-booking flow)
-  massage: { icon: '#DB2777', bg: '#FDF2F8', border: '#FBCFE8' },
-  cleaning: { icon: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
-  painting: { icon: '#6D28D9', bg: '#F5F3FF', border: '#DDD6FE' },
-  general: { icon: '#334155', bg: '#F8FAFC', border: '#E2E8F0' },
-
-  // Dashboard quick-category tiles
-  more: { icon: '#4B5563', bg: '#F3F4F6', border: '#E5E7EB' },
-
-  // Generic service categories (used in handyman / admin flows)
-  Plumbing: { icon: '#0284C7', bg: '#E0F2FE', border: '#BAE6FD' },
-  Electrical: { icon: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
-  Carpentry: { icon: '#78350F', bg: '#FEF3C7', border: '#FDE68A' },
-  Cleaning: { icon: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
-  Painting: { icon: '#6D28D9', bg: '#F5F3FF', border: '#DDD6FE' },
-  HVAC: { icon: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC' },
-  Roofing: { icon: '#4B5563', bg: '#F5F5F4', border: '#E7E5E4' },
-  Landscaping: { icon: '#166534', bg: '#F0FDF4', border: '#BBF7D0' },
-  'Appliance Repair': { icon: '#C2410C', bg: '#FFF7ED', border: '#FED7AA' },
-  'General Handyman': { icon: '#334155', bg: '#F8FAFC', border: '#E2E8F0' },
+  massage: { icon: '#EC4899', bg: '#FDF2F8', border: '#FBCFE8' },
+  cleaning: { icon: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE' },
+  painting: { icon: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE' },
+  general: { icon: '#64748B', bg: '#F8FAFC', border: '#E2E8F0' },
+  more: { icon: '#6B7280', bg: '#F3F4F6', border: '#E5E7EB' },
+  Plumbing: { icon: '#0EA5E9', bg: '#E0F2FE', border: '#BAE6FD' },
+  Electrical: { icon: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
+  Carpentry: { icon: '#92400E', bg: '#FEF3C7', border: '#FDE68A' },
+  Cleaning: { icon: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE' },
+  Painting: { icon: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE' },
+  HVAC: { icon: '#06B6D4', bg: '#ECFEFF', border: '#A5F3FC' },
+  Roofing: { icon: '#78716C', bg: '#F5F5F4', border: '#E7E5E4' },
+  Landscaping: { icon: '#22C55E', bg: '#F0FDF4', border: '#BBF7D0' },
+  'Appliance Repair': { icon: '#F97316', bg: '#FFF7ED', border: '#FED7AA' },
+  'General Handyman': { icon: '#64748B', bg: '#F8FAFC', border: '#E2E8F0' },
 };
-
-export const SERVICE_CATEGORY_ICONS: Record<string, string> = {
-  Plumbing: 'water-outline',
-  Electrical: 'zap-outline',
-  Carpentry: 'hammer-outline',
-  Cleaning: 'brush-outline',
-  Painting: 'color-fill-outline',
-  HVAC: 'air-outline',
-  Roofing: 'home-outline',
-  Landscaping: 'leaf-outline',
-  'Appliance Repair': 'construct-outline',
-  'General Handyman': 'build-outline',
-};
-
-// ─── Misc ─────────────────────────────────────────────────────────────────────
 
 export const PLATFORM_FEE_PERCENT = 10;

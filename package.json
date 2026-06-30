@@ -12,6 +12,8 @@
     "test": "jest",
     "test:ci": "jest --ci --passWithNoTests",
     "web": "expo start --web",
+    "admin": "pnpm --filter @oki/admin dev",
+    "admin:build": "pnpm --filter @oki/admin build",
     "prepare": "husky"
   },
   "dependencies": {
@@ -20,6 +22,7 @@
     "@expo/metro-runtime": "~6.1.2",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "^3.1.1",
+    "@supabase/supabase-js": "^2.108.2",
     "@tailwindcss/postcss": "^4.1.13",
     "expo": "~54.0.35",
     "expo-constants": "~18.0.13",
@@ -66,6 +69,10 @@
     "lightningcss": "1.30.1"
   },
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
       "eslint --fix",
