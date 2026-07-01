@@ -301,8 +301,17 @@ BEGIN
       NULLIF(split_part(COALESCE(NEW.email, ''), '@', 1), ''),
       'User'
     ),
-    'client'
+    COALESCE(
+      (NEW.raw_user_meta_data ->> 'user_type')::user_type,
+      'client'::user_type
+    )
   );
+
+  -- Auto-create handyman profile row if user_type is handyman
+  IF (NEW.raw_user_meta_data ->> 'user_type') = 'handyman' THEN
+    INSERT INTO public.handymen (id)
+    VALUES (NEW.id);
+  END IF;
 
   RETURN NEW;
 END;

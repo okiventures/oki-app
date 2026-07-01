@@ -1,5 +1,3 @@
-const path = require('path');
-
 // Manual Jest configuration — avoids @react-native/jest-preset's ESM/Flow type
 // files that are incompatible with pnpm's strict CJS module resolution.
 module.exports = {

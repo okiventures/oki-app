@@ -8,6 +8,7 @@ import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { Button } from '../../src/components/ui/Button';
 import { Modal } from '../../src/components/ui/Modal';
 import { Input } from '../../src/components/ui/Input';
+import { ConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 
 type AddressType = 'Home' | 'Work' | 'Custom';
 
@@ -47,6 +48,10 @@ export default function SavedAddresses() {
 
   const [addresses, setAddresses] = useState<Address[]>(INITIAL_ADDRESSES);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+
+  // Address action menu state
+  const [actionAddress, setActionAddress] = useState<Address | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Address | null>(null);
 
   // Modal state
   const [newType, setNewType] = useState<AddressType>('Home');
@@ -89,7 +94,7 @@ export default function SavedAddresses() {
       <ScreenHeader title="Saved Addresses" showBack onBackPress={() => router.back()} />
 
       <View
-        className="-mt-8 flex-1 overflow-hidden rounded-t-[32px]"
+        className="-mt-8 flex-1 overflow-hidden rounded-t-4xl"
         style={{ backgroundColor: colors.ui.background }}>
         <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingTop: 32 }}>
           {addresses.map((address) => (
@@ -120,7 +125,7 @@ export default function SavedAddresses() {
                   {address.details}
                 </Text>
               </View>
-              <Pressable className="p-2">
+              <Pressable className="p-2" onPress={() => setActionAddress(address)}>
                 <Ionicons name="ellipsis-vertical" size={20} color={colors.ui.textLight} />
               </Pressable>
             </View>
@@ -203,6 +208,48 @@ export default function SavedAddresses() {
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Address action menu (3 dots) */}
+      <Modal
+        visible={!!actionAddress}
+        onClose={() => setActionAddress(null)}
+        title={
+          actionAddress
+            ? `Manage ${actionAddress.type === 'Custom' ? actionAddress.customName : actionAddress.type}`
+            : ''
+        }>
+        <View className="gap-3">
+          <Pressable
+            onPress={() => {
+              const addr = actionAddress;
+              setActionAddress(null);
+              setDeleteTarget(addr);
+            }}
+            className="flex-row items-center gap-3 rounded-xl p-4"
+            style={{ backgroundColor: '#FEE2E2' }}>
+            <Ionicons name="trash-outline" size={22} color="#EF4444" />
+            <Text className="text-[16px] font-semibold" style={{ color: '#EF4444' }}>
+              Delete Address
+            </Text>
+          </Pressable>
+        </View>
+      </Modal>
+
+      <ConfirmDialog
+        visible={!!deleteTarget}
+        title="Delete Address"
+        message={`Are you sure you want to delete "${deleteTarget?.type === 'Custom' ? deleteTarget?.customName : deleteTarget?.type}" at ${deleteTarget?.street}?`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={() => {
+          if (deleteTarget) {
+            setAddresses(addresses.filter((a) => a.id !== deleteTarget.id));
+          }
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </SafeAreaView>
   );
 }

@@ -33,8 +33,8 @@ interface AuthContextType {
   }) => Promise<SignupResult>;
   login: (params: { email?: string; phone?: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
-  requestPasswordReset: (email: string) => Promise<void>;
-  confirmPasswordReset: (token: string, newPassword: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<{ emailSent: boolean }>;
+  confirmPasswordReset: (tokenHash: string, newPassword: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -162,7 +162,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleRequestPasswordReset = useCallback(async (email: string) => {
     setError(null);
     try {
-      await authService.requestPasswordReset(email);
+      const result = await authService.requestPasswordReset(email);
+      return result;
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Password reset request failed';
       setError(message);
@@ -170,11 +171,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const handleConfirmPasswordReset = useCallback(async (token: string, newPassword: string) => {
+  const handleConfirmPasswordReset = useCallback(async (tokenHash: string, newPassword: string) => {
     setIsSigningIn(true);
     setError(null);
     try {
-      const newSession = await authService.confirmPasswordReset(token, newPassword);
+      const newSession = await authService.confirmPasswordReset(tokenHash, newPassword);
       setSession(newSession);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Password reset failed';

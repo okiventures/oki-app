@@ -13,7 +13,9 @@ import { Toast } from '../../src/components/ui/Toast';
 export default function ResetPasswordScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { token } = useLocalSearchParams<{ token: string }>();
+  const params = useLocalSearchParams<{ token_hash: string; token: string }>();
+  // Support both token_hash (Supabase template default) and token (legacy)
+  const tokenHash = params.token_hash || params.token;
   const { confirmPasswordReset, error, clearError } = useAuth();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,26 +23,26 @@ export default function ResetPasswordScreen() {
   const [showError, setShowError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // If no token_hash in the URL, the link is invalid
   useEffect(() => {
-    if (!token) {
-      setShowError(true);
-      setTimeout(() => {
+    if (!tokenHash) {
+      const timer = setTimeout(() => {
         router.replace('/(auth)/login');
-      }, 2000);
+      }, 3000);
+      return () => clearTimeout(timer);
     }
-  }, [token, router]);
+  }, [tokenHash, router]);
 
   const isPasswordValid = newPassword.length >= 8;
   const passwordsMatch = newPassword === confirmPassword && newPassword.length > 0;
-  const canSubmit = isPasswordValid && passwordsMatch;
+  const canSubmit = isPasswordValid && passwordsMatch && !!tokenHash;
 
   const handleResetPassword = async () => {
-    if (!token) return;
-
+    if (!tokenHash) return;
     try {
       clearError();
       setIsLoading(true);
-      await confirmPasswordReset(token, newPassword);
+      await confirmPasswordReset(tokenHash, newPassword);
       setShowSuccess(true);
       setTimeout(() => {
         router.replace('/(auth)/login');
@@ -52,10 +54,20 @@ export default function ResetPasswordScreen() {
     }
   };
 
-  if (!token) {
+  // No token — show invalid link screen
+  if (!tokenHash) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
-        <Text className="text-red-600">Invalid reset link</Text>
+      <View className="flex-1 items-center justify-center bg-gray-50 px-8">
+        <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+        <Text className="mt-4 text-center text-[16px] font-semibold text-gray-900">
+          Invalid or expired reset link
+        </Text>
+        <Text className="mt-2 text-center text-[13px] text-gray-500">
+          The password reset link is invalid or has expired.{'\n'}Please request a new one.
+        </Text>
+        <View className="mt-6 w-full">
+          <Button label="Back to Login" onPress={() => router.replace('/(auth)/login')} fullWidth />
+        </View>
       </View>
     );
   }
@@ -124,7 +136,11 @@ export default function ResetPasswordScreen() {
 
         {showError && (
           <Toast
-            toast={{ id: 'error', message: error || 'Failed to reset password', type: 'error' }}
+            toast={{
+              id: 'error',
+              message: error || 'Failed to reset password. The link may have expired.',
+              type: 'error',
+            }}
             onDismiss={() => {
               setShowError(false);
               clearError();
@@ -134,7 +150,11 @@ export default function ResetPasswordScreen() {
 
         {showSuccess && (
           <Toast
-            toast={{ id: 'success', message: 'Password reset successful', type: 'success' }}
+            toast={{
+              id: 'success',
+              message: 'Password updated! Redirecting to login...',
+              type: 'success',
+            }}
             onDismiss={() => setShowSuccess(false)}
           />
         )}

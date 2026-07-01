@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { useTheme } from '../../src/context/ThemeContext';
+import { useAuth } from '../../src/context/AuthContext';
+import { useProfile } from '../../src/hooks/useProfile';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Modal } from '../../src/components/ui/Modal';
@@ -30,11 +32,17 @@ const ACCOUNT_ITEMS = [
   },
 ];
 
-const PREFERENCES_ITEMS = [
+const PREFERENCES_ITEMS: {
+  icon: string;
+  title: string;
+  subtitle: string;
+  route?: string;
+}[] = [
   {
     icon: 'notifications-outline',
     title: 'Notifications',
     subtitle: 'Push, email, and SMS alerts',
+    route: '/profile/notifications',
   },
   {
     icon: 'color-palette-outline',
@@ -45,6 +53,7 @@ const PREFERENCES_ITEMS = [
     icon: 'lock-closed-outline',
     title: 'Privacy & Security',
     subtitle: 'Password, 2FA, data',
+    route: '/profile/settings',
   },
 ];
 
@@ -63,11 +72,30 @@ const SUPPORT_ITEMS = [
 
 export default function ClientProfile() {
   const { scheme, setScheme, colors } = useTheme();
+  const { logout } = useAuth();
+  const { profile } = useProfile();
   const router = useRouter();
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [themeModalVisible, setThemeModalVisible] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const memberYear = new Date(MOCK_CLIENT.memberSince).getFullYear();
+  // Use real profile data when available, fall back to mock for dev/testing
+  const displayName = profile?.user?.full_name ?? MOCK_CLIENT.name;
+  const displayPhoto = profile?.user?.photo_url ?? MOCK_CLIENT.photoUrl;
+  const memberSince = profile?.user?.created_at ?? MOCK_CLIENT.memberSince;
+  const memberYear = new Date(memberSince).getFullYear();
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } catch {
+      // Logout handled by AuthContext even on error
+    } finally {
+      setIsLoggingOut(false);
+      setLogoutModalVisible(false);
+    }
+  };
 
   return (
     <SafeAreaView
@@ -99,14 +127,14 @@ export default function ClientProfile() {
                 shadowRadius: 8,
                 elevation: 6,
               }}>
-              <Avatar name={MOCK_CLIENT.name} photoUrl={MOCK_CLIENT.photoUrl} size={88} />
+              <Avatar name={displayName} photoUrl={displayPhoto} size={88} />
             </View>
 
             <Text className="mt-3 text-[18px] font-bold" style={{ color: colors.ui.text }}>
-              {MOCK_CLIENT.name}
+              {displayName}
             </Text>
             <Text className="mt-0.5 text-[12px] font-normal" style={{ color: colors.ui.textMuted }}>
-              {MOCK_CLIENT.location} · Member since {memberYear}
+              Member since {memberYear}
             </Text>
 
             <View className="mt-3">
@@ -148,10 +176,10 @@ export default function ClientProfile() {
                 title={item.title}
                 subtitle={item.subtitle}
                 onPress={() => {
-                  if (item.title === 'Notifications') {
-                    router.push('/profile/notifications');
-                  } else if (item.title === 'Theme') {
+                  if (item.title === 'Theme') {
                     setThemeModalVisible(true);
+                  } else if (item.route) {
+                    router.push(item.route);
                   }
                 }}
                 hideDivider={i === PREFERENCES_ITEMS.length - 1}
@@ -205,7 +233,8 @@ export default function ClientProfile() {
             label="Log Out"
             variant="danger"
             fullWidth
-            onPress={() => setLogoutModalVisible(false)}
+            loading={isLoggingOut}
+            onPress={handleLogout}
           />
           <Button
             label="Cancel"

@@ -1,4 +1,3 @@
-import * as Linking from 'expo-linking';
 import { supabase } from '../lib/supabase';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -137,26 +136,42 @@ export async function logout(): Promise<void> {
 
 // ─── Password Reset ───────────────────────────────────────────────────────────
 
-export async function requestPasswordReset(email: string): Promise<void> {
-  const redirectUrl = Linking.createURL('/auth/reset-password');
+export async function requestPasswordReset(email: string): Promise<{ emailSent: boolean }> {
+  // Redirect the user back to the app's reset password screen via deep link.
+  // The email template must include: {{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: redirectUrl,
+    redirectTo: 'oki://reset-password',
   });
+
   if (error) throw new Error(error.message);
+
+  // If no error, the request was accepted — the email provider (Resend) will deliver it.
+  // Supabase returns { data: {}, error: null } on success (empty data object),
+  // so checking Object.keys(data).length always returns false. Just check !error instead.
+  return { emailSent: true };
 }
 
-export async function confirmPasswordReset(token: string, newPassword: string) {
-  const { error: verifyError } = await supabase.auth.verifyOtp({
-    token_hash: token,
+export async function confirmPasswordReset(token_hash: string, newPassword: string) {
+  // Verify the token_hash from the email link (oki://reset-password?token_hash=XXX)
+  const { error: verifyError, data: verifyData } = await supabase.auth.verifyOtp({
+    token_hash,
     type: 'recovery',
   });
   if (verifyError) throw new Error(verifyError.message);
 
+  // After successful verifyOtp, the user should have a recovery session.
+  // If verifyOtp returned a session, set it explicitly to ensure updateUser works.
+  if (verifyData?.session) {
+    await supabase.auth.setSession(verifyData.session);
+  }
+
+  // Set the new password
   const { error: updateError } = await supabase.auth.updateUser({
     password: newPassword,
   });
   if (updateError) throw new Error(updateError.message);
 
+  // Retrieve the session after password change
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session) {
     throw new Error('Failed to retrieve session after password reset');
@@ -177,31 +192,52 @@ async function ensureUserProfile(params: {
   try {
     const { data: existing } = await supabase
       .from('users')
-      .select('id')
+      .select('id, user_type')
       .eq('id', params.userId)
       .maybeSingle();
 
-    if (existing) return;
+    if (!existing) {
+      // No user row yet — create it (trigger may also do this, but we ensure it)
+      const { error: insertError } = await supabase.from('users').insert({
+        id: params.userId,
+        email: params.email || params.phone || `${params.userId}@oki.app`,
+        phone: params.phone || null,
+        full_name: params.fullName,
+        user_type: params.userType,
+      });
 
-    const { error: insertError } = await supabase.from('users').insert({
-      id: params.userId,
-      email: params.email || params.phone || `${params.userId}@oki.app`,
-      phone: params.phone || null,
-      full_name: params.fullName,
-      user_type: params.userType,
-    });
+      if (insertError) {
+        console.error('Failed to create user profile:', insertError.message);
+        return;
+      }
+    } else if (existing.user_type !== params.userType) {
+      // User exists but with wrong type (e.g., trigger defaulted to 'client')
+      // Update to the correct type
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ user_type: params.userType })
+        .eq('id', params.userId);
 
-    if (insertError) {
-      console.error('Failed to create user profile:', insertError.message);
-      return;
+      if (updateError) {
+        console.error('Failed to update user_type:', updateError.message);
+      }
     }
 
+    // Ensure handyman profile row exists for handyman users
     if (params.userType === 'handyman') {
-      const { error: handymanError } = await supabase.from('handymen').insert({
-        id: params.userId,
-      });
-      if (handymanError) {
-        console.error('Failed to create handyman profile:', handymanError.message);
+      const { data: existingHandyman } = await supabase
+        .from('handymen')
+        .select('id')
+        .eq('id', params.userId)
+        .maybeSingle();
+
+      if (!existingHandyman) {
+        const { error: handymanError } = await supabase.from('handymen').insert({
+          id: params.userId,
+        });
+        if (handymanError) {
+          console.error('Failed to create handyman profile:', handymanError.message);
+        }
       }
     }
   } catch (err) {

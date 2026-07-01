@@ -18,6 +18,7 @@ export default function ForgotPasswordScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showError, setShowError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showNoProvider, setShowNoProvider] = useState(false);
 
   const isValidEmail = useMemo(() => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -27,11 +28,15 @@ export default function ForgotPasswordScreen() {
     try {
       clearError();
       setIsLoading(true);
-      await requestPasswordReset(email.trim());
-      setShowSuccess(true);
-      setTimeout(() => {
-        router.back();
-      }, 2000);
+      const { emailSent } = await requestPasswordReset(email.trim());
+      if (emailSent) {
+        setShowSuccess(true);
+        setTimeout(() => {
+          router.back();
+        }, 2000);
+      } else {
+        setShowNoProvider(true);
+      }
     } catch {
       setShowError(true);
     } finally {
@@ -99,6 +104,18 @@ export default function ForgotPasswordScreen() {
               setShowError(false);
               clearError();
             }}
+          />
+        )}
+
+        {showNoProvider && (
+          <Toast
+            toast={{
+              id: 'no-provider',
+              message:
+                'Email provider not configured in Supabase.\nGo to Authentication → Email Templates.',
+              type: 'error',
+            }}
+            onDismiss={() => setShowNoProvider(false)}
           />
         )}
 
