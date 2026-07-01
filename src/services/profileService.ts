@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -173,14 +174,20 @@ export async function pickAndUploadAvatar(
   const asset = result.assets[0];
   const filePath = `${userId}/avatar-${Date.now()}.${asset.uri.split('.').pop() ?? 'jpg'}`;
 
-  // Upload to Supabase Storage
-  const response = await fetch(asset.uri);
-  const blob = await response.blob();
-
-  const { error: uploadError } = await supabase.storage.from(AVATAR_BUCKET).upload(filePath, blob, {
-    contentType: asset.mimeType ?? 'image/jpeg',
-    upsert: true,
+  // Read file as base64 (reliable on native — fetch(uri).blob() is not)
+  const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+    encoding: FileSystem.EncodingType.Base64,
   });
+
+  // Decode base64 to Uint8Array (ArrayBufferView) for Supabase upload
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+
+  const { error: uploadError } = await supabase.storage
+    .from(AVATAR_BUCKET)
+    .upload(filePath, bytes, {
+      contentType: asset.mimeType ?? 'image/jpeg',
+      upsert: true,
+    });
 
   if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
