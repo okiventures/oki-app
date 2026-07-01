@@ -149,6 +149,16 @@ export interface Booking {
   notes?: string;
 }
 
+export interface BookingEvent {
+  id: string;
+  bookingId: string;
+  actorId?: string;
+  fromStatus?: BookingStatus;
+  toStatus: BookingStatus;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface Review {
   id: string;
   bookingId: string;

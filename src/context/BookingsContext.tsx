@@ -1,12 +1,29 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { MOCK_BOOKINGS } from '../mocks';
 import { Booking, BookingStatus } from '../types';
+import { transitionBookingState, subscribeToBooking } from '../services/bookingService';
 
 const STORAGE_KEY = 'oki_bookings_state_v2';
 
 type HandymanNextAction = {
   label: string;
   nextStatus: BookingStatus;
+};
+
+const ACTION_STATUS_MAP: Record<string, BookingStatus> = {
+  ACCEPT: BookingStatus.Accepted,
+  START_TRANSIT: BookingStatus.InTransit,
+  MARK_ARRIVED: BookingStatus.Arrived,
+  START_WORK: BookingStatus.WorkStarted,
+  COMPLETE: BookingStatus.Completed,
 };
 
 const HANDYMAN_WORKFLOW: Partial<Record<BookingStatus, HandymanNextAction>> = {
@@ -58,6 +75,7 @@ function updateBooking(booking: Booking, status: BookingStatus): Booking {
 
 export function BookingsProvider({ children }: { children: React.ReactNode }) {
   const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
+  const unsubRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     setBookings(MOCK_BOOKINGS);
@@ -86,42 +104,123 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [bookings]);
 
-  const acceptBooking = (bookingId: string) => {
-    setBookings((current) =>
-      current.map((booking) =>
-        booking.id === bookingId && booking.status === BookingStatus.Pending
-          ? updateBooking(booking, BookingStatus.Accepted)
-          : booking
-      )
-    );
-  };
+  // Subscribe to real-time updates for active bookings
+  const activeBookingIds = useMemo(
+    () =>
+      bookings
+        .filter((b) => !['Completed', 'Paid', 'Cancelled'].includes(b.status))
+        .map((b) => b.id),
+    [bookings]
+  );
+  const trackedBookingId = activeBookingIds.length > 0 ? activeBookingIds[0] : null;
 
-  const declineBooking = (bookingId: string) => {
-    setBookings((current) =>
-      current.map((booking) =>
-        booking.id === bookingId && booking.status === BookingStatus.Pending
-          ? updateBooking(booking, BookingStatus.Cancelled)
-          : booking
-      )
-    );
-  };
+  useEffect(() => {
+    // Clean up previous subscription
+    if (unsubRef.current) {
+      unsubRef.current();
+    }
 
-  const advanceBooking = (bookingId: string) => {
-    setBookings((current) =>
-      current.map((booking) => {
-        if (booking.id !== bookingId) {
-          return booking;
+    // Subscribe to the first active booking for real-time events
+    if (trackedBookingId) {
+      unsubRef.current = subscribeToBooking(trackedBookingId, (event) => {
+        // Update booking status when a state transition event is received
+        setBookings((current) =>
+          current.map((b) =>
+            b.id === event.bookingId
+              ? { ...b, status: event.toStatus, updatedAt: new Date().toISOString() }
+              : b
+          )
+        );
+      });
+    }
+
+    return () => {
+      if (unsubRef.current) {
+        unsubRef.current();
+      }
+    };
+  }, [trackedBookingId]);
+
+  const acceptBooking = useCallback(async (bookingId: string) => {
+    try {
+      const updated = await transitionBookingState(bookingId, 'ACCEPT');
+      setBookings((current) =>
+        current.map((booking) =>
+          booking.id === bookingId
+            ? { ...booking, ...updated, updatedAt: new Date().toISOString() }
+            : booking
+        )
+      );
+    } catch {
+      // Fallback to local state transition
+      setBookings((current) =>
+        current.map((booking) =>
+          booking.id === bookingId && booking.status === BookingStatus.Pending
+            ? updateBooking(booking, BookingStatus.Accepted)
+            : booking
+        )
+      );
+    }
+  }, []);
+
+  const declineBooking = useCallback(async (bookingId: string) => {
+    try {
+      await transitionBookingState(bookingId, 'REJECT');
+      setBookings((current) =>
+        current.map((booking) =>
+          booking.id === bookingId && booking.status === BookingStatus.Pending
+            ? updateBooking(booking, BookingStatus.Cancelled)
+            : booking
+        )
+      );
+    } catch {
+      setBookings((current) =>
+        current.map((booking) =>
+          booking.id === bookingId && booking.status === BookingStatus.Pending
+            ? updateBooking(booking, BookingStatus.Cancelled)
+            : booking
+        )
+      );
+    }
+  }, []);
+
+  const advanceBooking = useCallback(
+    async (bookingId: string) => {
+      const booking = bookings.find((b) => b.id === bookingId);
+      if (!booking) return;
+
+      const nextAction = HANDYMAN_WORKFLOW[booking.status];
+      if (!nextAction) return;
+
+      const actionKey = Object.entries(ACTION_STATUS_MAP).find(
+        ([, s]) => s === nextAction.nextStatus
+      )?.[0];
+
+      if (actionKey) {
+        try {
+          const updated = await transitionBookingState(bookingId, actionKey as any);
+          setBookings((current) =>
+            current.map((b) =>
+              b.id === bookingId ? { ...b, ...updated, updatedAt: new Date().toISOString() } : b
+            )
+          );
+          return;
+        } catch {
+          // Fallback to local state transition
         }
+      }
 
-        const nextAction = HANDYMAN_WORKFLOW[booking.status];
-        if (!nextAction) {
-          return booking;
-        }
-
-        return updateBooking(booking, nextAction.nextStatus);
-      })
-    );
-  };
+      setBookings((current) =>
+        current.map((booking) => {
+          if (booking.id !== bookingId) return booking;
+          const action = HANDYMAN_WORKFLOW[booking.status];
+          if (!action) return booking;
+          return updateBooking(booking, action.nextStatus);
+        })
+      );
+    },
+    [bookings]
+  );
 
   const value = useMemo(
     () => ({
@@ -131,7 +230,7 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
       advanceBooking,
       getBookingById: (bookingId: string) => bookings.find((booking) => booking.id === bookingId),
     }),
-    [bookings]
+    [bookings, acceptBooking, declineBooking, advanceBooking]
   );
 
   return <BookingsContext.Provider value={value}>{children}</BookingsContext.Provider>;
