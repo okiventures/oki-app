@@ -119,6 +119,21 @@ export default function LandingPage() {
         </View>
       )}
 
+      {/* Booking Lifecycle Demo */}
+      <View className="mt-6 w-full gap-2">
+        <Text className="font-heading mb-1 text-[13px] tracking-wider text-purple-700 uppercase">
+          Development
+        </Text>
+        <Link href="/lifecycle-demo" asChild>
+          <TouchableOpacity className="w-full items-center rounded-lg bg-purple-600 py-2">
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="git-branch-outline" size={16} color="white" />
+              <Text className="font-semibold text-white">Booking Lifecycle Demo</Text>
+            </View>
+          </TouchableOpacity>
+        </Link>
+      </View>
+
       {/* Logout */}
       {session && (
         <View className="mt-8 w-full">
