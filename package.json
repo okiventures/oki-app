@@ -28,7 +28,6 @@
     "expo": "^56.0.12",
     "expo-constants": "^56.0.18",
     "expo-document-picker": "~56.0.4",
-    "expo-file-system": "~56.0.8",
     "expo-font": "~56.0.7",
     "expo-image-picker": "~56.0.18",
     "expo-linking": "^56.0.14",
@@ -84,11 +83,10 @@
     "apps/*"
   ],
   "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
+    "**/*.{js,jsx,ts,tsx}": [
+      "eslint --fix"
     ],
-    "*.{json,css,md}": [
+    "**/*.{js,jsx,ts,tsx,json, css, md}": [
       "prettier --write"
     ]
   }
