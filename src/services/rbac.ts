@@ -1,8 +1,15 @@
 import { UserType } from '../types';
 
+export class RoleAccessError extends Error {
+  constructor(required: UserType) {
+    super(`Access denied: ${required} role required`);
+    this.name = 'RoleAccessError';
+  }
+}
+
 export function assertRole(userType: UserType | undefined | null, required: UserType): void {
   if (userType !== required) {
-    throw new Error(`Access denied: ${required} role required`);
+    throw new RoleAccessError(required);
   }
 }
 

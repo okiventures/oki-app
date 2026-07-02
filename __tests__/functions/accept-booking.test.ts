@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 import {
   requireHandyman,
   methodNotAllowed,
@@ -57,7 +56,7 @@ function makeReq(body: unknown): Request {
 function callHandler(req: Request): Promise<Response> {
   const handler = __getHandler();
   if (!handler) throw new Error('No handler captured — did serve() run?');
-  return handler(req);
+  return Promise.resolve(handler(req));
 }
 
 function supabaseWith(opts: {

@@ -57,12 +57,22 @@ export async function requireRole(
   if (role === 'admin' || role === 'client') {
     filters.push(`user_type=eq.${encodeURIComponent(role)}`);
   }
+  const serviceRoleKey =
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY');
+  if (!serviceRoleKey) {
+    return {
+      error: new Response(
+        JSON.stringify({ error: 'INTERNAL_ERROR', message: 'Missing service role key env var' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      ),
+    };
+  }
 
   const checkResp = await fetch(
     `${Deno.env.get('SUPABASE_URL')}/rest/v1/${table}?${filters.join('&')}&select=${selectCol}`,
     {
       headers: {
-        Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!}`,
+        Authorization: `Bearer ${serviceRoleKey}`,
         apikey: Deno.env.get('SUPABASE_ANON_KEY')!,
       },
     }

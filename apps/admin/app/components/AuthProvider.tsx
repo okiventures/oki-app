@@ -63,11 +63,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email ?? '',
-          accessToken: session.access_token,
-        });
+        supabase
+          .from('users')
+          .select('user_type')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data: profile }) => {
+            if (profile?.user_type === 'admin') {
+              setUser({
+                id: session.user.id,
+                email: session.user.email ?? '',
+                accessToken: session.access_token,
+              });
+            } else {
+              setUser(null);
+              supabase.auth.signOut();
+            }
+          });
       } else {
         setUser(null);
       }
