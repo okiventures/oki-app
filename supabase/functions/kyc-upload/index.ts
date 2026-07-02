@@ -40,6 +40,40 @@ const MIME = ['image/jpeg', 'image/png', 'application/pdf'];
 const MAX_SIZE = 5 * 1024 * 1024;
 const KYC_TYPES = ['GOVERNMENT_ID', 'SELFIE', 'PROOF_OF_ADDRESS'] as const;
 
+// ─── Rate limiter ───────────────────────────────────────────────────────────────
+
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 10;
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(key: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const bucket = rateBuckets.get(key);
+  if (!bucket || bucket.resetAt <= now) {
+    rateBuckets.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return { allowed: true };
+  }
+  bucket.count += 1;
+  if (bucket.count > RATE_MAX) {
+    return { allowed: false, retryAfter: Math.ceil((bucket.resetAt - now) / 1000) };
+  }
+  return { allowed: true };
+}
+
+// Periodic cleanup every 5 min to avoid memory leak
+if (typeof globalThis !== 'undefined') {
+  const MS = RATE_WINDOW_MS * 5;
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, bucket] of rateBuckets) {
+      if (bucket.resetAt <= now) rateBuckets.delete(key);
+    }
+  }, MS);
+}
+
+// Auth logic is inlined here (duplicated from _shared/rbac.ts) because API-deployed
+// zero-import functions cannot resolve CDN imports at runtime. See _shared/rbac.ts for
+// the canonical implementation used by CLI-deployed functions.
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (req.method !== 'POST') return err(405, { error: 'METHOD_NOT_ALLOWED' });
@@ -69,6 +103,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const hmData = await hmCheck.json();
   if (!Array.isArray(hmData) || hmData.length === 0)
     return err(403, { error: 'FORBIDDEN', message: 'Only handymen can upload KYC documents' });
+
+  const rl = checkRateLimit(`kyc-upload:${userId}`);
+  if (!rl.allowed) {
+    return new Response(
+      JSON.stringify({
+        error: 'RATE_LIMITED',
+        message: 'Too many uploads. Try again shortly.',
+        retry_after_seconds: rl.retryAfter,
+      }),
+      {
+        status: 429,
+        headers: cors({
+          'Content-Type': 'application/json',
+          'Retry-After': String(rl.retryAfter),
+        }),
+      }
+    );
+  }
 
   const ct = req.headers.get('Content-Type') ?? '';
   let docType: string, fname: string, mime: string, bytes: Uint8Array;

@@ -1,50 +1,27 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { requireHandyman, methodNotAllowed, badRequest, notFound, ok } from '../_shared/rbac.ts';
 
 interface AcceptBookingRequest {
   bookingId: string;
 }
 
 serve(async (req: Request) => {
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'METHOD_NOT_ALLOWED' }), { status: 405 });
-  }
+  if (req.method !== 'POST') return methodNotAllowed();
 
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), { status: 401 });
-  }
-
-  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
-    global: { headers: { Authorization: authHeader } },
-  });
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), { status: 401 });
-  }
+  const auth = await requireHandyman(req);
+  if ('error' in auth) return auth.error;
+  const { user, supabase } = auth;
 
   const { bookingId }: AcceptBookingRequest = await req.json();
-  if (!bookingId) {
-    return new Response(JSON.stringify({ error: 'BAD_REQUEST', message: 'bookingId required' }), {
-      status: 400,
-    });
-  }
+  if (!bookingId) return badRequest('bookingId required');
 
   const { data: booking, error: fetchError } = await supabase
     .from('bookings')
-    .select('*, handymen!inner(*)')
+    .select('*')
     .eq('id', bookingId)
     .single();
 
-  if (fetchError || !booking) {
-    return new Response(JSON.stringify({ error: 'NOT_FOUND', message: 'Booking not found' }), {
-      status: 404,
-    });
-  }
+  if (fetchError || !booking) return notFound('Booking not found');
 
   const { data: handyman, error: handymanError } = await supabase
     .from('handymen')
@@ -110,7 +87,7 @@ serve(async (req: Request) => {
     );
   }
 
-  await supabase.from('booking_events').insert({
+  const { error: eventError } = await supabase.from('booking_events').insert({
     booking_id: bookingId,
     actor_id: user.id,
     from_status: 'PENDING',
@@ -118,5 +95,12 @@ serve(async (req: Request) => {
     metadata: { action: 'ACCEPT' },
   });
 
-  return new Response(JSON.stringify({ data: updatedBooking }), { status: 200 });
+  if (eventError) {
+    console.error(
+      `CRITICAL: Failed to write audit event for booking ${bookingId}:`,
+      eventError.message
+    );
+  }
+
+  return ok(updatedBooking);
 });

@@ -1,5 +1,12 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import {
+  requireHandyman,
+  methodNotAllowed,
+  badRequest,
+  notFound,
+  ok,
+  internalError,
+} from '../_shared/rbac.ts';
 
 interface CompleteBookingRequest {
   bookingId: string;
@@ -7,33 +14,14 @@ interface CompleteBookingRequest {
 }
 
 serve(async (req: Request) => {
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'METHOD_NOT_ALLOWED' }), { status: 405 });
-  }
+  if (req.method !== 'POST') return methodNotAllowed();
 
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), { status: 401 });
-  }
-
-  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
-    global: { headers: { Authorization: authHeader } },
-  });
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), { status: 401 });
-  }
+  const auth = await requireHandyman(req);
+  if ('error' in auth) return auth.error;
+  const { user, supabase } = auth;
 
   const { bookingId, afterPhotoUrl }: CompleteBookingRequest = await req.json();
-  if (!bookingId) {
-    return new Response(JSON.stringify({ error: 'BAD_REQUEST', message: 'bookingId required' }), {
-      status: 400,
-    });
-  }
+  if (!bookingId) return badRequest('bookingId required');
 
   const { data: booking, error: fetchError } = await supabase
     .from('bookings')
@@ -41,11 +29,7 @@ serve(async (req: Request) => {
     .eq('id', bookingId)
     .single();
 
-  if (fetchError || !booking) {
-    return new Response(JSON.stringify({ error: 'NOT_FOUND', message: 'Booking not found' }), {
-      status: 404,
-    });
-  }
+  if (fetchError || !booking) return notFound('Booking not found');
 
   if (booking.handyman_id !== user.id) {
     return new Response(
@@ -82,16 +66,28 @@ serve(async (req: Request) => {
       updated_at: new Date().toISOString(),
     })
     .eq('id', bookingId)
+    .eq('status', 'WORK_STARTED')
     .select()
     .single();
 
-  if (updateError) {
-    return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: updateError.message }), {
-      status: 500,
-    });
+  if (updateError) return internalError(updateError.message);
+
+  if (!updatedBooking) {
+    return new Response(
+      JSON.stringify({
+        error: 'INVALID_STATE_TRANSITION',
+        message: 'Booking was already completed or no longer in WORK_STARTED status',
+        from_status: 'WORK_STARTED',
+        to_status: 'COMPLETED',
+        action: 'COMPLETE',
+        reason_code: 'GUARD_NOT_SATISFIED',
+        details: { failed_guards: ['Booking no longer in WORK_STARTED status'] },
+      }),
+      { status: 409 }
+    );
   }
 
-  await supabase.from('booking_events').insert({
+  const { error: eventError } = await supabase.from('booking_events').insert({
     booking_id: bookingId,
     actor_id: user.id,
     from_status: 'WORK_STARTED',
@@ -99,5 +95,12 @@ serve(async (req: Request) => {
     metadata: { action: 'COMPLETE', after_photo_url: afterPhotoUrl },
   });
 
-  return new Response(JSON.stringify({ data: updatedBooking }), { status: 200 });
+  if (eventError) {
+    console.error(
+      `CRITICAL: Failed to write audit event for booking ${bookingId}:`,
+      eventError.message
+    );
+  }
+
+  return ok(updatedBooking);
 });

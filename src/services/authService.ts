@@ -182,7 +182,7 @@ export async function confirmPasswordReset(token_hash: string, newPassword: stri
 
 // ─── User Profile ─────────────────────────────────────────────────────────────
 
-async function ensureUserProfile(params: {
+export async function ensureUserProfile(params: {
   userId: string;
   email?: string;
   phone?: string;
