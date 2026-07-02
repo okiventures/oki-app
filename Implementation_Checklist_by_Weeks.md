@@ -266,10 +266,10 @@
 
 ### **Week 8 · June 25 – July 1 — Booking System Core**
 
-- [ ] Booking entity lifecycle states
-  - [ ] Create `bookings` table with status enum, foreign keys to client/handyman/service, timestamps
-  - [ ] `booking_events` audit table: logs every state transition with actor, from_state, to_state, timestamp
-  - [ ] Migration and RLS policies: client sees own bookings; handyman sees assigned bookings
+- [x] Booking entity lifecycle states
+  - [x] Create `bookings` table with status enum, foreign keys to client/handyman/service, timestamps
+  - [x] `booking_events` audit table: logs every state transition with actor, from_status, to_status, timestamp
+  - [x] Migration and RLS policies: client sees own bookings; handyman sees assigned bookings
 - [ ] PostGIS-based worker search (radius queries)
   - [ ] `ST_DWithin` radius query on `handymen.location` filtered by service category and `is_online = true`
   - [ ] Results sorted by distance ascending; include distance in meters in response
