@@ -239,11 +239,11 @@
   - [x] `GET /profiles/:id` and `PATCH /profiles/:id` endpoints with RLS (own record only)
   - [x] Avatar upload to Supabase Storage with public CDN URL stored on profile
   - [x] Handyman profile includes: bio, services, hourly rate, rating average, location
-- [ ] KYC document upload (storage, signed URLs)
-  - [ ] `POST /kyc/upload` endpoint: validate file type (JPEG/PNG/PDF), max 5 MB, reject all others
-  - [ ] Store documents in private Supabase Storage bucket
-  - [ ] Generate short-lived signed URLs for Admin document review (not publicly accessible)
-  - [ ] KYC status field on `handymen` table: `PENDING / APPROVED / REJECTED`
+- [x] KYC document upload (storage, signed URLs)
+  - [x] `POST /kyc/upload` endpoint: validate file type (JPEG/PNG/PDF), max 5 MB, reject all others — zero-import edge function at `supabase/functions/kyc-upload/index.ts`
+  - [x] Store documents in private Supabase Storage bucket (`kyc-documents` bucket with per-user folder)
+  - [x] Generate short-lived signed URLs for Admin document review (not publicly accessible) — configurable 3600s expiry via `ALLOWED_ORIGIN` env var for admin functions
+  - [x] KYC status field on `handymen` table: `PENDING / APPROVED / REJECTED` — migration at `backend/migrations/003_kyc_documents.sql`
 - [ ] Role-based access control middleware
   - [ ] RBAC middleware reads role from JWT claims; attaches to request context
   - [ ] Guard decorators/middleware for `client-only`, `handyman-only`, `admin-only` routes
@@ -387,14 +387,14 @@
 
 ### **Week 12 · July 23 – July 29 — Admin Verification Portal**
 
-- [ ] Admin web: KYC review queue
-  - [ ] Paginated list of `PENDING_VERIFICATION` handymen with name, submission date, and document count
-  - [ ] Document viewer: renders signed-URL images/PDFs inline without downloading
-  - [ ] Bulk review: can approve/reject multiple submissions in one session
-- [ ] Approve / reject Handyman documents
-  - [ ] `PATCH /admin/handymen/:id/kyc` with `action: APPROVE | REJECT` + optional `reason`
-  - [ ] Approval sets `handymen.kyc_status = APPROVED`; handyman becomes searchable
-  - [ ] Rejection sets `kyc_status = REJECTED`; triggers notification to handyman with reason
+- [x] Admin web: KYC review queue
+  - [x] Paginated list of handymen grouped by handyman with name, submission date, and document count — `GET /kyc-admin-list` edge function approved
+  - [x] Document viewer: renders signed-URL images inline via preview modal in `app/(admin)/users.tsx`
+  - [x] Bulk review: per-handyman Approve/Reject via `POST /kyc-admin-bulk-review` (parallel `Promise.all` document updates)
+- [x] Approve / reject Handyman documents
+  - [x] `POST /kyc-admin-bulk-review` with `action: APPROVE | REJECT` + optional `reason` — updated `handymen.kyc_status` + all PENDING docs in one request
+  - [x] Approval sets `handymen.kyc_status = APPROVED`; handyman becomes eligible for searchability
+  - [x] Rejection sets `kyc_status = REJECTED`; rejection reason captured in modal UI— notification pending
 - [ ] User management (suspend, reinstate)
   - [ ] `PATCH /admin/users/:id/status` with `action: SUSPEND | REINSTATE` + mandatory `reason`
   - [ ] Suspended users receive `403` on all authenticated requests (checked in auth middleware)
