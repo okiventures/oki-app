@@ -1,15 +1,34 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../src/context/ThemeContext';
 import { useAuth } from '../src/context/AuthContext';
 
+const DEMO_CREDS = {
+  admin: { email: 'demo-admin@oki.test', password: 'Demo@123' },
+  handyman: { email: 'demo-hm@oki.test', password: 'Demo@123' },
+};
+
 export default function LandingPage() {
   const { colors } = useTheme();
-  const { session, logout } = useAuth();
+  const { session, logout, login } = useAuth();
+  const [loggingIn, setLoggingIn] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const userType = session?.user?.userType;
+
+  const handleDemoLogin = async (role: 'admin' | 'handyman') => {
+    setLoggingIn(role);
+    setLoginError(null);
+    try {
+      await login({ email: DEMO_CREDS[role].email, password: DEMO_CREDS[role].password });
+    } catch {
+      setLoginError(`Failed to login as ${role}. The demo account may need setup.`);
+    } finally {
+      setLoggingIn(null);
+    }
+  };
 
   return (
     <ScrollView
@@ -132,6 +151,56 @@ export default function LandingPage() {
             </View>
           </TouchableOpacity>
         </Link>
+      </View>
+
+      {/* Demo Access — one-click login for testing */}
+      <View className="mt-6 w-full gap-2">
+        <Text className="font-heading mb-1 text-[13px] tracking-wider text-emerald-700 uppercase">
+          Demo Access (one-click)
+        </Text>
+        <Text className="mb-1 text-[11px] text-gray-500">
+          These accounts are pre-configured with known passwords for testing.
+        </Text>
+
+        <TouchableOpacity
+          onPress={() => handleDemoLogin('admin')}
+          disabled={loggingIn !== null}
+          className="w-full items-center rounded-lg bg-gray-800 py-3">
+          <View className="flex-row items-center gap-2">
+            {loggingIn === 'admin' ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Ionicons name="shield-checkmark-outline" size={16} color="white" />
+            )}
+            <Text className="font-semibold text-white">
+              {loggingIn === 'admin' ? 'Signing in...' : 'Sign in as Demo Admin'}
+            </Text>
+          </View>
+          <Text className="mt-0.5 text-[10px] text-gray-400">{DEMO_CREDS.admin.email}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => handleDemoLogin('handyman')}
+          disabled={loggingIn !== null}
+          className="w-full items-center rounded-lg bg-blue-600 py-3">
+          <View className="flex-row items-center gap-2">
+            {loggingIn === 'handyman' ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Ionicons name="hammer-outline" size={16} color="white" />
+            )}
+            <Text className="font-semibold text-white">
+              {loggingIn === 'handyman' ? 'Signing in...' : 'Sign in as Demo Handyman'}
+            </Text>
+          </View>
+          <Text className="mt-0.5 text-[10px] text-blue-300">{DEMO_CREDS.handyman.email}</Text>
+        </TouchableOpacity>
+
+        {loginError ? (
+          <View className="rounded-lg bg-red-50 px-4 py-3">
+            <Text className="text-[12px] text-red-600">{loginError}</Text>
+          </View>
+        ) : null}
       </View>
 
       {/* Logout */}
