@@ -47,7 +47,7 @@ async function fetchWithAuth<T>(path: string, options: RequestInit = {}): Promis
 
   if (!res.ok) {
     const err = typeof body === 'object' && body !== null ? (body as ApiError) : null;
-    throw new Error(err.message ?? `Request failed: ${res.status}`);
+    throw new Error(err?.message ?? `Request failed: ${res.status}`);
   }
 
   return body as T;
