@@ -3,6 +3,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Text,
   View,
   useWindowDimensions,
 } from 'react-native';
@@ -26,6 +27,8 @@ export default function HandymanOnboarding() {
   const { colors } = useTheme();
   const { height } = useWindowDimensions();
   const compactLayout = height < 760;
+  const [submitting, setSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
   const {
     currentStep,
     currentStepIndex,
@@ -47,13 +50,28 @@ export default function HandymanOnboarding() {
     toggleService,
     updateServicePrice,
     startUpload,
+    submitOnboarding,
     goToNextStep,
     goToPreviousStep,
   } = useHandymanOnboardingFlow();
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (currentStep === 'Pending') {
       router.replace('/(handyman)');
+      return;
+    }
+
+    if (currentStep === 'Documents') {
+      setSubmitting(true);
+      setSubmitError(null);
+      try {
+        await submitOnboarding();
+        goToNextStep();
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : 'Submission failed');
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
 
@@ -124,6 +142,12 @@ export default function HandymanOnboarding() {
                 <HandymanDocumentsStep uploads={uploads} onUpload={startUpload} />
               ) : null}
 
+              {submitError ? (
+                <View className="mt-3 rounded-lg bg-red-50 px-4 py-3">
+                  <Text className="text-sm text-red-600">{submitError}</Text>
+                </View>
+              ) : null}
+
               {currentStep === 'Pending' ? (
                 <HandymanPendingStep
                   selectedServices={selectedServices}
@@ -152,14 +176,16 @@ export default function HandymanOnboarding() {
                 <Button
                   label={
                     currentStep === 'Documents'
-                      ? 'Submit Application'
+                      ? submitting
+                        ? 'Submitting...'
+                        : 'Submit Application'
                       : currentStep === 'Pending'
                         ? 'Go to Dashboard'
                         : 'Continue'
                   }
                   onPress={handleContinue}
                   fullWidth
-                  disabled={!canContinue}
+                  disabled={!canContinue || submitting}
                 />
               </View>
             </View>
