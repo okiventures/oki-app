@@ -196,6 +196,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     `${SUPABASE_URL}/rest/v1/kyc_documents?handyman_id=eq.${encodeURIComponent(userId)}&document_type=eq.${encodeURIComponent(docType)}&status=eq.PENDING&id=neq.${encodeURIComponent(doc.id)}&submitted_at=lte.${encodeURIComponent(doc.submitted_at)}&select=id,file_path`,
     { headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY } }
   );
+  let cleanupWarning: string | null = null;
   if (ex.ok) {
     const exDocs = await ex.json();
     if (Array.isArray(exDocs) && exDocs.length > 0) {
@@ -217,14 +218,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
         if (!dbDel.ok) failedDbDeletes += 1;
       }
       if (failedDeletes > 0 || failedDbDeletes > 0)
-        return err(500, {
-          error: 'CLEANUP_FAILED',
-          message:
-            failedDeletes > 0
-              ? `Uploaded document saved, but ${failedDeletes} superseded file(s) could not be removed`
-              : `Uploaded document saved, but ${failedDbDeletes} superseded record(s) could not be removed`,
-        });
+        cleanupWarning =
+          failedDeletes > 0
+            ? `${failedDeletes} superseded file(s) could not be removed`
+            : `${failedDbDeletes} superseded record(s) could not be removed`;
     }
+  } else {
+    cleanupWarning = 'Could not query superseded documents for cleanup';
   }
 
   let signedUrl: string | null = null;
@@ -274,5 +274,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
     status: doc.status,
     submitted_at: doc.submitted_at,
     reviewed_at: doc.reviewed_at,
+    cleanup_warning: cleanupWarning,
   });
 });

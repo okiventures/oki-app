@@ -117,7 +117,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   );
 
   if (!handymanPatch.ok) {
-    const idFilter = updatedIds.join(',');
+    const idFilter = updatedIds.map((id) => encodeURIComponent(id)).join(',');
     const rollback = await fetch(`${SUPABASE_URL}/rest/v1/kyc_documents?id=in.(${idFilter})`, {
       method: 'PATCH',
       headers: {
