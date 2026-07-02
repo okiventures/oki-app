@@ -36,7 +36,7 @@ serve(async (req: Request) => {
 
   const { data: booking, error: fetchError } = await supabase
     .from('bookings')
-    .select('*, handymen!inner(*)')
+    .select('*')
     .eq('id', bookingId)
     .single();
 

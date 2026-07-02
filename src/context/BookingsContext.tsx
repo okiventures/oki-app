@@ -32,12 +32,24 @@ const HANDYMAN_WORKFLOW: Partial<Record<BookingStatus, HandymanNextAction>> = {
   },
 };
 
+const NON_CANCELLABLE_STATUSES: BookingStatus[] = [
+  BookingStatus.InTransit,
+  BookingStatus.Arrived,
+  BookingStatus.WorkStarted,
+  BookingStatus.Completed,
+  BookingStatus.Paid,
+  BookingStatus.Cancelled,
+  BookingStatus.Rejected,
+];
+
 interface BookingsContextValue {
   bookings: Booking[];
   acceptBooking: (bookingId: string) => void;
   declineBooking: (bookingId: string) => void;
   advanceBooking: (bookingId: string) => void;
+  cancelBooking: (bookingId: string) => boolean;
   getBookingById: (bookingId: string) => Booking | undefined;
+  getNextHandymanAction: (status: BookingStatus) => HandymanNextAction | null;
 }
 
 const BookingsContext = createContext<BookingsContextValue>({
@@ -45,7 +57,9 @@ const BookingsContext = createContext<BookingsContextValue>({
   acceptBooking: () => {},
   declineBooking: () => {},
   advanceBooking: () => {},
+  cancelBooking: () => false,
   getBookingById: () => undefined,
+  getNextHandymanAction: () => null,
 });
 
 function updateBooking(booking: Booking, status: BookingStatus): Booking {
@@ -100,7 +114,7 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
     setBookings((current) =>
       current.map((booking) =>
         booking.id === bookingId && booking.status === BookingStatus.Pending
-          ? updateBooking(booking, BookingStatus.Cancelled)
+          ? updateBooking(booking, BookingStatus.Rejected)
           : booking
       )
     );
@@ -123,13 +137,28 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const cancelBooking = (bookingId: string): boolean => {
+    let allowed = false;
+    setBookings((current) =>
+      current.map((booking) => {
+        if (booking.id !== bookingId) return booking;
+        if (NON_CANCELLABLE_STATUSES.includes(booking.status)) return booking;
+        allowed = true;
+        return updateBooking(booking, BookingStatus.Cancelled);
+      })
+    );
+    return allowed;
+  };
+
   const value = useMemo(
     () => ({
       bookings,
       acceptBooking,
       declineBooking,
       advanceBooking,
+      cancelBooking,
       getBookingById: (bookingId: string) => bookings.find((booking) => booking.id === bookingId),
+      getNextHandymanAction: (status: BookingStatus) => HANDYMAN_WORKFLOW[status] ?? null,
     }),
     [bookings]
   );

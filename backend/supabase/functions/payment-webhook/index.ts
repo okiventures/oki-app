@@ -93,11 +93,27 @@ serve(async (req: Request) => {
     }
 
     case 'payment_intent.payment_failed': {
+      // Fetch booking to get client_id
+      const { data: booking, error: fetchError } = await supabase
+        .from('bookings')
+        .select('client_id')
+        .eq('id', payload.bookingId)
+        .single();
+
+      if (fetchError || !booking) {
+        return new Response(JSON.stringify({ error: 'NOT_FOUND', message: 'Booking not found' }), {
+          status: 404,
+        });
+      }
+
       const { error: failedPaymentError } = await supabase.from('payments').insert({
         booking_id: payload.bookingId,
-        payment_intent_id: payload.paymentIntentId,
-        amount: payload.amount,
+        client_id: booking.client_id,
         status: 'FAILED',
+        amount_authorized: payload.amount,
+        amount_captured: null,
+        provider_payment_id: payload.paymentIntentId,
+        updated_at: new Date().toISOString(),
       });
 
       if (failedPaymentError) {

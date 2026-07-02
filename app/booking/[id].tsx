@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useBookings } from '../../src/context/BookingsContext';
 import { useTheme } from '../../src/context/ThemeContext';
+import { useAuth } from '../../src/context/AuthContext';
 import { MOCK_BOOKING_DETAILS } from '../../src/mocks/bookingDetails';
 import { BOOKING_STATUS_LABELS } from '../../src/constants/theme';
 import { BookingHeroCard } from '../../src/components/bookings/BookingHeroCard';
@@ -12,16 +13,22 @@ import { BookingOverviewTab } from '../../src/components/bookings/BookingOvervie
 import { BookingTimelineTab } from '../../src/components/bookings/BookingTimelineTab';
 import { BookingPaymentTab } from '../../src/components/bookings/BookingPaymentTab';
 import { Tabs } from '../../src/components/ui/Tabs';
+import { ConfirmDialog } from '../../src/components/ui/ConfirmDialog';
+import { Button } from '../../src/components/ui/Button';
+import { BookingStatus } from '../../src/types';
 
 const TABS = ['Overview', 'Timeline', 'Payment'] as const;
 type Tab = (typeof TABS)[number];
 
 export default function BookingDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, role } = useLocalSearchParams<{ id: string; role?: string }>();
   const router = useRouter();
-  const { getBookingById } = useBookings();
+  const { getBookingById, cancelBooking, advanceBooking, getNextHandymanAction } = useBookings();
   const { colors } = useTheme();
+  const { session } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showAdvanceDialog, setShowAdvanceDialog] = useState(false);
 
   const detailBooking = MOCK_BOOKING_DETAILS.find((b) => b.id === id) ?? MOCK_BOOKING_DETAILS[0];
   const liveBooking = id ? getBookingById(id) : undefined;
@@ -48,6 +55,26 @@ export default function BookingDetailScreen() {
   const statusLabel = BOOKING_STATUS_LABELS[booking.status] ?? booking.status;
   const primaryColor = colors.primary['600'];
 
+  const viewerRole = role ?? session?.user?.userType ?? 'client';
+  const isHandyman = viewerRole === 'handyman';
+
+  const canClientCancel =
+    !isHandyman &&
+    (booking.status === BookingStatus.Pending || booking.status === BookingStatus.Accepted);
+
+  const nextAction = isHandyman ? getNextHandymanAction(booking.status) : null;
+
+  const handleConfirmCancel = () => {
+    setShowCancelDialog(false);
+    cancelBooking(booking.id);
+    router.back();
+  };
+
+  const handleConfirmAdvance = () => {
+    setShowAdvanceDialog(false);
+    advanceBooking(booking.id);
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: primaryColor }}>
       <View className="px-5 pt-4 pb-24" style={{ backgroundColor: primaryColor }}>
@@ -68,12 +95,7 @@ export default function BookingDetailScreen() {
           <Text className="flex-1 text-center text-[17px] font-semibold text-white">
             Booking Details
           </Text>
-          <Pressable
-            android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: true }}
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-            className="p-1">
-            <Ionicons name="ellipsis-horizontal" size={22} color="rgba(255,255,255,0.95)" />
-          </Pressable>
+          <View className="w-8" />
         </View>
 
         <View className="mt-3 flex-row items-center justify-between px-1">
@@ -104,13 +126,63 @@ export default function BookingDetailScreen() {
 
         <ScrollView
           className="mt-4 flex-1"
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}>
           {activeTab === 'Overview' && <BookingOverviewTab booking={booking} />}
           {activeTab === 'Timeline' && <BookingTimelineTab booking={booking} />}
           {activeTab === 'Payment' && <BookingPaymentTab booking={booking} />}
         </ScrollView>
+
+        {(canClientCancel || nextAction) && (
+          <View
+            className="border-t border-gray-200 px-5 pt-3 pb-6"
+            style={{ backgroundColor: colors.ui.background }}>
+            {isHandyman && nextAction && (
+              <Button
+                label={nextAction.label}
+                variant="primary"
+                fullWidth
+                onPress={() => setShowAdvanceDialog(true)}
+              />
+            )}
+
+            {canClientCancel && (
+              <Button
+                label="Cancel Booking"
+                variant="tertiary"
+                fullWidth
+                onPress={() => setShowCancelDialog(true)}
+                leftIcon={<Ionicons name="close-circle-outline" size={16} color="#EF4444" />}
+              />
+            )}
+          </View>
+        )}
       </View>
+
+      <ConfirmDialog
+        visible={showCancelDialog}
+        title="Cancel this booking?"
+        message={
+          booking.status === BookingStatus.Accepted
+            ? 'This booking has already been accepted by the handyman. Are you sure you want to cancel?'
+            : 'Your pending booking will be cancelled immediately at no charge.'
+        }
+        confirmLabel="Yes, cancel it"
+        cancelLabel="Keep booking"
+        danger
+        onConfirm={handleConfirmCancel}
+        onCancel={() => setShowCancelDialog(false)}
+      />
+
+      <ConfirmDialog
+        visible={showAdvanceDialog}
+        title={`${nextAction?.label ?? 'Advance'}?`}
+        message="This will update the booking status for both you and the client."
+        confirmLabel="Confirm"
+        cancelLabel="Not yet"
+        onConfirm={handleConfirmAdvance}
+        onCancel={() => setShowAdvanceDialog(false)}
+      />
     </SafeAreaView>
   );
 }
