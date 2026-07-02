@@ -28,14 +28,12 @@ const REQUIRED_DOC_TYPES = ['GOVERNMENT_ID', 'SELFIE', 'PROOF_OF_ADDRESS'];
 const deriveHandymanKycStatus = (
   docs: Array<{ document_type: string; status: string; submitted_at: string }>
 ) => {
-  const latestByType = new Map<string, { status: string; submitted_at: string }>();
+  const latestByType = new Map<string, { status: string; submittedAtMs: number }>();
   for (const row of docs) {
+    const submittedAtMs = new Date(row.submitted_at).getTime();
     const current = latestByType.get(row.document_type);
-    if (
-      !current ||
-      new Date(row.submitted_at).getTime() > new Date(current.submitted_at).getTime()
-    ) {
-      latestByType.set(row.document_type, { status: row.status, submitted_at: row.submitted_at });
+    if (!current || submittedAtMs > current.submittedAtMs) {
+      latestByType.set(row.document_type, { status: row.status, submittedAtMs });
     }
   }
 

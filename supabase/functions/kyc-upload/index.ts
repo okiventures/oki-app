@@ -180,12 +180,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
   });
   if (!ins.ok) {
     const del = await delStorage(path);
-    if (!del.ok)
-      return err(500, {
-        error: 'STORAGE_CLEANUP_FAILED',
-        message: 'File upload cleanup failed after database error',
-      });
-    return err(500, { error: 'DATABASE_ERROR', message: 'Failed to create document record' });
+    return err(500, {
+      error: 'DATABASE_ERROR',
+      message: del.ok
+        ? 'Failed to create document record'
+        : 'Failed to create document record (storage cleanup also failed)',
+    });
   }
   const res = await ins.json();
   const doc = Array.isArray(res) ? res[0] : res;
@@ -193,19 +193,20 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return err(500, { error: 'DATABASE_ERROR', message: 'Failed to create document record' });
 
   const ex = await fetch(
-    `${SUPABASE_URL}/rest/v1/kyc_documents?handyman_id=eq.${encodeURIComponent(userId)}&document_type=eq.${encodeURIComponent(docType)}&status=eq.PENDING&id=neq.${encodeURIComponent(doc.id)}&submitted_at=lt.${encodeURIComponent(doc.submitted_at)}&select=id,file_path`,
+    `${SUPABASE_URL}/rest/v1/kyc_documents?handyman_id=eq.${encodeURIComponent(userId)}&document_type=eq.${encodeURIComponent(docType)}&status=eq.PENDING&id=neq.${encodeURIComponent(doc.id)}&submitted_at=lte.${encodeURIComponent(doc.submitted_at)}&select=id,file_path`,
     { headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY } }
   );
   if (ex.ok) {
     const exDocs = await ex.json();
     if (Array.isArray(exDocs) && exDocs.length > 0) {
+      let failedDeletes = 0;
+      let failedDbDeletes = 0;
       for (const d of exDocs) {
         const del = await delStorage(d.file_path);
-        if (!del.ok)
-          return err(500, {
-            error: 'STORAGE_DELETE_FAILED',
-            message: 'Failed to remove superseded KYC file',
-          });
+        if (!del.ok) {
+          failedDeletes += 1;
+          continue;
+        }
         const dbDel = await fetch(
           `${SUPABASE_URL}/rest/v1/kyc_documents?id=eq.${encodeURIComponent(d.id)}`,
           {
@@ -213,12 +214,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
             headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY },
           }
         );
-        if (!dbDel.ok)
-          return err(500, {
-            error: 'DATABASE_ERROR',
-            message: 'Failed to remove superseded KYC document record',
-          });
+        if (!dbDel.ok) failedDbDeletes += 1;
       }
+      if (failedDeletes > 0 || failedDbDeletes > 0)
+        return err(500, {
+          error: 'CLEANUP_FAILED',
+          message:
+            failedDeletes > 0
+              ? `Uploaded document saved, but ${failedDeletes} superseded file(s) could not be removed`
+              : `Uploaded document saved, but ${failedDbDeletes} superseded record(s) could not be removed`,
+        });
     }
   }
 

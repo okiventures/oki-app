@@ -117,8 +117,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
   );
 
   if (!handymanPatch.ok) {
-    const idFilter = updatedIds.map((id) => `"${id}"`).join(',');
-    await fetch(`${SUPABASE_URL}/rest/v1/kyc_documents?id=in.(${idFilter})`, {
+    const idFilter = updatedIds.join(',');
+    const rollback = await fetch(`${SUPABASE_URL}/rest/v1/kyc_documents?id=in.(${idFilter})`, {
       method: 'PATCH',
       headers: {
         Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
@@ -133,9 +133,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
         rejection_reason: null,
       }),
     });
+    const rollbackSuffix = rollback.ok
+      ? ''
+      : ' Rollback also failed; manual reconciliation required.';
     return err(500, {
       error: 'DATABASE_ERROR',
-      message: 'Failed to update handyman status; document updates were rolled back',
+      message: `Failed to update handyman status; document updates were rolled back.${rollbackSuffix}`,
     });
   }
 
