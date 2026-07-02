@@ -45,32 +45,54 @@ const KYC_TYPES = ['GOVERNMENT_ID', 'SELFIE', 'PROOF_OF_ADDRESS'] as const;
 
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 10;
-const rateBuckets = new Map<string, { count: number; resetAt: number }>();
 
-function checkRateLimit(key: string): { allowed: boolean; retryAfter?: number } {
+async function checkRateLimit(
+  userId: string
+): Promise<{ allowed: boolean; retryAfter?: number; error?: string }> {
   const now = Date.now();
-  const bucket = rateBuckets.get(key);
-  if (!bucket || bucket.resetAt <= now) {
-    rateBuckets.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return { allowed: true };
+  const windowStart = new Date(now - RATE_WINDOW_MS).toISOString();
+  const r = await fetch(
+    `${SUPABASE_URL}/rest/v1/kyc_documents?handyman_id=eq.${encodeURIComponent(userId)}&submitted_at=gte.${encodeURIComponent(windowStart)}&select=submitted_at&order=submitted_at.asc&limit=${RATE_MAX}`,
+    {
+      headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY },
+    }
+  );
+  if (!r.ok) {
+    return { allowed: false, error: 'RATE_LIMIT_CHECK_FAILED' };
   }
-  bucket.count += 1;
-  if (bucket.count > RATE_MAX) {
-    return { allowed: false, retryAfter: Math.ceil((bucket.resetAt - now) / 1000) };
-  }
-  return { allowed: true };
+  const recent = await r.json();
+  if (!Array.isArray(recent) || recent.length < RATE_MAX) return { allowed: true };
+
+  const oldestSubmittedAt = recent[0]?.submitted_at;
+  const retryAt = oldestSubmittedAt ? new Date(oldestSubmittedAt).getTime() + RATE_WINDOW_MS : NaN;
+  const retryAfter = Number.isFinite(retryAt) ? Math.max(1, Math.ceil((retryAt - now) / 1000)) : 60;
+
+  return { allowed: false, retryAfter };
 }
 
-// Periodic cleanup every 5 min to avoid memory leak
-if (typeof globalThis !== 'undefined') {
-  const MS = RATE_WINDOW_MS * 5;
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, bucket] of rateBuckets) {
-      if (bucket.resetAt <= now) rateBuckets.delete(key);
+const rateLimitError = () =>
+  err(500, {
+    error: 'INTERNAL_ERROR',
+    message: 'Failed to evaluate rate limit',
+  });
+
+const rateLimited = (retryAfter: number | undefined) => {
+  const safeRetryAfter = Math.max(1, retryAfter ?? 60);
+  return new Response(
+    JSON.stringify({
+      error: 'RATE_LIMITED',
+      message: 'Too many uploads. Try again shortly.',
+      retry_after_seconds: safeRetryAfter,
+    }),
+    {
+      status: 429,
+      headers: cors({
+        'Content-Type': 'application/json',
+        'Retry-After': String(safeRetryAfter),
+      }),
     }
-  }, MS);
-}
+  );
+};
 
 // Auth logic is inlined here (duplicated from _shared/rbac.ts) because API-deployed
 // zero-import functions cannot resolve CDN imports at runtime. See _shared/rbac.ts for
@@ -105,29 +127,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (!Array.isArray(hmData) || hmData.length === 0)
     return err(403, { error: 'FORBIDDEN', message: 'Only handymen can upload KYC documents' });
 
-  const rl = checkRateLimit(`kyc-upload:${userId}`);
+  const rl = await checkRateLimit(userId);
+  if (rl.error) return rateLimitError();
   if (!rl.allowed) {
-    return new Response(
-      JSON.stringify({
-        error: 'RATE_LIMITED',
-        message: 'Too many uploads. Try again shortly.',
-        retry_after_seconds: rl.retryAfter,
-      }),
-      {
-        status: 429,
-        headers: cors({
-          'Content-Type': 'application/json',
-          'Retry-After': String(rl.retryAfter),
-        }),
-      }
-    );
+    return rateLimited(rl.retryAfter);
   }
 
   const ct = req.headers.get('Content-Type') ?? '';
   let docType: string, fname: string, mime: string, bytes: Uint8Array;
 
   if (ct.includes('multipart/form-data')) {
-    let fd: FormData;
+    let fd: Awaited<ReturnType<Request['formData']>>;
     try {
       fd = await req.formData();
     } catch {
@@ -208,7 +218,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       'Content-Type': mime,
       'x-upsert': 'false',
     },
-    body: bytes,
+    body: bytes as unknown as BodyInit,
   });
   if (!up.ok) return err(500, { error: 'UPLOAD_FAILED', message: 'File upload failed' });
 

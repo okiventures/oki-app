@@ -19,6 +19,26 @@ const ok = (b: Record<string, unknown>) =>
     headers: cors({ 'Content-Type': 'application/json' }),
   });
 
+const REQUIRED_DOC_TYPES = ['GOVERNMENT_ID', 'SELFIE', 'PROOF_OF_ADDRESS'] as const;
+
+const deriveHandymanKycStatus = (
+  docs: Array<{ document_type: string; status: string; submitted_at: string }>
+) => {
+  const latestByType = new Map<string, { status: string; submittedAtMs: number }>();
+  for (const row of docs) {
+    const submittedAtMs = new Date(row.submitted_at).getTime();
+    const current = latestByType.get(row.document_type);
+    if (!current || submittedAtMs > current.submittedAtMs) {
+      latestByType.set(row.document_type, { status: row.status, submittedAtMs });
+    }
+  }
+
+  const latestStatuses = REQUIRED_DOC_TYPES.map((type) => latestByType.get(type)?.status);
+  if (latestStatuses.some((status) => status === 'REJECTED')) return 'REJECTED';
+  if (latestStatuses.every((status) => status === 'APPROVED')) return 'APPROVED';
+  return 'PENDING';
+};
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (req.method !== 'POST') return err(405, { error: 'METHOD_NOT_ALLOWED' });
@@ -107,6 +127,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
       message: 'KYC documents changed during review, please retry',
     });
 
+  const statusSource = await fetch(
+    `${SUPABASE_URL}/rest/v1/kyc_documents?handyman_id=eq.${encodeURIComponent(hmId)}&select=document_type,status,submitted_at`,
+    {
+      headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY },
+    }
+  );
+  if (!statusSource.ok)
+    return err(500, { error: 'DATABASE_ERROR', message: 'Failed to read handyman KYC documents' });
+  const allDocs = await statusSource.json();
+  const handymanStatus = deriveHandymanKycStatus(Array.isArray(allDocs) ? allDocs : []);
+
   const handymanPatch = await fetch(
     `${SUPABASE_URL}/rest/v1/handymen?id=eq.${encodeURIComponent(hmId)}`,
     {
@@ -117,7 +148,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         'Content-Type': 'application/json',
         Prefer: 'return=minimal',
       },
-      body: JSON.stringify({ kyc_status: newStatus }),
+      body: JSON.stringify({ kyc_status: handymanStatus }),
     }
   );
 
