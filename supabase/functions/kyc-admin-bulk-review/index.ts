@@ -33,7 +33,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const pr = await fetch(
     `${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(uid)}&select=user_type`,
     {
-      headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: ANON_KEY },
+      headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY },
     }
   );
   const p = await pr.json();
@@ -56,11 +56,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const dr = await fetch(
     `${SUPABASE_URL}/rest/v1/kyc_documents?handyman_id=eq.${encodeURIComponent(hmId)}&status=eq.PENDING&select=id`,
     {
-      headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: ANON_KEY },
+      headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY },
     }
   );
   const pd = await dr.json();
-  const ids: string[] = Array.isArray(pd) ? pd.map((d: any) => d.id) : [];
+  const ids: string[] = Array.isArray(pd) ? pd.map((d: { id: string }) => d.id) : [];
   if (ids.length === 0)
     return err(422, {
       error: 'INVALID_STATE',
@@ -71,42 +71,79 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const now = new Date().toISOString();
   const rr = action === 'REJECT' ? (reason ?? null) : null;
 
-  await Promise.all(
-    ids.map((id) =>
-      fetch(`${SUPABASE_URL}/rest/v1/kyc_documents?id=eq.${encodeURIComponent(id)}`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-          apikey: ANON_KEY,
-          'Content-Type': 'application/json',
-          Prefer: 'return=minimal',
-        },
-        body: JSON.stringify({
-          status: newStatus,
-          reviewed_by: uid,
-          reviewed_at: now,
-          rejection_reason: rr,
-        }),
-      })
-    )
+  const docsPatch = await fetch(
+    `${SUPABASE_URL}/rest/v1/kyc_documents?handyman_id=eq.${encodeURIComponent(hmId)}&status=eq.PENDING`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
+        apikey: ANON_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({
+        status: newStatus,
+        reviewed_by: uid,
+        reviewed_at: now,
+        rejection_reason: rr,
+      }),
+    }
+  );
+  if (!docsPatch.ok)
+    return err(500, { error: 'DATABASE_ERROR', message: 'Failed to update KYC documents' });
+
+  const updatedDocs = await docsPatch.json();
+  const updatedIds: string[] = Array.isArray(updatedDocs)
+    ? updatedDocs.map((d: { id: string }) => d.id)
+    : [];
+  if (updatedIds.length !== ids.length)
+    return err(409, {
+      error: 'CONFLICT',
+      message: 'KYC documents changed during review, please retry',
+    });
+
+  const handymanPatch = await fetch(
+    `${SUPABASE_URL}/rest/v1/handymen?id=eq.${encodeURIComponent(hmId)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
+        apikey: ANON_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({ kyc_status: newStatus }),
+    }
   );
 
-  await fetch(`${SUPABASE_URL}/rest/v1/handymen?id=eq.${encodeURIComponent(hmId)}`, {
-    method: 'PATCH',
-    headers: {
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-      apikey: ANON_KEY,
-      'Content-Type': 'application/json',
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify({ kyc_status: newStatus }),
-  });
+  if (!handymanPatch.ok) {
+    const idFilter = updatedIds.map((id) => `"${id}"`).join(',');
+    await fetch(`${SUPABASE_URL}/rest/v1/kyc_documents?id=in.(${idFilter})`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
+        apikey: ANON_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        status: 'PENDING',
+        reviewed_by: null,
+        reviewed_at: null,
+        rejection_reason: null,
+      }),
+    });
+    return err(500, {
+      error: 'DATABASE_ERROR',
+      message: 'Failed to update handyman status; document updates were rolled back',
+    });
+  }
 
   return ok({
     success: true,
     handyman_id: hmId,
-    documents_reviewed: ids.length,
+    documents_reviewed: updatedIds.length,
     action,
-    message: `${ids.length} document(s) ${newStatus.toLowerCase()}`,
+    message: `${updatedIds.length} document(s) ${newStatus.toLowerCase()}`,
   });
 });

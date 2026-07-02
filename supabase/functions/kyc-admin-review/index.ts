@@ -23,6 +23,27 @@ const enc = (p: string) =>
     .split('/')
     .map((s) => encodeURIComponent(s))
     .join('/');
+const REQUIRED_DOC_TYPES = ['GOVERNMENT_ID', 'SELFIE', 'PROOF_OF_ADDRESS'];
+
+const deriveHandymanKycStatus = (
+  docs: Array<{ document_type: string; status: string; submitted_at: string }>
+) => {
+  const latestByType = new Map<string, { status: string; submitted_at: string }>();
+  for (const row of docs) {
+    const current = latestByType.get(row.document_type);
+    if (
+      !current ||
+      new Date(row.submitted_at).getTime() > new Date(current.submitted_at).getTime()
+    ) {
+      latestByType.set(row.document_type, { status: row.status, submitted_at: row.submitted_at });
+    }
+  }
+
+  const latestStatuses = REQUIRED_DOC_TYPES.map((type) => latestByType.get(type)?.status);
+  if (latestStatuses.some((status) => status === 'REJECTED')) return 'REJECTED';
+  if (latestStatuses.every((status) => status === 'APPROVED')) return 'APPROVED';
+  return 'PENDING';
+};
 
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -39,7 +60,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const pr = await fetch(
     `${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(uid)}&select=user_type`,
     {
-      headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: ANON_KEY },
+      headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY },
     }
   );
   const p = await pr.json();
@@ -74,7 +95,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const er = await fetch(
     `${SUPABASE_URL}/rest/v1/kyc_documents?id=eq.${encodeURIComponent(docId)}&select=*`,
     {
-      headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: ANON_KEY },
+      headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY },
     }
   );
   const ed = await er.json();
@@ -91,7 +112,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     {
       method: 'PATCH',
       headers: {
-        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
         apikey: ANON_KEY,
         'Content-Type': 'application/json',
         Prefer: 'return=representation',
@@ -109,16 +130,32 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const updated = Array.isArray(ud) && ud.length > 0 ? ud[0] : null;
   if (!updated) return err(500, { error: 'DATABASE_ERROR', message: 'Failed to update document' });
 
-  await fetch(`${SUPABASE_URL}/rest/v1/handymen?id=eq.${encodeURIComponent(doc.handyman_id)}`, {
-    method: 'PATCH',
-    headers: {
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-      apikey: ANON_KEY,
-      'Content-Type': 'application/json',
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify({ kyc_status: newStatus }),
-  });
+  const statusSource = await fetch(
+    `${SUPABASE_URL}/rest/v1/kyc_documents?handyman_id=eq.${encodeURIComponent(doc.handyman_id)}&select=document_type,status,submitted_at`,
+    {
+      headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY },
+    }
+  );
+  if (!statusSource.ok)
+    return err(500, { error: 'DATABASE_ERROR', message: 'Failed to read handyman KYC documents' });
+  const allDocs = await statusSource.json();
+  const handymanStatus = deriveHandymanKycStatus(Array.isArray(allDocs) ? allDocs : []);
+
+  const handymanPatch = await fetch(
+    `${SUPABASE_URL}/rest/v1/handymen?id=eq.${encodeURIComponent(doc.handyman_id)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
+        apikey: ANON_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({ kyc_status: handymanStatus }),
+    }
+  );
+  if (!handymanPatch.ok)
+    return err(500, { error: 'DATABASE_ERROR', message: 'Failed to update handyman KYC status' });
 
   let signed: string | null = null;
   try {
@@ -127,7 +164,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+          Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ expiresIn: 3600 }),
@@ -142,7 +179,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const lr = await fetch(
     `${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(updated.handyman_id)}&select=full_name,email`,
     {
-      headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: ANON_KEY },
+      headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY },
     }
   );
   const lu = lr.ok ? await lr.json() : [];

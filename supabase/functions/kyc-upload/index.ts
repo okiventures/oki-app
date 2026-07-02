@@ -30,6 +30,11 @@ const absUrl = (u: string | null) => {
   if (u.startsWith('/')) return `${SUPABASE_URL}/storage/v1${u}`;
   return u;
 };
+const delStorage = (path: string) =>
+  fetch(`${SUPABASE_URL}/storage/v1/object/kyc-documents/${encPath(path)}`, {
+    method: 'DELETE',
+    headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY },
+  });
 
 const MIME = ['image/jpeg', 'image/png', 'application/pdf'];
 const MAX_SIZE = 5 * 1024 * 1024;
@@ -58,7 +63,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const hmCheck = await fetch(
     `${SUPABASE_URL}/rest/v1/handymen?id=eq.${encodeURIComponent(userId)}&select=id`,
     {
-      headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: ANON_KEY },
+      headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY },
     }
   );
   const hmData = await hmCheck.json();
@@ -146,7 +151,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const up = await fetch(`${SUPABASE_URL}/storage/v1/object/kyc-documents/${encPath(path)}`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
       'Content-Type': mime,
       'x-upsert': 'false',
     },
@@ -154,30 +159,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
   });
   if (!up.ok) return err(500, { error: 'UPLOAD_FAILED', message: 'File upload failed' });
 
-  const ex = await fetch(
-    `${SUPABASE_URL}/rest/v1/kyc_documents?handyman_id=eq.${encodeURIComponent(userId)}&document_type=eq.${encodeURIComponent(docType)}&status=eq.PENDING&select=id,file_path`,
-    { headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: ANON_KEY } }
-  );
-  if (ex.ok) {
-    const exDocs = await ex.json();
-    if (Array.isArray(exDocs) && exDocs.length > 0) {
-      for (const d of exDocs) {
-        await fetch(`${SUPABASE_URL}/storage/v1/object/kyc-documents/${encPath(d.file_path)}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
-        });
-        await fetch(`${SUPABASE_URL}/rest/v1/kyc_documents?id=eq.${encodeURIComponent(d.id)}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: ANON_KEY },
-        });
-      }
-    }
-  }
-
+  const submittedAt = new Date().toISOString();
   const ins = await fetch(`${SUPABASE_URL}/rest/v1/kyc_documents`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
       apikey: ANON_KEY,
       'Content-Type': 'application/json',
       Prefer: 'return=representation',
@@ -189,19 +175,52 @@ Deno.serve(async (req: Request): Promise<Response> => {
       file_name: fname,
       file_size: bytes.length,
       mime_type: mime,
+      submitted_at: submittedAt,
     }),
   });
   if (!ins.ok) {
-    await fetch(`${SUPABASE_URL}/storage/v1/object/kyc-documents/${encPath(path)}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
-    });
+    const del = await delStorage(path);
+    if (!del.ok)
+      return err(500, {
+        error: 'STORAGE_CLEANUP_FAILED',
+        message: 'File upload cleanup failed after database error',
+      });
     return err(500, { error: 'DATABASE_ERROR', message: 'Failed to create document record' });
   }
   const res = await ins.json();
   const doc = Array.isArray(res) ? res[0] : res;
   if (!doc)
     return err(500, { error: 'DATABASE_ERROR', message: 'Failed to create document record' });
+
+  const ex = await fetch(
+    `${SUPABASE_URL}/rest/v1/kyc_documents?handyman_id=eq.${encodeURIComponent(userId)}&document_type=eq.${encodeURIComponent(docType)}&status=eq.PENDING&id=neq.${encodeURIComponent(doc.id)}&submitted_at=lt.${encodeURIComponent(doc.submitted_at)}&select=id,file_path`,
+    { headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY } }
+  );
+  if (ex.ok) {
+    const exDocs = await ex.json();
+    if (Array.isArray(exDocs) && exDocs.length > 0) {
+      for (const d of exDocs) {
+        const del = await delStorage(d.file_path);
+        if (!del.ok)
+          return err(500, {
+            error: 'STORAGE_DELETE_FAILED',
+            message: 'Failed to remove superseded KYC file',
+          });
+        const dbDel = await fetch(
+          `${SUPABASE_URL}/rest/v1/kyc_documents?id=eq.${encodeURIComponent(d.id)}`,
+          {
+            method: 'DELETE',
+            headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY },
+          }
+        );
+        if (!dbDel.ok)
+          return err(500, {
+            error: 'DATABASE_ERROR',
+            message: 'Failed to remove superseded KYC document record',
+          });
+      }
+    }
+  }
 
   let signedUrl: string | null = null;
   try {
@@ -210,7 +229,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+          Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ expiresIn: 60 }),
@@ -227,7 +246,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const pr = await fetch(
     `${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(userId)}&select=full_name,email`,
     {
-      headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, apikey: ANON_KEY },
+      headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY },
     }
   );
   const profiles = pr.ok ? await pr.json() : [];
