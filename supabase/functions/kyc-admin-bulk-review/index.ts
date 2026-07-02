@@ -96,7 +96,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const updatedIds: string[] = Array.isArray(updatedDocs)
     ? updatedDocs.map((d: { id: string }) => d.id)
     : [];
-  if (updatedIds.length !== ids.length)
+  const pendingSet = new Set(ids);
+  const updatedSet = new Set(updatedIds);
+  const hasMismatch =
+    pendingSet.size !== updatedSet.size || [...pendingSet].some((id) => !updatedSet.has(id));
+  if (hasMismatch)
     return err(409, {
       error: 'CONFLICT',
       message: 'KYC documents changed during review, please retry',
@@ -138,7 +142,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       : ' Rollback also failed; manual reconciliation required.';
     return err(500, {
       error: 'DATABASE_ERROR',
-      message: `Failed to update handyman status; document updates were rolled back.${rollbackSuffix}`,
+      message: `Failed to update handyman status; document rollback was attempted.${rollbackSuffix}`,
     });
   }
 

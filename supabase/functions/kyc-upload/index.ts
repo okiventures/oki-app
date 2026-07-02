@@ -193,7 +193,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return err(500, { error: 'DATABASE_ERROR', message: 'Failed to create document record' });
 
   const ex = await fetch(
-    `${SUPABASE_URL}/rest/v1/kyc_documents?handyman_id=eq.${encodeURIComponent(userId)}&document_type=eq.${encodeURIComponent(docType)}&status=eq.PENDING&id=neq.${encodeURIComponent(doc.id)}&submitted_at=lte.${encodeURIComponent(doc.submitted_at)}&select=id,file_path`,
+    `${SUPABASE_URL}/rest/v1/kyc_documents?handyman_id=eq.${encodeURIComponent(userId)}&document_type=eq.${encodeURIComponent(docType)}&status=eq.PENDING&id=neq.${encodeURIComponent(doc.id)}&submitted_at=lt.${encodeURIComponent(doc.submitted_at)}&select=id,file_path`,
     { headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY } }
   );
   let cleanupWarning: string | null = null;
@@ -218,10 +218,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
         if (!dbDel.ok) failedDbDeletes += 1;
       }
       if (failedDeletes > 0 || failedDbDeletes > 0)
-        cleanupWarning =
-          failedDeletes > 0
-            ? `${failedDeletes} superseded file(s) could not be removed`
-            : `${failedDbDeletes} superseded record(s) could not be removed`;
+        cleanupWarning = [
+          failedDeletes > 0 ? `${failedDeletes} superseded file(s) could not be removed` : null,
+          failedDbDeletes > 0
+            ? `${failedDbDeletes} superseded record(s) could not be removed`
+            : null,
+        ]
+          .filter(Boolean)
+          .join('; ');
     }
   } else {
     cleanupWarning = 'Could not query superseded documents for cleanup';
