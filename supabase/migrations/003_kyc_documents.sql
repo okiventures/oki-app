@@ -32,13 +32,13 @@ ALTER TABLE kyc_documents ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY kyc_documents_select_own ON kyc_documents
   FOR SELECT TO authenticated
-  USING (handyman_id = auth.uid() OR is_admin());
+  USING (handyman_id = (SELECT auth.uid()) OR (SELECT is_admin()));
 
 CREATE POLICY kyc_documents_insert_own ON kyc_documents
   FOR INSERT TO authenticated
   WITH CHECK (
-    handyman_id = auth.uid()
-    AND EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND user_type = 'handyman')
+    handyman_id = (SELECT auth.uid())
+    AND EXISTS (SELECT 1 FROM users WHERE id = (SELECT auth.uid()) AND user_type = 'handyman')
   );
 
 CREATE POLICY kyc_documents_admin_update ON kyc_documents

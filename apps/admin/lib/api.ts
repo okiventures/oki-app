@@ -29,10 +29,24 @@ async function fetchWithAuth<T>(path: string, options: RequestInit = {}): Promis
     },
   });
 
-  const body = await res.json();
+  const contentType = res.headers.get('content-type') ?? '';
+  const rawBody = res.status === 204 ? '' : await res.text();
+
+  let body: unknown = null;
+  if (rawBody) {
+    if (contentType.includes('application/json')) {
+      try {
+        body = JSON.parse(rawBody);
+      } catch {
+        body = rawBody;
+      }
+    } else {
+      body = rawBody;
+    }
+  }
 
   if (!res.ok) {
-    const err = body as ApiError;
+    const err = typeof body === 'object' && body !== null ? (body as ApiError) : null;
     throw new Error(err.message ?? `Request failed: ${res.status}`);
   }
 
