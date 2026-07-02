@@ -16,11 +16,7 @@ import { Modal } from '../../src/components/ui/Modal';
 import { Table, TableColumn } from '../../src/components/admin/Table';
 import { Ionicons } from '@expo/vector-icons';
 import { SearchBar } from '../../src/components/forms/SearchBar';
-import {
-  useAdmin,
-  type AdminKycRequest,
-  type AdminKycDocument,
-} from '../../src/context/AdminContext';
+import { useAdmin, type AdminKycDocument } from '../../src/context/AdminContext';
 import { formatDate } from '../../src/utils';
 
 type DialogInfo = {

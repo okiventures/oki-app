@@ -16,7 +16,7 @@ import { formatCurrency, formatDateTime } from '../../src/utils';
 
 export default function AdminDashboard() {
   const { logout } = useAuth();
-  const { pendingKycCount, activeUsersCount, activeDisputesCount } = useAdmin();
+  const { pendingKycCount } = useAdmin();
 
   return (
     <View className="flex-1 bg-gray-50">

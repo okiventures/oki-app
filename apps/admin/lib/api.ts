@@ -10,10 +10,7 @@ interface ApiError {
   details?: Record<string, string>;
 }
 
-async function fetchWithAuth<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+async function fetchWithAuth<T>(path: string, options: RequestInit = {}): Promise<T> {
   const client = createBrowserClient();
   const {
     data: { session },
