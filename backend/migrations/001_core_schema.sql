@@ -115,7 +115,7 @@ CREATE INDEX idx_handyman_services_service ON handyman_services (service_id);
 CREATE TABLE bookings (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id         UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
-  handyman_id       UUID REFERENCES users (id) ON DELETE RESTRICT,
+  handyman_id       UUID REFERENCES handymen (id) ON DELETE RESTRICT,
   service_id        UUID NOT NULL REFERENCES services (id) ON DELETE RESTRICT,
   booking_type      booking_type NOT NULL,
   status            booking_status NOT NULL DEFAULT 'PENDING',
@@ -291,13 +291,28 @@ CREATE TRIGGER trg_disputes_updated_at
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.users (id, email, full_name, user_type)
+  INSERT INTO public.users (id, email, phone, full_name, user_type)
   VALUES (
     NEW.id,
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data ->> 'full_name', split_part(NEW.email, '@', 1)),
-    COALESCE((NEW.raw_user_meta_data ->> 'user_type')::user_type, 'client')
+    COALESCE(NEW.email, NEW.phone || '@phone.oki.app'),
+    NEW.phone,
+    COALESCE(
+      NEW.raw_user_meta_data ->> 'full_name',
+      NULLIF(split_part(COALESCE(NEW.email, ''), '@', 1), ''),
+      'User'
+    ),
+    COALESCE(
+      (NEW.raw_user_meta_data ->> 'user_type')::user_type,
+      'client'::user_type
+    )
   );
+
+  -- Auto-create handyman profile row if user_type is handyman
+  IF (NEW.raw_user_meta_data ->> 'user_type') = 'handyman' THEN
+    INSERT INTO public.handymen (id)
+    VALUES (NEW.id);
+  END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;

@@ -2,20 +2,48 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
+import { useAuth } from '../../src/context/AuthContext';
+import { useProfile } from '../../src/hooks/useProfile';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
 import { Ionicons } from '@expo/vector-icons';
 import { MOCK_HANDYMAN, MOCK_HANDYMAN_WALLET } from '../../src/mocks';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { WalletSection } from '../../src/components/handyman/WalletSection';
 import { Modal } from '../../src/components/ui/Modal';
 import { Button } from '../../src/components/ui/Button';
 
 export default function HandymanProfile() {
   const { colors } = useTheme();
+  const { logout } = useAuth();
+  const { profile } = useProfile();
+  const router = useRouter();
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Use real profile data when available, fall back to mock for dev/testing
+  const displayName = profile?.user?.full_name ?? MOCK_HANDYMAN.name;
+  const displayPhoto = profile?.user?.photo_url ?? MOCK_HANDYMAN.photoUrl;
+  const displayRating = profile?.handyman?.trust_score ?? MOCK_HANDYMAN.rating;
+  const displayReviewCount = profile?.handyman?.review_count ?? MOCK_HANDYMAN.reviewCount;
+  const displaySkills = MOCK_HANDYMAN.skills; // TODO: fetch from handyman_services join
+  const displayBio = profile?.handyman?.bio ?? MOCK_HANDYMAN.bio;
+  const displayHourlyRate = profile?.handyman?.hourly_rate ?? MOCK_HANDYMAN.hourlyRate;
+  const displayLocation = MOCK_HANDYMAN.location; // PostGIS location not parseable on client; use mock
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } catch {
+      // Logout handled by AuthContext even on error
+    } finally {
+      setIsLoggingOut(false);
+      setLogoutModalVisible(false);
+    }
+  };
 
   return (
     <SafeAreaView
@@ -41,20 +69,51 @@ export default function HandymanProfile() {
                 shadowRadius: 8,
                 elevation: 6,
               }}>
-              <Avatar name={MOCK_HANDYMAN.name} photoUrl={MOCK_HANDYMAN.photoUrl} size={80} />
+              <Avatar name={displayName} photoUrl={displayPhoto} size={80} />
             </View>
-            <Text className="font-heading mt-3 text-lg text-gray-900">{MOCK_HANDYMAN.name}</Text>
+            <Text className="font-heading mt-3 text-lg text-gray-900">{displayName}</Text>
             <View className="mt-1 flex-row items-center gap-1">
               <Ionicons name="star" size={14} color="#EAB308" />
-              <Text className="text-[13px] font-bold text-gray-700">{MOCK_HANDYMAN.rating}</Text>
-              <Text className="text-[13px] text-gray-500">
-                ({MOCK_HANDYMAN.reviewCount} reviews)
-              </Text>
+              <Text className="text-[13px] font-bold text-gray-700">{displayRating}</Text>
+              <Text className="text-[13px] text-gray-500">({displayReviewCount} reviews)</Text>
             </View>
             <View className="mt-3 flex-row flex-wrap justify-center gap-2">
-              {MOCK_HANDYMAN.skills.map((skill) => (
+              {displaySkills.map((skill) => (
                 <Badge key={skill} text={skill} variant="primary" />
               ))}
+            </View>
+
+            {/* Bio + hourly rate + location from profile */}
+            {displayBio ? (
+              <Text className="mt-3 px-4 text-center text-[13px] leading-5 text-gray-500">
+                {displayBio}
+              </Text>
+            ) : null}
+            <View className="mt-2 flex-row flex-wrap items-center justify-center gap-x-4 gap-y-1">
+              {displayHourlyRate > 0 ? (
+                <View className="flex-row items-center gap-1">
+                  <Ionicons name="cash-outline" size={13} color={colors.primary['500']} />
+                  <Text className="text-[13px] font-semibold text-gray-700">
+                    ₱{displayHourlyRate}/hr
+                  </Text>
+                </View>
+              ) : null}
+              {displayLocation ? (
+                <View className="flex-row items-center gap-1">
+                  <Ionicons name="location-outline" size={13} color={colors.primary['500']} />
+                  <Text className="text-[13px] text-gray-600">{displayLocation}</Text>
+                </View>
+              ) : null}
+            </View>
+
+            {/* Edit Profile button */}
+            <View className="mt-4">
+              <Button
+                label="Edit Profile"
+                variant="tertiary"
+                onPress={() => router.push('/profile/edit')}
+                leftIcon={<Ionicons name="pencil" size={15} color={colors.primary['600']} />}
+              />
             </View>
           </View>
 
@@ -78,7 +137,9 @@ export default function HandymanProfile() {
               </TouchableOpacity>
             </Link>
 
-            <TouchableOpacity className="flex-row items-center border-b border-gray-100 p-4">
+            <TouchableOpacity
+              className="flex-row items-center border-b border-gray-100 p-4"
+              onPress={() => router.push('/profile/settings')}>
               <View
                 className="h-10 w-10 items-center justify-center rounded-full"
                 style={{ backgroundColor: colors.primary['50'] }}>
@@ -86,7 +147,9 @@ export default function HandymanProfile() {
               </View>
               <View className="ml-4 flex-1">
                 <Text className="text-[15px] font-bold text-gray-900">Settings</Text>
-                <Text className="mt-0.5 text-[11px] text-gray-500">App preferences</Text>
+                <Text className="mt-0.5 text-[11px] text-gray-500">
+                  Password, theme, notifications
+                </Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
             </TouchableOpacity>
@@ -132,7 +195,8 @@ export default function HandymanProfile() {
             label="Log Out"
             variant="danger"
             fullWidth
-            onPress={() => setLogoutModalVisible(false)}
+            loading={isLoggingOut}
+            onPress={handleLogout}
           />
           <Button
             label="Cancel"

@@ -136,29 +136,29 @@ erDiagram
 
 ## Relationship Summary
 
-| Relationship | Cardinality | FK column(s) | Notes |
-|---|---|---|---|
-| `auth.users` → `users` | 1:1 | `users.id` | Profile row created on signup trigger |
-| `users` → `handymen` | 1:0..1 | `handymen.id = users.id` | Only when `user_type = 'handyman'` |
-| `users` → `bookings` (client) | 1:N | `bookings.client_id` | Client owns booking lifecycle until assigned |
-| `users` → `bookings` (handyman) | 1:N | `bookings.handyman_id` | Nullable while `PENDING`; set on accept |
-| `services` ↔ `handymen` | M:N | `handyman_services` | Junction with optional `price_override` |
-| `services` → `bookings` | 1:N | `bookings.service_id` | Category + pricing snapshot at booking time |
-| `bookings` → `payments` | 1:0..1 | `payments.booking_id` UNIQUE | One escrow record per booking |
-| `bookings` → `reviews` | 1:0..2 | `reviews.booking_id` | Client→handyman and handyman→client |
-| `bookings` → `booking_events` | 1:N | `booking_events.booking_id` | Immutable audit log |
-| `bookings` → `disputes` | 1:0..1 | `disputes.booking_id` | At most one open dispute per booking (app-enforced) |
-| `handymen` → `wallet_transactions` | 1:N | `wallet_transactions.handyman_id` | Credits on capture; debits on payout |
-| `payments` → `wallet_transactions` | 1:0..N | `wallet_transactions.payment_id` | Links ledger entry to source payment |
+| Relationship                       | Cardinality | FK column(s)                      | Notes                                               |
+| ---------------------------------- | ----------- | --------------------------------- | --------------------------------------------------- |
+| `auth.users` → `users`             | 1:1         | `users.id`                        | Profile row created on signup trigger               |
+| `users` → `handymen`               | 1:0..1      | `handymen.id = users.id`          | Only when `user_type = 'handyman'`                  |
+| `users` → `bookings` (client)      | 1:N         | `bookings.client_id`              | Client owns booking lifecycle until assigned        |
+| `users` → `bookings` (handyman)    | 1:N         | `bookings.handyman_id`            | Nullable while `PENDING`; set on accept             |
+| `services` ↔ `handymen`            | M:N         | `handyman_services`               | Junction with optional `price_override`             |
+| `services` → `bookings`            | 1:N         | `bookings.service_id`             | Category + pricing snapshot at booking time         |
+| `bookings` → `payments`            | 1:0..1      | `payments.booking_id` UNIQUE      | One escrow record per booking                       |
+| `bookings` → `reviews`             | 1:0..2      | `reviews.booking_id`              | Client→handyman and handyman→client                 |
+| `bookings` → `booking_events`      | 1:N         | `booking_events.booking_id`       | Immutable audit log                                 |
+| `bookings` → `disputes`            | 1:0..1      | `disputes.booking_id`             | At most one open dispute per booking (app-enforced) |
+| `handymen` → `wallet_transactions` | 1:N         | `wallet_transactions.handyman_id` | Credits on capture; debits on payout                |
+| `payments` → `wallet_transactions` | 1:0..N      | `wallet_transactions.payment_id`  | Links ledger entry to source payment                |
 
 ---
 
 ## PostGIS Columns
 
-| Table | Column | Type | Index | Purpose |
-|---|---|---|---|---|
-| `handymen` | `location` | `GEOGRAPHY(Point, 4326)` | GiST | Worker search (`ST_DWithin`), live position updates |
-| `bookings` | `location` | `GEOGRAPHY(Point, 4326)` | GiST | Job site; distance quote; geofence arrival |
+| Table      | Column     | Type                     | Index | Purpose                                             |
+| ---------- | ---------- | ------------------------ | ----- | --------------------------------------------------- |
+| `handymen` | `location` | `GEOGRAPHY(Point, 4326)` | GiST  | Worker search (`ST_DWithin`), live position updates |
+| `bookings` | `location` | `GEOGRAPHY(Point, 4326)` | GiST  | Job site; distance quote; geofence arrival          |
 
 **Query patterns**
 
@@ -185,90 +185,90 @@ Legend: ✅ allowed · ❌ denied · 🔒 service-role / Edge Function only · �
 
 ### `users`
 
-| Operation | client | handyman | admin |
-|---|---|---|---|
-| SELECT own row | ✅ `id = auth.uid()` | ✅ | ✅ all |
-| SELECT other users | 👁 public fields only (name, photo) via view | 👁 same | ✅ |
-| INSERT | 🔒 signup trigger | 🔒 signup trigger | 🔒 |
-| UPDATE own | ✅ non-role fields | ✅ | ✅ any |
-| DELETE | ❌ | ❌ | 🔒 soft-delete via status |
+| Operation          | client                                      | handyman          | admin                     |
+| ------------------ | ------------------------------------------- | ----------------- | ------------------------- |
+| SELECT own row     | ✅ `id = auth.uid()`                        | ✅                | ✅ all                    |
+| SELECT other users | 👁 public fields only (name, photo) via view | 👁 same            | ✅                        |
+| INSERT             | 🔒 signup trigger                           | 🔒 signup trigger | 🔒                        |
+| UPDATE own         | ✅ non-role fields                          | ✅                | ✅ any                    |
+| DELETE             | ❌                                          | ❌                | 🔒 soft-delete via status |
 
 ### `handymen`
 
-| Operation | client | handyman | admin |
-|---|---|---|---|
-| SELECT | 👁 online + approved only (search view) | ✅ own row | ✅ all |
-| INSERT | ❌ | 🔒 onboarding flow | 🔒 |
-| UPDATE | ❌ | ✅ own (bio, rates, services); not `kyc_status` | ✅ incl. KYC |
-| UPDATE `location` | ❌ | ✅ own while online | ✅ |
-| DELETE | ❌ | ❌ | 🔒 |
+| Operation         | client                                 | handyman                                        | admin        |
+| ----------------- | -------------------------------------- | ----------------------------------------------- | ------------ |
+| SELECT            | 👁 online + approved only (search view) | ✅ own row                                      | ✅ all       |
+| INSERT            | ❌                                     | 🔒 onboarding flow                              | 🔒           |
+| UPDATE            | ❌                                     | ✅ own (bio, rates, services); not `kyc_status` | ✅ incl. KYC |
+| UPDATE `location` | ❌                                     | ✅ own while online                             | ✅           |
+| DELETE            | ❌                                     | ❌                                              | 🔒           |
 
 ### `services`
 
-| Operation | client | handyman | admin |
-|---|---|---|---|
-| SELECT | ✅ active services | ✅ | ✅ |
-| INSERT/UPDATE/DELETE | ❌ | ❌ | ✅ |
+| Operation            | client             | handyman | admin |
+| -------------------- | ------------------ | -------- | ----- |
+| SELECT               | ✅ active services | ✅       | ✅    |
+| INSERT/UPDATE/DELETE | ❌                 | ❌       | ✅    |
 
 ### `handyman_services`
 
-| Operation | client | handyman | admin |
-|---|---|---|---|
-| SELECT | ✅ | ✅ own + others (for search) | ✅ |
-| INSERT/UPDATE/DELETE | ❌ | ✅ own | ✅ |
+| Operation            | client | handyman                     | admin |
+| -------------------- | ------ | ---------------------------- | ----- |
+| SELECT               | ✅     | ✅ own + others (for search) | ✅    |
+| INSERT/UPDATE/DELETE | ❌     | ✅ own                       | ✅    |
 
 ### `bookings`
 
-| Operation | client | handyman | admin |
-|---|---|---|---|
-| SELECT | ✅ `client_id = auth.uid()` | ✅ `handyman_id = auth.uid()` OR pending broadcast* | ✅ all |
-| INSERT | ✅ sets self as client | ❌ | 🔒 |
-| UPDATE | ✅ cancel while `PENDING`; limited fields | ✅ state transitions via RPC | ✅ |
-| DELETE | ❌ | ❌ | ❌ |
+| Operation | client                                    | handyman                                            | admin  |
+| --------- | ----------------------------------------- | --------------------------------------------------- | ------ |
+| SELECT    | ✅ `client_id = auth.uid()`               | ✅ `handyman_id = auth.uid()` OR pending broadcast* | ✅ all |
+| INSERT    | ✅ sets self as client                    | ❌                                                  | 🔒     |
+| UPDATE    | ✅ cancel while `PENDING`; limited fields | ✅ state transitions via RPC                        | ✅     |
+| DELETE    | ❌                                        | ❌                                                  | ❌     |
 
 \*Pending broadcast: handymen see `PENDING` bookings matching their service category within radius (via security-definer RPC, not direct table SELECT).
 
 ### `payments`
 
-| Operation | client | handyman | admin |
-|---|---|---|---|
-| SELECT | ✅ own bookings | 👁 net amount only on own jobs | ✅ all |
-| INSERT/UPDATE | 🔒 payment webhook / Edge Function | 🔒 | 🔒 |
-| DELETE | ❌ | ❌ | ❌ |
+| Operation     | client                             | handyman                      | admin  |
+| ------------- | ---------------------------------- | ----------------------------- | ------ |
+| SELECT        | ✅ own bookings                    | 👁 net amount only on own jobs | ✅ all |
+| INSERT/UPDATE | 🔒 payment webhook / Edge Function | 🔒                            | 🔒     |
+| DELETE        | ❌                                 | ❌                            | ❌     |
 
 ### `reviews`
 
-| Operation | client | handyman | admin |
-|---|---|---|---|
-| SELECT | ✅ public reviews on profiles | ✅ | ✅ |
-| INSERT | ✅ post-`COMPLETED` booking, once per direction | ✅ same | ❌ |
-| UPDATE | ❌ | ❌ | 👁 hide/moderate flags only |
-| DELETE | ❌ | ❌ | 🔒 soft-hide |
+| Operation | client                                          | handyman | admin                      |
+| --------- | ----------------------------------------------- | -------- | -------------------------- |
+| SELECT    | ✅ public reviews on profiles                   | ✅       | ✅                         |
+| INSERT    | ✅ post-`COMPLETED` booking, once per direction | ✅ same  | ❌                         |
+| UPDATE    | ❌                                              | ❌       | 👁 hide/moderate flags only |
+| DELETE    | ❌                                              | ❌       | 🔒 soft-hide               |
 
 ### `wallet_transactions`
 
-| Operation | client | handyman | admin |
-|---|---|---|---|
-| SELECT | ❌ | ✅ `handyman_id = auth.uid()` | ✅ all |
-| INSERT/UPDATE/DELETE | 🔒 ledger RPC only | 🔒 | 🔒 |
+| Operation            | client             | handyman                      | admin  |
+| -------------------- | ------------------ | ----------------------------- | ------ |
+| SELECT               | ❌                 | ✅ `handyman_id = auth.uid()` | ✅ all |
+| INSERT/UPDATE/DELETE | 🔒 ledger RPC only | 🔒                            | 🔒     |
 
 ### `disputes`
 
-| Operation | client | handyman | admin |
-|---|---|---|---|
-| SELECT | ✅ reporter or booking client | ✅ reporter or booking handyman | ✅ all |
-| INSERT | ✅ on own booking | ✅ on own booking | ❌ |
-| UPDATE | 👁 add evidence while `OPEN` | 👁 same | ✅ resolve |
-| DELETE | ❌ | ❌ | ❌ |
+| Operation | client                        | handyman                        | admin      |
+| --------- | ----------------------------- | ------------------------------- | ---------- |
+| SELECT    | ✅ reporter or booking client | ✅ reporter or booking handyman | ✅ all     |
+| INSERT    | ✅ on own booking             | ✅ on own booking               | ❌         |
+| UPDATE    | 👁 add evidence while `OPEN`   | 👁 same                          | ✅ resolve |
+| DELETE    | ❌                            | ❌                              | ❌         |
 
 ### `booking_events`
 
-| Operation | client | handyman | admin |
-|---|---|---|---|
-| SELECT | ✅ own booking events | ✅ assigned booking events | ✅ all |
-| INSERT | 🔒 state-machine RPC | 🔒 | 🔒 |
-| UPDATE | ❌ immutable | ❌ | ❌ |
-| DELETE | ❌ immutable | ❌ | ❌ |
+| Operation | client                | handyman                   | admin  |
+| --------- | --------------------- | -------------------------- | ------ |
+| SELECT    | ✅ own booking events | ✅ assigned booking events | ✅ all |
+| INSERT    | 🔒 state-machine RPC  | 🔒                         | 🔒     |
+| UPDATE    | ❌ immutable          | ❌                         | ❌     |
+| DELETE    | ❌ immutable          | ❌                         | ❌     |
 
 ---
 
@@ -288,12 +288,12 @@ Every transition writes one `booking_events` row. `PAID` requires `payments.stat
 
 ## File Layout
 
-| File | Purpose |
-|---|---|
-| `backend/migrations/001_core_schema.sql` | Extensions, enums, tables, indexes, triggers |
-| `backend/rls-policies/001_core_rls.sql` | RLS enable + policies per table |
-| `backend/docs/database-architecture.md` | This document |
-| `backend/docs/booking-state-machine.md` | Booking FSM: states, guards, API errors, diagram |
+| File                                     | Purpose                                          |
+| ---------------------------------------- | ------------------------------------------------ |
+| `backend/migrations/001_core_schema.sql` | Extensions, enums, tables, indexes, triggers     |
+| `backend/rls-policies/001_core_rls.sql`  | RLS enable + policies per table                  |
+| `backend/docs/database-architecture.md`  | This document                                    |
+| `backend/docs/booking-state-machine.md`  | Booking FSM: states, guards, API errors, diagram |
 
 ---
 

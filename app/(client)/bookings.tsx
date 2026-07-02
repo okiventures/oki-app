@@ -61,7 +61,7 @@ export default function ClientBookings() {
       />
 
       <View
-        className="flex-1 overflow-hidden rounded-t-[32px]"
+        className="flex-1 overflow-hidden rounded-t-4xl"
         style={{ backgroundColor: colors.ui.background, marginTop: -32 }}>
         <ScrollView
           className="mt-5 flex-1 rounded-xl"

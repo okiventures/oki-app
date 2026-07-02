@@ -145,8 +145,14 @@ CREATE POLICY bookings_update_client ON bookings
 
 CREATE POLICY bookings_update_handyman ON bookings
   FOR UPDATE TO authenticated
-  USING (handyman_id = auth.uid())
-  WITH CHECK (handyman_id = auth.uid());
+  USING (
+    handyman_id = auth.uid()
+    AND EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND user_type = 'handyman')
+  )
+  WITH CHECK (
+    handyman_id = auth.uid()
+    AND EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND user_type = 'handyman')
+  );
 
 CREATE POLICY bookings_admin ON bookings
   FOR ALL TO authenticated

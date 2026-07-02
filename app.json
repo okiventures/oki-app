@@ -3,7 +3,7 @@
     "name": "oki-app",
     "slug": "oki-app",
     "version": "1.0.0",
-    "scheme": "oki-app",
+    "scheme": "oki",
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
@@ -11,7 +11,18 @@
     "experiments": {
       "tsconfigPaths": true
     },
-    "plugins": ["expo-router", "expo-font", "expo-web-browser"],
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Oki needs access to your photo library to set your profile picture.",
+          "cameraPermission": "Oki needs access to your camera to take a profile photo."
+        }
+      ]
+    ],
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -31,7 +42,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.okiapp",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "Oki needs access to your photo library to set your profile picture.",
+        "NSCameraUsageDescription": "Oki needs access to your camera to take a profile photo."
       }
     },
     "android": {

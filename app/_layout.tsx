@@ -1,9 +1,11 @@
 import React, { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BookingsProvider } from '../src/context/BookingsContext';
+import { AdminProvider } from '../src/context/AdminContext';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
-import { View } from 'react-native';
+import { AuthProvider, useAuth } from '../src/context/AuthContext';
+import { View, ActivityIndicator } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import {
@@ -17,8 +19,46 @@ import '../global.css';
 
 SplashScreen.preventAutoHideAsync();
 
-function RootStack() {
-  const { scheme } = useTheme();
+function RootNavigator() {
+  const { session, isLoading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+  const { scheme, colors } = useTheme();
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!session) {
+      // Not logged in — allow landing page and dashboards (useProtectedRoute handles redirects)
+      return;
+    }
+
+    // Logged in, route based on user type
+    if (inAuthGroup) {
+      const userType = session.user.userType;
+      if (userType === 'admin') {
+        router.replace('/(admin)/');
+      } else if (userType === 'handyman') {
+        router.replace('/(handyman)/');
+      } else {
+        router.replace('/(client)/');
+      }
+    }
+  }, [session, isLoading, segments, router]);
+
+  // Show loading screen while checking for stored session
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color={colors.primary['600']} />
+      </View>
+    );
+  }
+
   return (
     <View className={`flex-1 theme-${scheme}`}>
       <Stack screenOptions={{ headerShown: false }} />
@@ -26,7 +66,7 @@ function RootStack() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const [loaded, error] = useFonts({
     Inter: Inter_400Regular,
     InterMedium: Inter_500Medium,
@@ -49,10 +89,16 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <BookingsProvider>
-          <RootStack />
-        </BookingsProvider>
+        <AuthProvider>
+          <AdminProvider>
+            <BookingsProvider>
+              <RootNavigator />
+            </BookingsProvider>
+          </AdminProvider>
+        </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
 }
+
+export default RootLayout;

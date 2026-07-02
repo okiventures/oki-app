@@ -11,7 +11,7 @@ import { useTheme } from '../../context/ThemeContext';
 type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'danger';
 
 interface ButtonProps {
-  label: string;
+  label?: string;
   onPress: () => void;
   variant?: ButtonVariant;
 

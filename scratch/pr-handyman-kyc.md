@@ -3,6 +3,7 @@
 Add dedicated verification flows for both clients and handymen, and route authentication into those flows.
 
 This PR:
+
 - moves client KYC screens into a dedicated `(verification)` route group
 - adds a new client onboarding entry screen before KYC-lite
 - adds a multi-step handyman onboarding flow with profile, services, document upload, and pending states
@@ -30,6 +31,7 @@ Closes #
 ## Implementation Checklist
 
 ### Code Quality
+
 - [ ] No TypeScript errors (`tsc --noEmit` passes in strict mode)
 - [ ] No ESLint warnings or errors
 - [x] Follows existing naming conventions (PascalCase components, camelCase hooks/utils)
@@ -37,22 +39,26 @@ Closes #
 - [x] No `console.log` or debug statements left in
 
 ### UI / Components
+
 - [x] Follows the NativeWind + Tailwind design token system (`src/constants/theme.ts`)
 - [ ] Responsive on both iOS and Android (tested on simulator/emulator)
 - [ ] Empty states, loading states, and error states are handled
 - [x] Uses existing shared components (`src/components/ui/`, `src/components/forms/`) where applicable
 
 ### Routing & Navigation
+
 - [x] Route group is correct: `(auth)`, `(client)`, `(handyman)`, or `(admin)`
 - [x] Navigation guards / redirect logic is correct for role
 - [ ] Deep link or back-navigation behavior is verified
 
 ### Data & State
+
 - [ ] Mock data updated in `src/mocks/` if new entity shape was introduced
 - [ ] Types updated in `src/types/index.ts` for any new data structures
 - [x] No hardcoded strings that should be constants or tokens
 
 ### Testing
+
 - [ ] Manually tested the happy path on iOS
 - [ ] Manually tested the happy path on Android
 - [ ] Edge cases tested (empty data, long strings, network error state)
@@ -62,13 +68,14 @@ Closes #
 ## Screenshots / Screen Recording
 
 Attach screenshots or a short recording for:
+
 - auth login keyboard behavior
 - client onboarding and KYC-lite flow
 - handyman onboarding steps: profile, services, documents, and pending review
 - client request form keyboard behavior
 
 | Before | After |
-|--------|-------|
+| ------ | ----- |
 |        |       |
 
 ---

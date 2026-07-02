@@ -17,49 +17,48 @@ interface TableProps<T> {
 
 export function Table<T>({ columns, data, onRowPress, keyExtractor }: TableProps<T>) {
   return (
-    <View className="overflow-hidden rounded-lg border border-gray-100 bg-white">
+    <View className="overflow-hidden rounded-xl border border-gray-100 bg-white">
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View>
-          {/* Header Row */}
+        <View className="min-w-[720px]">
           <View className="flex-row border-b border-gray-200 bg-gray-50">
             {columns.map((col) => (
               <View
                 key={col.key}
-                style={{ width: col.width || 120 }}
-                className="justify-center p-2">
-                <Text className="text-[11px] font-bold text-gray-500 uppercase">{col.title}</Text>
+                style={{ minWidth: col.width || 140, width: col.width || 140 }}
+                className="justify-center p-3">
+                <Text className="text-[11px] font-semibold tracking-[0.08em] text-gray-500 uppercase">
+                  {col.title}
+                </Text>
               </View>
             ))}
           </View>
 
-          {/* Data Rows */}
-          {data.map((row, i) => (
-            <TouchableOpacity
-              key={keyExtractor(row)}
-              activeOpacity={onRowPress ? 0.7 : 1}
-              onPress={() => onRowPress?.(row)}
-              className={`flex-row border-b ${i === data.length - 1 ? 'border-b-0' : 'border-gray-100'} bg-white`}>
-              {columns.map((col) => (
-                <View
-                  key={col.key}
-                  style={{ width: col.width || 120 }}
-                  className="justify-center p-2">
-                  {col.render ? (
-                    col.render(row)
-                  ) : (
-                    <Text className="text-[13px] text-gray-900" numberOfLines={1}>
-                      {String((row as any)[col.key] ?? '')}
-                    </Text>
-                  )}
-                </View>
-              ))}
-            </TouchableOpacity>
-          ))}
-
-          {/* Empty State */}
-          {data.length === 0 && (
+          {data.length > 0 ? (
+            data.map((row, index) => (
+              <TouchableOpacity
+                key={keyExtractor(row)}
+                activeOpacity={onRowPress ? 0.7 : 1}
+                onPress={() => onRowPress?.(row)}
+                className={`flex-row border-b ${index === data.length - 1 ? 'border-b-0' : 'border-gray-100'} ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                {columns.map((col) => (
+                  <View
+                    key={col.key}
+                    style={{ minWidth: col.width || 140, width: col.width || 140 }}
+                    className="justify-center p-3">
+                    {col.render ? (
+                      col.render(row)
+                    ) : (
+                      <Text className="text-[13px] text-gray-900" numberOfLines={1}>
+                        {String((row as any)[col.key] ?? '')}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+              </TouchableOpacity>
+            ))
+          ) : (
             <View className="items-center p-4">
-              <Text className="text-[13px] text-gray-400">No data available</Text>
+              <Text className="text-[13px] text-gray-400">No records to display</Text>
             </View>
           )}
         </View>

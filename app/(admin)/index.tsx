@@ -10,9 +10,12 @@ import {
   MOCK_ADMIN_FEED,
   MOCK_TRANSACTIONS,
 } from '../../src/mocks';
+import { useAuth } from '../../src/context/AuthContext';
 import { formatCurrency, formatDateTime } from '../../src/utils';
 
 export default function AdminDashboard() {
+  const { logout } = useAuth();
+
   return (
     <View className="flex-1 bg-gray-50">
       <Navbar title="Admin Panel" />
@@ -55,14 +58,18 @@ export default function AdminDashboard() {
             <Text className="font-heading mt-1 text-lg text-gray-900">
               {MOCK_ADMIN_STATS.pendingKYC}
             </Text>
-            <Text className="mt-1 text-[10px] font-bold text-gray-500">In Queue</Text>
           </Card>
         </View>
 
         <Chart
           title="Bookings + Revenue (7 days)"
-          data={MOCK_ADMIN_CHART_DATA.revenue}
           labels={MOCK_ADMIN_CHART_DATA.labels}
+          xAxisLabel="Day"
+          yAxisLabel="Count / PHP"
+          series={[
+            { name: 'Bookings', data: MOCK_ADMIN_CHART_DATA.bookings, color: '#6366F1' },
+            { name: 'Revenue', data: MOCK_ADMIN_CHART_DATA.revenue, color: '#10B981' },
+          ]}
         />
 
         <View>
@@ -107,6 +114,16 @@ export default function AdminDashboard() {
         <View className="mt-2">
           <TouchableOpacity className="bg-primary-600 items-center rounded-2xl py-3">
             <Text className="text-sm font-bold text-white">View full analytics</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Logout */}
+        <View className="mt-4 mb-8">
+          <TouchableOpacity
+            onPress={() => logout()}
+            className="flex-row items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-3.5">
+            <Ionicons name="log-out-outline" size={18} color="#DC2626" />
+            <Text className="font-semibold text-red-600">Log Out</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

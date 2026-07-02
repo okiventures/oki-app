@@ -1,8 +1,11 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { BottomNav } from '../../src/components/navigation/BottomNav';
+import { useProtectedRoute } from '../../src/hooks/useProtectedRoute';
 
 export default function AdminLayout() {
+  useProtectedRoute('admin');
+
   const items = [
     {
       key: 'index',
