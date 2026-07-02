@@ -219,9 +219,7 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
             )
           );
           return;
-        } catch {
-          // Fallback to local state transition
-        }
+        } catch {}
       }
 
       setBookings((current) =>
@@ -252,7 +250,6 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
         );
         return true;
       } catch {
-        // Fallback to local state transition
         setBookings((current) =>
           current.map((b) => (b.id === bookingId ? updateBooking(b, BookingStatus.Cancelled) : b))
         );
