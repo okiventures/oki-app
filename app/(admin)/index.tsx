@@ -11,10 +11,12 @@ import {
   MOCK_TRANSACTIONS,
 } from '../../src/mocks';
 import { useAuth } from '../../src/context/AuthContext';
+import { useAdmin } from '../../src/context/AdminContext';
 import { formatCurrency, formatDateTime } from '../../src/utils';
 
 export default function AdminDashboard() {
   const { logout } = useAuth();
+  const { pendingKycCount, activeUsersCount, activeDisputesCount } = useAdmin();
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -55,9 +57,7 @@ export default function AdminDashboard() {
           <Card className="flex-1 p-3">
             <Ionicons name="document-text" size={20} color="#F59E0B" className="mb-2" />
             <Text className="text-[11px] font-medium text-gray-500">Pending KYC</Text>
-            <Text className="font-heading mt-1 text-lg text-gray-900">
-              {MOCK_ADMIN_STATS.pendingKYC}
-            </Text>
+            <Text className="font-heading mt-1 text-lg text-gray-900">{pendingKycCount}</Text>
           </Card>
         </View>
 
