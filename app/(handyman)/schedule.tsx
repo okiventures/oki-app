@@ -46,6 +46,7 @@ export default function HandymanSchedule() {
             bookings={scheduledBookings}
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
+            handymanId={HANDYMAN_ID}
           />
 
           <View className="mt-6 px-4">

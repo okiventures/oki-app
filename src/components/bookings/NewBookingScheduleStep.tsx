@@ -15,6 +15,7 @@ interface ScheduleStepProps {
   onHourChange: (h: number) => void;
   onMinuteChange?: (m: number) => void;
   onSwitchMode?: (newMode: 'now' | 'later') => void;
+  isSelectedSlotBlocked?: boolean;
 }
 
 export function NewBookingScheduleStep({
@@ -26,6 +27,7 @@ export function NewBookingScheduleStep({
   onHourChange,
   onMinuteChange,
   onSwitchMode,
+  isSelectedSlotBlocked = false,
 }: ScheduleStepProps) {
   const { colors } = useTheme();
   const isNow = mode === 'now';
@@ -115,6 +117,19 @@ export function NewBookingScheduleStep({
             onHourChange={onHourChange}
             onMinuteChange={onMinuteChange || (() => {})}
           />
+
+          {isSelectedSlotBlocked && (
+            <View
+              className="rounded-2xl border px-4 py-3"
+              style={{
+                backgroundColor: '#FEF2F2',
+                borderColor: '#FECACA',
+              }}>
+              <Text className="text-[12px] font-medium" style={{ color: '#DC2626' }}>
+                This time is less than 2 hours away and may not be available. Choose a later time.
+              </Text>
+            </View>
+          )}
 
           {onSwitchMode && (
             <Button
