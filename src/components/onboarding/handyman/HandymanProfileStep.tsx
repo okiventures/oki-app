@@ -123,10 +123,8 @@ export function HandymanProfileStep({
           numberOfLines={4}
           value={bio}
           onChangeText={onBioChange}
-          error={
-            bio.length > 0 && !profileValidation.bio ? 'Use at least 16 characters.' : undefined
-          }
-          helperText={`${bio.trim().length}/16 characters`}
+          error={bio.length > 0 && !profileValidation.bio ? 'Max 200 characters.' : undefined}
+          helperText={`${bio.trim().length}/200 characters`}
           leftIcon={<Ionicons name="create-outline" size={18} color={colors.ui.textMuted} />}
         />
       </Form>
