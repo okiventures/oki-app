@@ -9,7 +9,12 @@ import React, {
 } from 'react';
 import { MOCK_BOOKINGS } from '../mocks';
 import { Booking, BookingStatus } from '../types';
-import { transitionBookingState, subscribeToBooking } from '../services/bookingService';
+import {
+  transitionBookingState,
+  subscribeToBooking,
+  createBooking as createBookingService,
+} from '../services/bookingService';
+import type { CreateBookingInput } from '../services/bookingService';
 
 const STORAGE_KEY = 'oki_bookings_state_v2';
 
@@ -51,6 +56,7 @@ const HANDYMAN_WORKFLOW: Partial<Record<BookingStatus, HandymanNextAction>> = {
 
 interface BookingsContextValue {
   bookings: Booking[];
+  createBooking: (input: CreateBookingInput) => Promise<Booking>;
   acceptBooking: (bookingId: string) => void;
   declineBooking: (bookingId: string) => void;
   advanceBooking: (bookingId: string) => void;
@@ -59,6 +65,7 @@ interface BookingsContextValue {
 
 const BookingsContext = createContext<BookingsContextValue>({
   bookings: MOCK_BOOKINGS,
+  createBooking: async () => MOCK_BOOKINGS[0],
   acceptBooking: () => {},
   declineBooking: () => {},
   advanceBooking: () => {},
@@ -140,6 +147,35 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
       }
     };
   }, [trackedBookingId]);
+
+  const createBooking = useCallback(async (input: CreateBookingInput) => {
+    const booking = await createBookingService(input);
+    setBookings((current) => [...current, booking]);
+
+    // Simulate handyman acceptance after 5 seconds for demo
+    setTimeout(async () => {
+      try {
+        await transitionBookingState(booking.id, 'ACCEPT');
+      } catch {
+        // Fallback: apply locally
+      }
+      setBookings((current) =>
+        current.map((b) =>
+          b.id === booking.id && b.status === BookingStatus.Pending
+            ? {
+                ...b,
+                status: BookingStatus.Accepted,
+                handymanId: 'h1',
+                handymanName: 'Ceferino Jumao-as V',
+                updatedAt: new Date().toISOString(),
+              }
+            : b
+        )
+      );
+    }, 5000);
+
+    return booking;
+  }, []);
 
   const acceptBooking = useCallback(async (bookingId: string) => {
     try {
@@ -225,12 +261,13 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(
     () => ({
       bookings,
+      createBooking,
       acceptBooking,
       declineBooking,
       advanceBooking,
       getBookingById: (bookingId: string) => bookings.find((booking) => booking.id === bookingId),
     }),
-    [bookings, acceptBooking, declineBooking, advanceBooking]
+    [bookings, createBooking, acceptBooking, declineBooking, advanceBooking]
   );
 
   return <BookingsContext.Provider value={value}>{children}</BookingsContext.Provider>;

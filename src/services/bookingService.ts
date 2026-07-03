@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
-import { Booking, BookingEvent, BookingStatus } from '../types';
+import { Booking, BookingEvent, BookingStatus, BookingType, ServiceCategory } from '../types';
+import { generateId } from '../utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,13 +37,7 @@ export interface BookingEventRow {
 }
 
 type StateTransitionAction =
-  | 'ACCEPT'
-  | 'REJECT'
-  | 'CANCEL'
-  | 'START_TRANSIT'
-  | 'MARK_ARRIVED'
-  | 'START_WORK'
-  | 'COMPLETE';
+  'ACCEPT' | 'REJECT' | 'CANCEL' | 'START_TRANSIT' | 'MARK_ARRIVED' | 'START_WORK' | 'COMPLETE';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -249,6 +244,44 @@ export function subscribeToBooking(
 
   return () => {
     supabase.removeChannel(channel);
+  };
+}
+
+// ─── Create booking ───────────────────────────────────────────────────────────
+
+export interface CreateBookingInput {
+  clientId: string;
+  clientName: string;
+  serviceCategory: ServiceCategory;
+  bookingType: BookingType;
+  description: string;
+  location: string;
+  amount: number;
+  scheduledAt?: string;
+  notes?: string;
+}
+
+export async function createBooking(input: CreateBookingInput): Promise<Booking> {
+  const id = generateId();
+  const platformFee = Math.round(input.amount * 0.1);
+  return {
+    id,
+    clientId: input.clientId,
+    clientName: input.clientName,
+    handymanId: '',
+    handymanName: '',
+    serviceCategory: input.serviceCategory,
+    bookingType: input.bookingType,
+    status: BookingStatus.Pending,
+    description: input.description,
+    location: input.location,
+    amount: input.amount,
+    platformFee,
+    netAmount: input.amount - platformFee,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    scheduledAt: input.scheduledAt,
+    notes: input.notes,
   };
 }
 
