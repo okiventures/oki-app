@@ -7,6 +7,6 @@
       "@/*": ["src/*"]
     }
   },
-  "exclude": ["backend", "packages", "apps"],
+  "exclude": ["backend", "packages", "apps", "supabase"],
   "include": ["**/*.ts", "**/*.tsx", "nativewind-env.d.ts"]
 }

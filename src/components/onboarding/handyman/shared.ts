@@ -71,4 +71,6 @@ export type UploadState = {
   mimeType: string | null;
   progress: number;
   uri: string;
+  error?: string;
+  loading?: boolean;
 };

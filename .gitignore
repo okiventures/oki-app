@@ -17,6 +17,7 @@ npm-debug.*
 *.mobileprovision
 *.orig.*
 web-build/
+*.tsbuildinfo
 
 
 
