@@ -39,3 +39,9 @@ AGENTS.md
 .env
 .env.local
 .env.*.local
+
+# Supabase CLI temp files
+supabase/.temp/
+
+# Stray generated projects
+my-expo-app/
