@@ -27,11 +27,12 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
       if (!session?.user) return;
 
       // Execute high-speed RPC upsert bypassing REST reflection overhead
-      await supabase.rpc('upsert_handyman_location', {
+      const { error: rpcError } = await supabase.rpc('upsert_handyman_location', {
         p_handyman_id: session.user.id,
         p_lat: latitude,
         p_lng: longitude,
       });
+      if (rpcError) throw rpcError;
     } catch (err) {
       console.error('Failed to stream background location update:', err);
     }
