@@ -121,11 +121,32 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const updatedSet = new Set(updatedIds);
   const hasMismatch =
     pendingSet.size !== updatedSet.size || [...pendingSet].some((id) => !updatedSet.has(id));
-  if (hasMismatch)
+  if (hasMismatch) {
+    let rollbackWarning = '';
+    if (updatedIds.length > 0) {
+      const idFilter = updatedIds.map((id) => encodeURIComponent(id)).join(',');
+      const rollback = await fetch(`${SUPABASE_URL}/rest/v1/kyc_documents?id=in.(${idFilter})`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
+          apikey: ANON_KEY,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({
+          status: 'PENDING',
+          reviewed_by: null,
+          reviewed_at: null,
+          rejection_reason: null,
+        }),
+      });
+      if (!rollback.ok) rollbackWarning = ' Rollback also failed; manual reconciliation required.';
+    }
     return err(409, {
       error: 'CONFLICT',
-      message: 'KYC documents changed during review, please retry',
+      message: `KYC documents changed during review, please retry.${rollbackWarning}`,
     });
+  }
 
   const statusSource = await fetch(
     `${SUPABASE_URL}/rest/v1/kyc_documents?handyman_id=eq.${encodeURIComponent(hmId)}&select=document_type,status,submitted_at`,
@@ -153,25 +174,26 @@ Deno.serve(async (req: Request): Promise<Response> => {
   );
 
   if (!handymanPatch.ok) {
-    const idFilter = updatedIds.map((id) => encodeURIComponent(id)).join(',');
-    const rollback = await fetch(`${SUPABASE_URL}/rest/v1/kyc_documents?id=in.(${idFilter})`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
-        apikey: ANON_KEY,
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal',
-      },
-      body: JSON.stringify({
-        status: 'PENDING',
-        reviewed_by: null,
-        reviewed_at: null,
-        rejection_reason: null,
-      }),
-    });
-    const rollbackSuffix = rollback.ok
-      ? ''
-      : ' Rollback also failed; manual reconciliation required.';
+    let rollbackSuffix = '';
+    if (updatedIds.length > 0) {
+      const idFilter = updatedIds.map((id) => encodeURIComponent(id)).join(',');
+      const rollback = await fetch(`${SUPABASE_URL}/rest/v1/kyc_documents?id=in.(${idFilter})`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
+          apikey: ANON_KEY,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({
+          status: 'PENDING',
+          reviewed_by: null,
+          reviewed_at: null,
+          rejection_reason: null,
+        }),
+      });
+      if (!rollback.ok) rollbackSuffix = ' Rollback also failed; manual reconciliation required.';
+    }
     return err(500, {
       error: 'DATABASE_ERROR',
       message: `Failed to update handyman status; document rollback was attempted.${rollbackSuffix}`,
