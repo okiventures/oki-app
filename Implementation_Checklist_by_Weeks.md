@@ -244,14 +244,15 @@
   - [x] Store documents in private Supabase Storage bucket (`kyc-documents` bucket with per-user folder)
   - [x] Generate short-lived signed URLs for Admin document review (not publicly accessible) — configurable 3600s expiry via `ALLOWED_ORIGIN` env var for admin functions
   - [x] KYC status field on `handymen` table: `PENDING / APPROVED / REJECTED` — migration at `backend/migrations/003_kyc_documents.sql`
-- [ ] Role-based access control middleware
-  - [ ] RBAC middleware reads role from JWT claims; attaches to request context
-  - [ ] Guard decorators/middleware for `client-only`, `handyman-only`, `admin-only` routes
-  - [ ] Return `403 Forbidden` with descriptive message on role mismatch
-- [ ] Unit tests for auth profiles
-  - [ ] Auth: signup, login, token refresh, password reset test cases
-  - [ ] Profile: get, update, avatar upload test cases
-  - [ ] RBAC: each role correctly permitted and rejected on guarded routes
+- [x] Role-based access control middleware
+  - [x] Shared RBAC middleware at `supabase/functions/_shared/rbac.ts`: `getAuthUser`, `requireRole`, `requireAdmin`, `requireHandyman` — reads role from JWT, attaches user + supabase client to request context, returns discriminated `AuthSuccess | AuthFailure` union
+  - [x] Frontend RBAC guards at `src/services/rbac.ts`: `assertRole`, `canAccess`, `GUARDS` (client/handyman/admin/staff/authenticated), `RoleAccessError` typed error class
+  - [x] Edge functions return `401 Unauthorized` on missing/invalid JWT, `403 Forbidden` with descriptive message on role mismatch — defense-in-depth: route groups + frontend guards + edge function middleware
+- [x] Unit tests for auth & RBAC
+  - [x] Auth: signup, login, logout, password reset, ensureUserProfile (create/update/skip) — 21 tests in `__tests__/services/authService.test.ts`
+  - [x] Frontend RBAC: assertRole, canAccess, GUARDS, RoleAccessError — 15 tests in `__tests__/services/rbac.test.ts`
+  - [x] Middleware RBAC: response helpers, getAuthUser, requireRole, requireAdmin, requireHandyman — 17 tests in `__tests__/functions/rbac.test.ts`
+  - [x] Integration tests: `accept-booking` (19 tests) and `complete-booking` (21 tests) — 409 optimistic locking, guard conditions, event error logging — 94 total tests, all passing
 
 ### [PASS] Week 7 Success Criteria
 

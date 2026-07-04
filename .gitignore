@@ -34,9 +34,12 @@ android
 # guide files
 App_Development_Guide.md
 PR.md
+PR_DESCRIPTION.md
 AGENTS.md
 
 # Environment files
 .env
 .env.local
 .env.*.local
+supabase/.temp/**
+supabase/supabase/.temp/**
