@@ -40,60 +40,6 @@ const delStorage = (path: string) =>
 const MIME = ['image/jpeg', 'image/png', 'application/pdf'];
 const MAX_SIZE = 5 * 1024 * 1024;
 const KYC_TYPES = ['GOVERNMENT_ID', 'SELFIE', 'PROOF_OF_ADDRESS'] as const;
-
-// ─── Rate limiter ───────────────────────────────────────────────────────────────
-
-const RATE_WINDOW_MS = 60_000;
-const RATE_MAX = 10;
-
-async function checkRateLimit(
-  userId: string
-): Promise<{ allowed: boolean; retryAfter?: number; error?: string }> {
-  const now = Date.now();
-  const windowStart = new Date(now - RATE_WINDOW_MS).toISOString();
-  const r = await fetch(
-    `${SUPABASE_URL}/rest/v1/kyc_documents?handyman_id=eq.${encodeURIComponent(userId)}&submitted_at=gte.${encodeURIComponent(windowStart)}&select=submitted_at&order=submitted_at.asc&limit=${RATE_MAX}`,
-    {
-      headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY },
-    }
-  );
-  if (!r.ok) {
-    return { allowed: false, error: 'RATE_LIMIT_CHECK_FAILED' };
-  }
-  const recent = await r.json();
-  if (!Array.isArray(recent) || recent.length < RATE_MAX) return { allowed: true };
-
-  const oldestSubmittedAt = recent[0]?.submitted_at;
-  const retryAt = oldestSubmittedAt ? new Date(oldestSubmittedAt).getTime() + RATE_WINDOW_MS : NaN;
-  const retryAfter = Number.isFinite(retryAt) ? Math.max(1, Math.ceil((retryAt - now) / 1000)) : 60;
-
-  return { allowed: false, retryAfter };
-}
-
-const rateLimitError = () =>
-  err(500, {
-    error: 'INTERNAL_ERROR',
-    message: 'Failed to evaluate rate limit',
-  });
-
-const rateLimited = (retryAfter: number | undefined) => {
-  const safeRetryAfter = Math.max(1, retryAfter ?? 60);
-  return new Response(
-    JSON.stringify({
-      error: 'RATE_LIMITED',
-      message: 'Too many uploads. Try again shortly.',
-      retry_after_seconds: safeRetryAfter,
-    }),
-    {
-      status: 429,
-      headers: cors({
-        'Content-Type': 'application/json',
-        'Retry-After': String(safeRetryAfter),
-      }),
-    }
-  );
-};
-
 // Auth logic is inlined here (duplicated from _shared/rbac.ts) because API-deployed
 // zero-import functions cannot resolve CDN imports at runtime. See _shared/rbac.ts for
 // the canonical implementation used by CLI-deployed functions.
@@ -127,10 +73,33 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (!Array.isArray(hmData) || hmData.length === 0)
     return err(403, { error: 'FORBIDDEN', message: 'Only handymen can upload KYC documents' });
 
-  const rl = await checkRateLimit(userId);
-  if (rl.error) return rateLimitError();
-  if (!rl.allowed) {
-    return rateLimited(rl.retryAfter);
+  const rlResp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/kyc_check_rate_limit`, {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
+      apikey: ANON_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ p_handyman_id: userId }),
+  });
+  if (rlResp.ok) {
+    const rl = await rlResp.json();
+    if (!rl.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: 'RATE_LIMITED',
+          message: 'Too many uploads. Try again shortly.',
+          retry_after_seconds: rl.retry_after,
+        }),
+        {
+          status: 429,
+          headers: cors({
+            'Content-Type': 'application/json',
+            'Retry-After': String(rl.retry_after),
+          }),
+        }
+      );
+    }
   }
 
   const ct = req.headers.get('Content-Type') ?? '';
