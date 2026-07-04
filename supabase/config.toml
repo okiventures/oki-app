@@ -1,20 +1,14 @@
-[project]
-ref = "wvrhxxtvefeyynglfibq"
-name = "oki-app"
+project_id = "oki-app"
 
 [api]
 port = 54321
 schemas = ["public", "storage"]
 
 [db.migrations]
-directory = "./migrations"
-
-[analytics]
-enabled = false
+enabled = true
+schema_paths = []
 
 [functions]
-enabled = true
-
 [functions.kyc-upload]
 verify_jwt = false
 import_map = "./import_map.json"
@@ -47,8 +41,6 @@ import_map = "./import_map.json"
 verify_jwt = false
 import_map = "./import_map.json"
 
-[auth]
-enabled = true
-
-[storage]
-enabled = true
+[functions.create-booking]
+verify_jwt = true
+import_map = "./import_map.json"
