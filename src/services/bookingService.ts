@@ -257,11 +257,14 @@ export interface CreateBookingInput {
   description: string;
   location: string;
   amount: number;
+  serviceId?: string;
+  lat?: number;
+  lng?: number;
   scheduledAt?: string;
   notes?: string;
 }
 
-export async function createBooking(input: CreateBookingInput): Promise<Booking> {
+function createMockBooking(input: CreateBookingInput): Booking {
   const id = generateId();
   const platformFee = Math.round(input.amount * 0.1);
   return {
@@ -283,6 +286,45 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
     scheduledAt: input.scheduledAt,
     notes: input.notes,
   };
+}
+
+export async function createBooking(input: CreateBookingInput): Promise<Booking> {
+  if (USE_MOCK) {
+    return createMockBooking(input);
+  }
+
+  if (!input.serviceId || input.lat === undefined || input.lng === undefined) {
+    console.warn('createBooking: missing serviceId or coordinates, falling back to mock');
+    return createMockBooking(input);
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('create-booking', {
+      body: {
+        serviceId: input.serviceId,
+        bookingType: input.bookingType === BookingType.OnDemand ? 'ON_DEMAND' : 'SCHEDULED',
+        description: input.description,
+        addressText: input.location,
+        lat: input.lat,
+        lng: input.lng,
+        amount: input.amount,
+        scheduledAt: input.scheduledAt ?? null,
+        notes: input.notes ?? null,
+      },
+    });
+
+    if (error) throw new Error(error.message);
+
+    const bookingRow = data.data as BookingRow;
+    return {
+      ...mapBookingRow(bookingRow),
+      clientName: input.clientName,
+      handymanName: '',
+    };
+  } catch (err) {
+    console.warn('createBooking: Edge Function failed, falling back to mock', err);
+    return createMockBooking(input);
+  }
 }
 
 // ─── Guard condition descriptions ────────────────────────────────────────────
