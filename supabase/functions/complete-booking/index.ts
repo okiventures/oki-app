@@ -68,7 +68,7 @@ serve(async (req: Request) => {
     .eq('id', bookingId)
     .eq('status', 'WORK_STARTED')
     .select()
-    .single();
+    .maybeSingle();
 
   if (updateError) return internalError(updateError.message);
 

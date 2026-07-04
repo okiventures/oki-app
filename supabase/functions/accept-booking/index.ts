@@ -64,7 +64,7 @@ serve(async (req: Request) => {
     .eq('id', bookingId)
     .eq('status', 'PENDING')
     .select()
-    .single();
+    .maybeSingle();
 
   if (updateError) {
     return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: updateError.message }), {

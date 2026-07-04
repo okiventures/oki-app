@@ -26,6 +26,7 @@ type MockChain = {
   select: jest.Mock;
   eq: jest.Mock;
   single: jest.Mock;
+  maybeSingle: jest.Mock;
   insert: jest.Mock;
 };
 
@@ -34,6 +35,10 @@ function mockFrom(_table: string, overrides?: Partial<MockChain>): MockChain {
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     single: jest.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'not found' },
+    }),
+    maybeSingle: jest.fn().mockResolvedValue({
       data: null,
       error: { message: 'not found' },
     }),
@@ -83,7 +88,7 @@ function supabaseWith(opts: {
 
   if (opts.updateResolved) {
     const updateChain = mockFrom('bookings', {
-      single: jest.fn().mockResolvedValue(opts.updateResolved),
+      maybeSingle: jest.fn().mockResolvedValue(opts.updateResolved),
     });
     (bookingChain as any).update = jest.fn().mockReturnValue(updateChain);
   }
