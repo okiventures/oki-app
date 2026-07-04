@@ -410,6 +410,66 @@ CREATE TRIGGER enforce_no_double_booking
   WHEN (NEW.handyman_id IS NOT NULL AND NEW.scheduled_at IS NOT NULL)
   EXECUTE FUNCTION validate_booking_accept();
 
+-- 6. Notification queue for scheduled booking reminders
+
+ALTER TABLE handymen ADD COLUMN IF NOT EXISTS expo_push_token TEXT;
+
+CREATE TABLE IF NOT EXISTS notification_queue (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE NOT NULL,
+  handyman_id UUID REFERENCES handymen(id) ON DELETE CASCADE NOT NULL,
+  send_at TIMESTAMPTZ NOT NULL,
+  STATUS TEXT NOT NULL DEFAULT 'PENDING' CHECK (STATUS IN ('PENDING', 'PROCESSING', 'SENT', 'FAILED')),
+  error_log TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notification_queue_send_at
+  ON notification_queue(send_at)
+  WHERE STATUS = 'PENDING';
+
+CREATE OR REPLACE FUNCTION enqueue_scheduled_booking_notification()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_lead_time INTERVAL := INTERVAL '1 hour';
+BEGIN
+  IF NEW.handyman_id IS NOT NULL
+     AND (OLD.handyman_id IS DISTINCT FROM NEW.handyman_id)
+     AND NEW.scheduled_at IS NOT NULL
+  THEN
+    INSERT INTO notification_queue (booking_id, handyman_id, send_at)
+    VALUES (NEW.id, NEW.handyman_id, NEW.scheduled_at - v_lead_time);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trigger_enqueue_booking_notification
+  AFTER UPDATE ON bookings
+  FOR EACH ROW
+  EXECUTE FUNCTION enqueue_scheduled_booking_notification();
+
+CREATE OR REPLACE FUNCTION cleanup_notification_on_cancel()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  DELETE FROM notification_queue
+  WHERE booking_id = OLD.id AND STATUS = 'PENDING';
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trigger_cleanup_notification_on_cancel
+  AFTER UPDATE OF STATUS ON bookings
+  FOR EACH ROW
+  WHEN (NEW.STATUS = 'CANCELLED')
+  EXECUTE FUNCTION cleanup_notification_on_cancel();
+
 -- ============================================================================
 -- ✅ DONE! Your database is now fully set up with:
 --    • All core tables (users, handymen, services, bookings, payments, etc.)
@@ -418,4 +478,5 @@ CREATE TRIGGER enforce_no_double_booking
 --    • Auto-profile creation on user signup
 --    • Seed service catalog
 --    • Booking schedule validation triggers
+--    • Notification queue for scheduled booking reminders
 -- ============================================================================

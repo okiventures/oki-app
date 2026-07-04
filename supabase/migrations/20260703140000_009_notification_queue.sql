@@ -65,3 +65,19 @@ create or replace trigger trigger_cleanup_notification_on_cancel
   for each row
   when (new.status = 'CANCELLED')
   execute function public.cleanup_notification_on_cancel();
+
+-- ─── Cron schedule: invoke notification-worker every minute ──────────────────
+
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+select cron.schedule(
+  'process-upcoming-handyman-notifications',
+  '* * * * *',
+  $$
+    select net.http_post(
+      url := 'https://wvrhxxtvefeyynglfibq.supabase.co/functions/v1/notification-worker',
+      headers := '{"Content-Type": "application/json"}'::jsonb
+    );
+  $$
+);
