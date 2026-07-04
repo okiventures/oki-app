@@ -42,11 +42,6 @@ describe('kyc-upload', () => {
   });
 
   it('returns 429 when DB-backed rate limit threshold is reached', async () => {
-    const now = Date.now();
-    const recent = Array.from({ length: 10 }, (_, i) => ({
-      submitted_at: new Date(now - 5_000 + i).toISOString(),
-    }));
-
     const fetchMock = jest
       .spyOn(globalThis, 'fetch' as any)
       .mockImplementation(async (...args: any[]) => {
@@ -55,12 +50,8 @@ describe('kyc-upload', () => {
         if (url.includes('/auth/v1/user')) return jsonResponse({ id: 'hm-1' });
         if (url.includes('/rest/v1/handymen?id=eq.hm-1&select=id'))
           return jsonResponse([{ id: 'hm-1' }]);
-        if (
-          url.includes('/rest/v1/kyc_documents?handyman_id=eq.hm-1') &&
-          url.includes('select=submitted_at')
-        ) {
-          return jsonResponse(recent);
-        }
+        if (url.includes('/rest/v1/rpc/kyc_check_rate_limit'))
+          return jsonResponse({ allowed: false, retry_after: 60 });
 
         throw new Error(`Unhandled fetch: ${url} ${init?.method ?? 'GET'}`);
       });
