@@ -1,7 +1,15 @@
 node_modules/
 .expo/
 dist/
+.next/
 npm-debug.*
+
+# Environment
+.env
+.env.development
+.env.staging
+.env.production
+.env.local
 *.jks
 *.p8
 *.p12
@@ -9,6 +17,7 @@ npm-debug.*
 *.mobileprovision
 *.orig.*
 web-build/
+*.tsbuildinfo
 
 
 
@@ -21,3 +30,16 @@ android
 
 # Temporary files created by Metro to check the health of the file watcher
 .metro-health-check*
+
+# guide files
+App_Development_Guide.md
+PR.md
+PR_DESCRIPTION.md
+AGENTS.md
+
+# Environment files
+.env
+.env.local
+.env.*.local
+supabase/.temp/**
+supabase/supabase/.temp/**

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Recurse -Depth 1 -Exclude node_modules)",
+      "Bash(Select-Object -First 30)"
+    ]
+  }
+}

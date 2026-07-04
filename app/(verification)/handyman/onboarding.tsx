@@ -1,0 +1,197 @@
+import React from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import {
+  HandymanOnboardingHero,
+  HandymanDocumentsStep,
+  HandymanPendingStep,
+  HandymanProfileStep,
+  HandymanServicesStep,
+  useHandymanOnboardingFlow,
+} from '../../../src/components/onboarding/handyman';
+import { Navbar } from '../../../src/components/navigation/Navbar';
+import { Button } from '../../../src/components/ui/Button';
+import { useTheme } from '../../../src/context/ThemeContext';
+
+export default function HandymanOnboarding() {
+  const router = useRouter();
+  const { colors } = useTheme();
+  const { height } = useWindowDimensions();
+  const compactLayout = height < 760;
+  const [submitting, setSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const {
+    currentStep,
+    currentStepIndex,
+    fullName,
+    phone,
+    city,
+    yearsExperience,
+    bio,
+    servicePricing,
+    uploads,
+    selectedServices,
+    profileValidation,
+    canContinue,
+    setFullName,
+    setPhone,
+    setCity,
+    setYearsExperience,
+    setBio,
+    toggleService,
+    updateServicePrice,
+    startUpload,
+    submitOnboarding,
+    goToNextStep,
+    goToPreviousStep,
+  } = useHandymanOnboardingFlow();
+
+  const handleContinue = async () => {
+    if (currentStep === 'Pending') {
+      router.replace('/(handyman)');
+      return;
+    }
+
+    if (currentStep === 'Documents') {
+      setSubmitting(true);
+      setSubmitError(null);
+      try {
+        await submitOnboarding();
+        goToNextStep();
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : 'Submission failed');
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    goToNextStep();
+  };
+
+  const handleBack = () => {
+    if (currentStepIndex === 0) {
+      router.back();
+      return;
+    }
+
+    goToPreviousStep();
+  };
+
+  return (
+    <SafeAreaView
+      edges={['left', 'right', 'bottom']}
+      style={{ flex: 1, backgroundColor: colors.ui.background }}>
+      <Navbar title="Handyman Onboarding" showBack={currentStepIndex === 0} />
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <View style={{ flex: 1 }}>
+          <ScrollView
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+            style={{ flex: 1, backgroundColor: colors.ui.background }}
+            contentContainerStyle={{
+              padding: compactLayout ? 16 : 20,
+              paddingBottom: 32,
+              flexGrow: 1,
+            }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            <HandymanOnboardingHero
+              compactLayout={compactLayout}
+              currentStep={currentStep}
+              currentStepIndex={currentStepIndex}
+            />
+
+            <View style={{ marginTop: compactLayout ? -40 : -24 }}>
+              {currentStep === 'Profile' ? (
+                <HandymanProfileStep
+                  fullName={fullName}
+                  phone={phone}
+                  city={city}
+                  yearsExperience={yearsExperience}
+                  bio={bio}
+                  profileValidation={profileValidation}
+                  onFullNameChange={setFullName}
+                  onPhoneChange={setPhone}
+                  onCityChange={setCity}
+                  onYearsExperienceChange={setYearsExperience}
+                  onBioChange={setBio}
+                />
+              ) : null}
+
+              {currentStep === 'Services' ? (
+                <HandymanServicesStep
+                  servicePricing={servicePricing}
+                  onToggleService={toggleService}
+                  onPriceChange={updateServicePrice}
+                />
+              ) : null}
+
+              {currentStep === 'Documents' ? (
+                <HandymanDocumentsStep uploads={uploads} onUpload={startUpload} />
+              ) : null}
+
+              {submitError ? (
+                <View className="mt-3 rounded-lg bg-red-50 px-4 py-3">
+                  <Text className="text-sm text-red-600">{submitError}</Text>
+                </View>
+              ) : null}
+
+              {currentStep === 'Pending' ? (
+                <HandymanPendingStep
+                  selectedServices={selectedServices}
+                  servicePricing={servicePricing}
+                />
+              ) : null}
+            </View>
+          </ScrollView>
+
+          <View
+            className="border-t border-gray-200 px-4 pt-3 pb-4"
+            style={{ backgroundColor: colors.ui.background }}>
+            <View className="flex-row gap-3" style={{ width: '100%' }}>
+              {currentStep !== 'Pending' ? (
+                <View style={{ flex: 1 }}>
+                  <Button
+                    label={currentStepIndex === 0 ? 'Cancel' : 'Back'}
+                    variant="tertiary"
+                    onPress={handleBack}
+                    fullWidth
+                  />
+                </View>
+              ) : null}
+
+              <View style={{ flex: 1 }}>
+                <Button
+                  label={
+                    currentStep === 'Documents'
+                      ? submitting
+                        ? 'Submitting...'
+                        : 'Submit Application'
+                      : currentStep === 'Pending'
+                        ? 'Go to Dashboard'
+                        : 'Continue'
+                  }
+                  onPress={handleContinue}
+                  fullWidth
+                  disabled={!canContinue || submitting}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
