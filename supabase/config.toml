@@ -8,6 +8,10 @@ schemas = ["public", "storage"]
 enabled = true
 schema_paths = []
 
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
 [functions]
 [functions.kyc-upload]
 verify_jwt = false
@@ -43,4 +47,8 @@ import_map = "./import_map.json"
 
 [functions.create-booking]
 verify_jwt = true
+import_map = "./import_map.json"
+
+[functions.notification-worker]
+verify_jwt = false
 import_map = "./import_map.json"
