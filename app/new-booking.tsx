@@ -19,12 +19,39 @@ import { NewBookingScheduleStep } from '../src/components/bookings/NewBookingSch
 import { NewBookingReviewStep } from '../src/components/bookings/NewBookingReviewStep';
 import { NewBookingStepDots } from '../src/components/bookings/NewBookingStepDots';
 
+import { supabase } from '../src/lib/supabase';
+
 const CATEGORY_TO_SERVICE: Record<string, ServiceCategory> = {
   massage: ServiceCategory.General,
   cleaning: ServiceCategory.Cleaning,
   painting: ServiceCategory.Painting,
   general: ServiceCategory.General,
 };
+
+const SUB_SERVICE_TO_SLUG: Record<string, string> = {
+  // Cleaning
+  'cleaning-general': 'cleaning-general',
+  'cleaning-deep': 'cleaning-general',
+  'cleaning-aircon': 'cleaning-general',
+  'cleaning-laundry': 'cleaning-general',
+  // Painting
+  'painting-interior': 'painting-interior',
+  'painting-exterior': 'painting-interior',
+  'painting-touch': 'painting-interior',
+  // Massage → no DB match, use general
+  'massage-swedish': 'general-handyman',
+  'massage-deep': 'general-handyman',
+  'massage-shiatsu': 'general-handyman',
+  'massage-foot': 'general-handyman',
+  // General
+  'general-furniture': 'general-handyman',
+  'general-mounting': 'general-handyman',
+  'general-repair': 'general-handyman',
+  'general-other': 'general-handyman',
+};
+
+const DEFAULT_LAT = 10.3157;
+const DEFAULT_LNG = 123.8854;
 
 export default function NewBookingScreen() {
   const { mode } = useLocalSearchParams<{ mode?: 'now' | 'later' }>();
@@ -91,6 +118,19 @@ export default function NewBookingScreen() {
           ? `${selectedDate}T${String(selectedHour).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}:00`
           : undefined;
 
+      // Look up service ID from slug
+      const slug = SUB_SERVICE_TO_SLUG[subServiceId] ?? 'general-handyman';
+      let serviceId: string | undefined;
+      const { data: svc } = await supabase
+        .from('services')
+        .select('id')
+        .eq('slug', slug)
+        .maybeSingle();
+      serviceId = svc?.id;
+      if (!serviceId) {
+        console.warn(`createBooking: no service found for slug "${slug}"`);
+      }
+
       const booking = await createBooking({
         clientId: 'c1',
         clientName: 'Ishah Bautista',
@@ -99,6 +139,9 @@ export default function NewBookingScreen() {
         description,
         location: address,
         amount: findAmount(),
+        serviceId,
+        lat: DEFAULT_LAT,
+        lng: DEFAULT_LNG,
         scheduledAt,
         notes: notes || undefined,
       });

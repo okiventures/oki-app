@@ -45,6 +45,16 @@ const USE_MOCK =
   !process.env.EXPO_PUBLIC_SUPABASE_URL ||
   process.env.EXPO_PUBLIC_SUPABASE_URL.includes('your-project');
 
+async function checkSession(): Promise<boolean> {
+  if (USE_MOCK) return false;
+  try {
+    const { data } = await supabase.auth.getSession();
+    return !!data.session;
+  } catch {
+    return false;
+  }
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function mapBookingRow(row: BookingRow): Booking {
@@ -174,7 +184,8 @@ export async function transitionBookingState(
   action: StateTransitionAction,
   metadata?: Record<string, unknown>
 ): Promise<Booking> {
-  if (USE_MOCK || metadata?.simulated) {
+  const hasSession = await checkSession();
+  if (!hasSession || metadata?.simulated) {
     return applyLocalTransition(bookingId, action);
   }
 
@@ -191,7 +202,9 @@ export async function transitionBookingState(
         body: { bookingId, ...(metadata ?? {}) },
       });
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        throw new Error(error.message);
+      }
       return mapBookingRow(data as BookingRow);
     }
 
@@ -289,7 +302,9 @@ function createMockBooking(input: CreateBookingInput): Booking {
 }
 
 export async function createBooking(input: CreateBookingInput): Promise<Booking> {
-  if (USE_MOCK) {
+  const hasSession = await checkSession();
+  if (!hasSession) {
+    console.log('createBooking: no session, using mock');
     return createMockBooking(input);
   }
 
@@ -298,6 +313,7 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
     return createMockBooking(input);
   }
 
+  console.log('createBooking: calling Edge Function with serviceId', input.serviceId);
   try {
     const { data, error } = await supabase.functions.invoke('create-booking', {
       body: {
@@ -313,7 +329,9 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
       },
     });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      throw new Error(error.message);
+    }
 
     const bookingRow = data.data as BookingRow;
     return {
