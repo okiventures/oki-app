@@ -281,7 +281,7 @@
 - [x] Scheduled booking flow with calendar
   - [x] `scheduled_at` field validated: must be ≥ 2 hours in the future, no double-booking for same handyman
   - [x] Calendar UI allows date/time selection with blocked slots greyed out
-  - [ ] Booking created in `PENDING` state; handyman notified at configured lead time
+  - [x] Booking created in `PENDING` state; handyman notified at configured lead time
 
 ### [PASS] Week 8 Success Criteria
 
