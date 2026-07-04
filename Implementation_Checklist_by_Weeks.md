@@ -275,7 +275,7 @@
   - [x] Results sorted by distance ascending; include distance in meters in response
   - [x] Add GiST index on `handymen.location` for query performance
 - [x] On-Demand booking flow (API Client UI)
-  - [ ] `POST /bookings` creates record in `PENDING` state and broadcasts to matching handymen
+  - [x] `POST /bookings` creates record in `PENDING` state and broadcasts to matching handymen
   - [x] Client UI shows "Searching for a handyman…" state with live refresh
   - [x] Booking confirmation screen shown after handyman accepts
 - [x] Scheduled booking flow with calendar
