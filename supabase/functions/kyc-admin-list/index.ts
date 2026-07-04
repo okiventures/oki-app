@@ -28,7 +28,7 @@ const encPath = (p: string) =>
 
 const LABELS: Record<string, string> = {
   GOVERNMENT_ID: 'Government ID',
-  SELFIE: 'Selfie with ID',
+  SELFIE: 'Selfie',
   PROOF_OF_ADDRESS: 'Proof of Address',
 };
 
