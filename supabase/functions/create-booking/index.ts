@@ -8,8 +8,6 @@ interface CreateBookingRequest {
   addressText: string;
   lat: number;
   lng: number;
-  amount: number;
-  platformFee?: number;
   scheduledAt?: string;
   notes?: string;
 }
@@ -24,9 +22,11 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), { status: 401 });
   }
 
-  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
-    global: { headers: { Authorization: authHeader } },
-  });
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    { global: { headers: { Authorization: authHeader } } }
+  );
 
   const {
     data: { user },
@@ -36,42 +36,27 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), { status: 401 });
   }
 
-  // Verify caller is a client
-  const { data: profile } = await supabase
-    .from('users')
-    .select('user_type')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || profile.user_type !== 'client') {
-    return new Response(
-      JSON.stringify({ error: 'FORBIDDEN', message: 'Only clients can create bookings' }),
-      { status: 403 }
-    );
-  }
-
   const body: CreateBookingRequest = await req.json();
 
-  if (!body.serviceId || !body.description || !body.addressText || !body.amount) {
+  if (!body.serviceId || !body.description || !body.addressText) {
     return new Response(
       JSON.stringify({
         error: 'BAD_REQUEST',
-        message: 'Missing required fields: serviceId, description, addressText, amount',
+        message: 'Missing required fields: serviceId, description, addressText',
       }),
       { status: 400 }
     );
   }
 
+  // Call RPC with service_role key — no client_id/amount passed;
+  // RPC derives both from auth.uid() and services.base_rate respectively.
   const { data: booking, error: rpcError } = await supabase.rpc('create_booking', {
-    p_client_id: user.id,
     p_service_id: body.serviceId,
     p_booking_type: body.bookingType,
     p_description: body.description,
     p_address_text: body.addressText,
     p_lat: body.lat,
     p_lng: body.lng,
-    p_amount: body.amount,
-    p_platform_fee: body.platformFee ?? Math.round(body.amount * 0.1),
     p_scheduled_at: body.scheduledAt ?? null,
     p_notes: body.notes ?? null,
   });
