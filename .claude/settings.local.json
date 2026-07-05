@@ -2,7 +2,21 @@
   "permissions": {
     "allow": [
       "Bash(Get-ChildItem -Recurse -Depth 1 -Exclude node_modules)",
-      "Bash(Select-Object -First 30)"
+      "Bash(Select-Object -First 30)",
+      "Bash(gh pr *)",
+      "Bash(awk '/^diff --git.*bookingService.ts/,/^diff --git.*\\(?!bookingService\\)/')",
+      "Bash(git fetch *)",
+      "Bash(git checkout *)",
+      "Bash(git ls-files *)",
+      "Bash(git ls-tree *)",
+      "Bash(git check-ignore *)",
+      "Bash(grep -nA40 '\"jest\"')",
+      "Bash(grep -nA5 '\"jest\"' package.json)",
+      "Bash(npx jest *)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(npx eslint *)",
+      "Bash(npx prettier *)"
     ]
   }
 }

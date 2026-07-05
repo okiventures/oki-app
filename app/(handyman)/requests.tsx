@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { ACTIVE_HANDYMAN_BOOKING_STATUSES, useBookings } from '../../src/context/BookingsContext';
@@ -9,8 +10,11 @@ import { ActiveJobWorkflowCard } from '../../src/components/handyman/ActiveJobWo
 import { RequestInboxCard } from '../../src/components/handyman/RequestInboxCard';
 import { ConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 import { EmptyState } from '../../src/components/ui/EmptyState';
+import { useAuth } from '../../src/context/AuthContext';
 
-const HANDYMAN_ID = 'h1';
+// Falls back to the seeded demo handyman when running without a live session
+// (mock mode), so the prototype inbox still populates from MOCK_BOOKINGS.
+const DEMO_HANDYMAN_ID = 'h1';
 
 type PendingAction = {
   booking: Booking;
@@ -19,12 +23,16 @@ type PendingAction = {
 
 export default function HandymanRequests() {
   const { colors } = useTheme();
+  const router = useRouter();
+  const { session } = useAuth();
   const { bookings, acceptBooking, declineBooking, advanceBooking } = useBookings();
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
+  const handymanId = session?.user?.id ?? DEMO_HANDYMAN_ID;
+
   const myBookings = useMemo(
-    () => bookings.filter((booking) => booking.handymanId === HANDYMAN_ID),
-    [bookings]
+    () => bookings.filter((booking) => booking.handymanId === handymanId),
+    [bookings, handymanId]
   );
 
   const incomingRequests = myBookings
@@ -79,6 +87,7 @@ export default function HandymanRequests() {
               <ActiveJobWorkflowCard
                 booking={activeJob}
                 onAdvance={() => advanceBooking(activeJob.id)}
+                onViewDetails={() => router.push(`/job/${activeJob.id}`)}
               />
             </View>
           ) : null}
@@ -95,6 +104,7 @@ export default function HandymanRequests() {
                 booking={booking}
                 onAccept={() => setPendingAction({ booking, type: 'accept' })}
                 onDecline={() => setPendingAction({ booking, type: 'decline' })}
+                onViewDetails={() => router.push(`/job/${booking.id}`)}
               />
             ))
           ) : (
@@ -115,7 +125,7 @@ export default function HandymanRequests() {
         message={
           pendingAction?.type === 'accept'
             ? 'This request will move to Accepted for both the handyman queue and the client booking list.'
-            : 'This request will be marked as Cancelled in the shared booking list for this prototype flow.'
+            : 'This request will be marked as Rejected and removed from your inbox. The client is notified so it can be re-offered.'
         }
         confirmLabel={pendingAction?.type === 'accept' ? 'Accept request' : 'Decline request'}
         cancelLabel="Keep reviewing"

@@ -53,8 +53,8 @@ BEGIN
 
   v_from_status := v_booking.status;
 
-  -- 4. Terminal check — PAID and CANCELLED cannot transition further
-  IF v_from_status IN ('PAID'::booking_status, 'CANCELLED'::booking_status) THEN
+  -- 4. Terminal check — PAID, CANCELLED and REJECTED cannot transition further
+  IF v_from_status IN ('PAID'::booking_status, 'CANCELLED'::booking_status, 'REJECTED'::booking_status) THEN
     RAISE EXCEPTION 'Booking is closed (status: %)', v_from_status
       USING DETAIL = 'BOOKING_TERMINAL';
   END IF;
@@ -110,18 +110,17 @@ BEGIN
           USING DETAIL = 'TRANSITION_NOT_ALLOWED';
       END IF;
 
-      -- REJECT does not change booking status; just records the event.
-      -- v_to_status stays NULL so the event row has from_status = PENDING,
-      -- to_status = PENDING.
-      INSERT INTO booking_events (booking_id, actor_id, from_status, to_status, metadata)
-      VALUES (p_booking_id, v_actor_id, v_from_status, v_from_status,
-              jsonb_build_object('action', 'REJECT') || p_metadata);
+      -- REJECT moves the booking to the terminal REJECTED state. The bookings
+      -- CHECK constraint requires a non-null handyman_id once past PENDING, so
+      -- we record the rejecting handyman; the action=REJECT audit event (added
+      -- by the shared insert below) disambiguates this from an assignment.
+      v_to_status := 'REJECTED'::booking_status;
 
-      RETURN jsonb_build_object(
-        'id', v_booking.id,
-        'status', v_from_status,
-        'updated_at', v_booking.updated_at
-      );
+      UPDATE bookings
+      SET status = v_to_status,
+          handyman_id = v_actor_id,
+          updated_at = now()
+      WHERE id = p_booking_id;
 
     -- ── CANCEL ─────────────────────────────────────────────────────────
     WHEN 'CANCEL' THEN

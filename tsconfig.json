@@ -3,10 +3,12 @@
   "compilerOptions": {
     "strict": true,
     "baseUrl": ".",
+    "allowImportingTsExtensions": true,
+    "ignoreDeprecations": "5.0",
     "paths": {
       "@/*": ["src/*"]
     }
   },
   "exclude": ["backend", "packages", "apps", "supabase"],
-  "include": ["**/*.ts", "**/*.tsx", "nativewind-env.d.ts"]
+  "include": ["**/*.ts", "**/*.tsx", "**/*.d.ts", "nativewind-env.d.ts"]
 }
