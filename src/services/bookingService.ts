@@ -36,7 +36,13 @@ export interface BookingEventRow {
 }
 
 type StateTransitionAction =
-  'ACCEPT' | 'REJECT' | 'CANCEL' | 'START_TRANSIT' | 'MARK_ARRIVED' | 'START_WORK' | 'COMPLETE';
+  | 'ACCEPT'
+  | 'REJECT'
+  | 'CANCEL'
+  | 'START_TRANSIT'
+  | 'MARK_ARRIVED'
+  | 'START_WORK'
+  | 'COMPLETE';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
