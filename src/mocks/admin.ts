@@ -1,4 +1,6 @@
-import { DisputeStatus, KycStatus, UserStatus } from '../types';
+import { DisputeStatus, UserStatus } from '../types';
+
+import type { AdminKycRequest } from '../context/AdminContext';
 
 export const MOCK_ADMIN_STATS = {
   activeUsers: 12450,
@@ -149,21 +151,32 @@ export const MOCK_ADMIN_FEED = [
   },
 ];
 
-export const MOCK_KYC_REQUESTS = [
+export const MOCK_KYC_REQUESTS: AdminKycRequest[] = [
   {
-    id: 'kyc1',
+    handymanId: 'h1',
     handymanName: 'James Ty',
-    serviceCategory: 'Roofing',
+    handymanEmail: 'james@example.com',
     submittedAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-    status: KycStatus.Pending,
-    riskScore: 'Low',
+    documents: [
+      { id: 'd1', type: 'GOVERNMENT_ID', label: 'Government ID', url: null, status: 'PENDING' },
+      { id: 'd2', type: 'SELFIE', label: 'Selfie', url: null, status: 'PENDING' },
+    ],
   },
   {
-    id: 'kyc2',
+    handymanId: 'h2',
     handymanName: 'Princess Jaena',
-    serviceCategory: 'Cleaning',
+    handymanEmail: 'princess@example.com',
     submittedAt: new Date(Date.now() - 86400000).toISOString(),
-    status: KycStatus.Pending,
-    riskScore: 'Medium',
+    documents: [
+      { id: 'd3', type: 'GOVERNMENT_ID', label: 'Government ID', url: null, status: 'PENDING' },
+      {
+        id: 'd4',
+        type: 'PROOF_OF_ADDRESS',
+        label: 'Proof of Address',
+        url: null,
+        status: 'PENDING',
+      },
+      { id: 'd5', type: 'SELFIE', label: 'Selfie', url: null, status: 'APPROVED' },
+    ],
   },
 ];

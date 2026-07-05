@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Badge } from '../../ui/Badge';
@@ -28,7 +28,7 @@ export function HandymanDocumentsStep({ uploads, onUpload }: DocumentsStepProps)
 
       {DOCUMENT_OPTIONS.map((document) => {
         const upload = uploads[document.id];
-        const isComplete = upload?.progress === 100;
+        const isComplete = upload?.progress === 100 && !upload?.error;
         const isImage = upload?.mimeType?.startsWith('image/') ?? false;
 
         return (
@@ -89,28 +89,40 @@ export function HandymanDocumentsStep({ uploads, onUpload }: DocumentsStepProps)
                             style={{ color: colors.ui.text }}>
                             {upload.fileName}
                           </Text>
-                          <Text className="mt-1 text-[11px]" style={{ color: colors.ui.textMuted }}>
-                            {isComplete
-                              ? 'Preview ready for admin review.'
-                              : 'Uploading securely...'}
-                          </Text>
+                          {upload.error ? (
+                            <Text className="mt-1 text-[11px] text-red-500">{upload.error}</Text>
+                          ) : (
+                            <Text
+                              className="mt-1 text-[11px]"
+                              style={{ color: colors.ui.textMuted }}>
+                              {isComplete
+                                ? 'Preview ready for admin review.'
+                                : 'Uploading securely...'}
+                            </Text>
+                          )}
                         </View>
                       </View>
 
-                      <View className="gap-1">
-                        <View className="h-2 overflow-hidden rounded-full bg-gray-200">
-                          <View
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${upload.progress}%`,
-                              backgroundColor: colors.primary['600'],
-                            }}
-                          />
+                      {upload.loading ? (
+                        <View className="items-center py-2">
+                          <ActivityIndicator size="small" color={colors.primary['600']} />
                         </View>
-                        <Text className="text-[11px]" style={{ color: colors.ui.textMuted }}>
-                          Upload progress: {upload.progress}%
-                        </Text>
-                      </View>
+                      ) : upload.error ? null : (
+                        <View className="gap-1">
+                          <View className="h-2 overflow-hidden rounded-full bg-gray-200">
+                            <View
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${upload.progress}%`,
+                                backgroundColor: colors.primary['600'],
+                              }}
+                            />
+                          </View>
+                          <Text className="text-[11px]" style={{ color: colors.ui.textMuted }}>
+                            Upload progress: {upload.progress}%
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   ) : (
                     <View className="gap-2">

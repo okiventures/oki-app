@@ -52,8 +52,8 @@ export const DOCUMENT_OPTIONS = [
   },
   {
     id: 'selfie',
-    title: 'Selfie with ID',
-    subtitle: 'Hold your ID beside your face for matching.',
+    title: 'Selfie',
+    subtitle: 'A clear selfie for identity verification.',
     icon: 'camera-outline',
   },
   {
@@ -71,4 +71,6 @@ export type UploadState = {
   mimeType: string | null;
   progress: number;
   uri: string;
+  error?: string;
+  loading?: boolean;
 };

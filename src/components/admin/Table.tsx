@@ -16,15 +16,19 @@ interface TableProps<T> {
 }
 
 export function Table<T>({ columns, data, onRowPress, keyExtractor }: TableProps<T>) {
+  const minWidth = columns.reduce((sum, col) => sum + (col.width || 140), 0);
+
   return (
-    <View className="overflow-hidden rounded-xl border border-gray-100 bg-white">
+    <View
+      className="overflow-hidden rounded-xl border border-gray-100 bg-white"
+      style={{ width: '100%' }}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View className="min-w-[720px]">
+        <View style={{ minWidth }}>
           <View className="flex-row border-b border-gray-200 bg-gray-50">
             {columns.map((col) => (
               <View
                 key={col.key}
-                style={{ minWidth: col.width || 140, width: col.width || 140 }}
+                style={{ width: col.width || 140 }}
                 className="justify-center p-3">
                 <Text className="text-[11px] font-semibold tracking-[0.08em] text-gray-500 uppercase">
                   {col.title}
@@ -43,7 +47,7 @@ export function Table<T>({ columns, data, onRowPress, keyExtractor }: TableProps
                 {columns.map((col) => (
                   <View
                     key={col.key}
-                    style={{ minWidth: col.width || 140, width: col.width || 140 }}
+                    style={{ width: col.width || 140 }}
                     className="justify-center p-3">
                     {col.render ? (
                       col.render(row)

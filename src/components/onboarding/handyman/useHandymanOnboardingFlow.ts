@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import * as DocumentPicker from 'expo-document-picker';
 
+import { useAuth } from '../../../context/AuthContext';
 import { ServiceCategory } from '../../../types';
 import {
   DOCUMENT_OPTIONS,
@@ -12,6 +13,7 @@ import {
 } from './shared';
 
 export function useHandymanOnboardingFlow() {
+  const { session: authSession } = useAuth();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -35,7 +37,7 @@ export function useHandymanOnboardingFlow() {
         yearsExperience.trim().length > 0 &&
         Number.isFinite(Number(yearsExperience)) &&
         Number(yearsExperience) >= 0,
-      bio: bio.trim().length >= 16,
+      bio: bio.trim().length <= 200,
     }),
     [bio, city, fullName, phoneDigits.length, yearsExperience]
   );
@@ -111,64 +113,134 @@ export function useHandymanOnboardingFlow() {
     }));
   };
 
-  const startUpload = async (documentId: DocumentId) => {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: ['image/*', 'application/pdf'],
-      copyToCacheDirectory: true,
-      multiple: false,
-    });
+  const startUpload = useCallback(
+    async (documentId: DocumentId) => {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
 
-    if (result.canceled || result.assets.length === 0) {
-      return;
-    }
+      if (result.canceled || result.assets.length === 0) {
+        return;
+      }
 
-    const asset = result.assets[0];
+      const asset = result.assets[0];
+      const docTypeMap: Record<DocumentId, string> = {
+        'government-id': 'GOVERNMENT_ID',
+        selfie: 'SELFIE',
+        'proof-of-address': 'PROOF_OF_ADDRESS',
+      };
 
-    setUploads((prev) => ({
-      ...prev,
-      [documentId]: {
-        fileName: asset.name,
-        mimeType: asset.mimeType ?? null,
-        progress: 20,
-        uri: asset.uri,
-      },
-    }));
-  };
+      setUploads((prev) => ({
+        ...prev,
+        [documentId]: {
+          fileName: asset.name,
+          mimeType: asset.mimeType ?? null,
+          progress: 0,
+          uri: asset.uri,
+          loading: true,
+        },
+      }));
 
-  useEffect(() => {
-    const pendingUploadIds = (Object.keys(uploads) as DocumentId[]).filter((documentId) => {
-      const upload = uploads[documentId];
-      return upload !== undefined && upload.progress < 100;
-    });
+      try {
+        if (!authSession?.accessToken) {
+          throw new Error('Not authenticated. Please try logging in again.');
+        }
 
-    if (pendingUploadIds.length === 0) {
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setUploads((prev) => {
-        let changed = false;
-        const next = { ...prev };
-
-        pendingUploadIds.forEach((documentId) => {
-          const upload = next[documentId];
-          if (!upload || upload.progress >= 100) {
-            return;
-          }
-
-          changed = true;
-          next[documentId] = {
-            ...upload,
-            progress: Math.min(upload.progress + 20, 100),
-          };
+        const blob = await fetch(asset.uri).then((r) => r.blob());
+        const base64Content = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
         });
 
-        return changed ? next : prev;
-      });
-    }, 140);
+        const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/kyc-upload`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${authSession.accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            document_type: docTypeMap[documentId],
+            file_name: asset.name,
+            file_mime_type: asset.mimeType ?? 'application/octet-stream',
+            file_content: base64Content,
+          }),
+        });
+        if (!response.ok) {
+          const errBody = await response.json().catch(() => ({}));
+          throw new Error(errBody.message ?? `Upload failed (HTTP ${response.status})`);
+        }
 
-    return () => clearInterval(timer);
-  }, [uploads]);
+        setUploads((prev) => ({
+          ...prev,
+          [documentId]: {
+            ...prev[documentId]!,
+            progress: 100,
+            loading: false,
+            error: undefined,
+          },
+        }));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Upload failed';
+        setUploads((prev) => ({
+          ...prev,
+          [documentId]: {
+            ...prev[documentId]!,
+            progress: 0,
+            loading: false,
+            error: message,
+          },
+        }));
+      }
+    },
+    [authSession?.accessToken]
+  );
+
+  const submitOnboarding = useCallback(async () => {
+    if (!authSession?.accessToken) {
+      throw new Error('Not authenticated. Please try logging in again.');
+    }
+
+    const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/submit-onboarding`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${authSession.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        full_name: fullName.trim(),
+        phone,
+        city: city.trim(),
+        bio: bio.trim(),
+        years_experience: Number(yearsExperience) || 0,
+        services: selectedServices.map((item) => ({
+          category: item.category,
+          rate: Number(servicePricing[item.category]) || 0,
+        })),
+      }),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      throw new Error(errBody.message ?? `Submission failed (HTTP ${response.status})`);
+    }
+
+    return response.json();
+  }, [
+    authSession?.accessToken,
+    fullName,
+    phone,
+    city,
+    bio,
+    yearsExperience,
+    selectedServices,
+    servicePricing,
+  ]);
 
   return {
     currentStep,
@@ -191,6 +263,7 @@ export function useHandymanOnboardingFlow() {
     toggleService,
     updateServicePrice,
     startUpload,
+    submitOnboarding,
     goToNextStep,
     goToPreviousStep,
   };

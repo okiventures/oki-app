@@ -13,10 +13,16 @@ module.exports = {
   ],
   // Minimal setup — our CJS-compatible file (no RN mocks needed for basic tests)
   setupFiles: ['<rootDir>/__tests__/jest-setup.cjs'],
+  testPathIgnorePatterns: ['/__tests__/__mocks__/'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   collectCoverageFrom: ['**/*.{ts,tsx}', '!**/node_modules/**', '!**/dist/**'],
   moduleNameMapper: {
     '\\.css$': '<rootDir>/__mocks__/styleMock.js',
     '^components/(.*)$': '<rootDir>/components/$1',
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^https://esm.sh/@supabase/supabase-js@2\\.108\\.2$':
+      '<rootDir>/__tests__/__mocks__/supabase-cdn.ts',
+    '^https://deno.land/std@0\\.224\\.0/http/server\\.ts$':
+      '<rootDir>/__tests__/__mocks__/deno-serve.ts',
   },
 };
