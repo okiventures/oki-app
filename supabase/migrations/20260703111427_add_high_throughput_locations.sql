@@ -39,8 +39,8 @@ create index if not exists handyman_locations_gist
 drop index if exists idx_handymen_location;
 
 -- 3. Hyper-fast UPSERT function
+-- Caller identity derived from auth.uid() — cannot impersonate another handyman.
 create or replace function public.upsert_handyman_location(
-  p_handyman_id uuid,
   p_lat double precision,
   p_lng double precision
 )
@@ -51,7 +51,7 @@ as $$
 begin
   insert into public.handyman_locations (id, location, updated_at)
   values (
-    p_handyman_id,
+    auth.uid(),
     st_setsrid(st_makepoint(p_lng, p_lat), 4326)::geography,
     now()
   )
@@ -61,6 +61,8 @@ begin
     updated_at = excluded.updated_at;
 end;
 $$;
+
+revoke execute on function public.upsert_handyman_location(double precision, double precision) from anon;
 
 -- 4. Update search function to read from handyman_locations
 create or replace function public.search_nearest_handymen(
