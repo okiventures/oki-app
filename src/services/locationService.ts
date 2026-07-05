@@ -26,11 +26,13 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
       } = await supabase.auth.getSession();
       if (!session?.user) return;
 
-      // Execute high-speed RPC upsert — handyman_id derived from auth.uid()
-      await supabase.rpc('upsert_handyman_location', {
+      // Execute high-speed RPC upsert bypassing REST reflection overhead
+      const { error: rpcError } = await supabase.rpc('upsert_handyman_location', {
+        p_handyman_id: session.user.id,
         p_lat: latitude,
         p_lng: longitude,
       });
+      if (rpcError) throw rpcError;
     } catch (err) {
       console.error('Failed to stream background location update:', err);
     }
