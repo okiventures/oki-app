@@ -1,6 +1,6 @@
-# oki-app
+# Oki App — Agent Guide
 
-Expo SDK 54 + React Native 0.81 + NativeWind (preview) + TypeScript strict.
+React Native (Expo SDK 54) client app for a 3-sided handyman marketplace. UI prototype on mock data — no backend integration yet.
 
 3-sided handyman marketplace: Client → Handyman → Admin. Philippine market (PHP currency).
 
@@ -16,21 +16,26 @@ Expo SDK 54 + React Native 0.81 + NativeWind (preview) + TypeScript strict.
 
 ## Quick start
 
-```sh
-npm install
-npx expo start           # dev server (iOS/Android/Web)
-npx expo start --web     # web-only
+```bash
+npm install              # uses npm (v11)
+npm start                # expo start
+npm run ios              # expo run:ios
+npm run android          # expo run:android
+npm run web              # expo start --web
+npm run lint             # eslint + prettier --check
+npm run format           # eslint --fix + prettier --write
 npm run prebuild         # native dirs before first native build
 ```
 
 ## Verification commands (order independent, run in CI)
 
 ```sh
-npm run lint             # ESLint 9 flat config + Prettier check
 npm run type-check       # tsc --noEmit (strict mode)
 npm run test:ci          # jest --ci (jest-expo preset)
 npm test                 # jest (watch mode)
 ```
+
+No test framework is configured. No CI/CD. No `.env` files.
 
 ## Architecture
 

@@ -67,15 +67,16 @@ CREATE INDEX idx_handymen_online_kyc ON handymen (is_online, kyc_status) WHERE i
 
 -- Services catalog
 CREATE TABLE services (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  slug        TEXT NOT NULL UNIQUE,
-  name        TEXT NOT NULL,
-  category    service_category NOT NULL,
-  description TEXT,
-  base_rate   NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (base_rate >= 0),
-  is_active   BOOLEAN NOT NULL DEFAULT true,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug              TEXT NOT NULL UNIQUE,
+  name              TEXT NOT NULL,
+  category          service_category NOT NULL,
+  description       TEXT,
+  base_rate         NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (base_rate >= 0),
+  estimated_duration INTERVAL NOT NULL DEFAULT interval '1 hour',
+  is_active         BOOLEAN NOT NULL DEFAULT true,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_services_category ON services (category) WHERE is_active = true;
 
@@ -335,18 +336,139 @@ CREATE POLICY disputes_admin_resolve ON disputes FOR UPDATE TO authenticated USI
 CREATE POLICY booking_events_select_participant ON booking_events FOR SELECT TO authenticated USING (is_admin() OR EXISTS (SELECT 1 FROM bookings b WHERE b.id = booking_events.booking_id AND (b.client_id = auth.uid() OR b.handyman_id = auth.uid())));
 
 -- 4. Seed services catalog
-INSERT INTO services (slug, name, category, description, base_rate) VALUES
-  ('plumbing-general',       'General Plumbing',          'Plumbing',         'Fix leaks, install fixtures, unclog drains',               500.00),
-  ('plumbing-water-heater',  'Water Heater Repair',       'Plumbing',         'Repair or replace water heaters',                         1200.00),
-  ('electrical-wiring',      'Wiring & Installation',     'Electrical',       'Install new wiring, outlets, switches',                    800.00),
-  ('electrical-lighting',    'Lighting Installation',     'Electrical',       'Install ceiling fans, chandeliers, sconces',               600.00),
-  ('carpentry-furniture',    'Furniture Assembly',        'Carpentry',        'Assemble flat-pack furniture',                             400.00),
-  ('carpentry-custom',       'Custom Carpentry',          'Carpentry',        'Build shelves, cabinets, custom woodwork',                1500.00),
-  ('cleaning-general',       'General Cleaning',          'Cleaning',         'Deep cleaning of rooms, kitchens, bathrooms',              350.00),
-  ('painting-interior',      'Interior Painting',         'Painting',         'Paint interior walls, ceilings, trim',                    2000.00),
-  ('hvac-general',           'AC Repair & Maintenance',   'HVAC',             'Repair, clean, and service air conditioning units',       1000.00),
-  ('general-handyman',       'General Handyman',          'General Handyman', 'Odd jobs, minor fixes, and general maintenance',           300.00)
+INSERT INTO services (slug, name, category, description, base_rate, estimated_duration) VALUES
+  ('plumbing-general',       'General Plumbing',          'Plumbing',         'Fix leaks, install fixtures, unclog drains',               500.00,  interval '1 hour'),
+  ('plumbing-water-heater',  'Water Heater Repair',       'Plumbing',         'Repair or replace water heaters',                         1200.00,  interval '2 hours'),
+  ('electrical-wiring',      'Wiring & Installation',     'Electrical',       'Install new wiring, outlets, switches',                    800.00,  interval '2 hours 30 minutes'),
+  ('electrical-lighting',    'Lighting Installation',     'Electrical',       'Install ceiling fans, chandeliers, sconces',               600.00,  interval '1 hour 30 minutes'),
+  ('carpentry-furniture',    'Furniture Assembly',        'Carpentry',        'Assemble flat-pack furniture',                             400.00,  interval '1 hour'),
+  ('carpentry-custom',       'Custom Carpentry',          'Carpentry',        'Build shelves, cabinets, custom woodwork',                1500.00,  interval '3 hours'),
+  ('cleaning-general',       'General Cleaning',          'Cleaning',         'Deep cleaning of rooms, kitchens, bathrooms',              350.00,  interval '2 hours'),
+  ('painting-interior',      'Interior Painting',         'Painting',         'Paint interior walls, ceilings, trim',                    2000.00,  interval '4 hours'),
+  ('hvac-general',           'AC Repair & Maintenance',   'HVAC',             'Repair, clean, and service air conditioning units',       1000.00,  interval '1 hour 30 minutes'),
+  ('general-handyman',       'General Handyman',          'General Handyman', 'Odd jobs, minor fixes, and general maintenance',           300.00,  interval '1 hour')
 ON CONFLICT (slug) DO NOTHING;
+
+-- 5. Booking schedule validation triggers
+
+CREATE OR REPLACE FUNCTION validate_scheduled_booking_insert()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  IF NEW.scheduled_at < NOW() + INTERVAL '2 hours' THEN
+    RAISE EXCEPTION 'Bookings must be scheduled at least 2 hours in advance'
+      USING ERRCODE = '42201';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER enforce_schedule_future
+  BEFORE INSERT ON bookings
+  FOR EACH ROW
+  WHEN (NEW.scheduled_at IS NOT NULL)
+  EXECUTE FUNCTION validate_scheduled_booking_insert();
+
+CREATE OR REPLACE FUNCTION validate_booking_accept()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_overlapping INT;
+  v_duration INTERVAL;
+BEGIN
+  IF NEW.handyman_id IS NOT NULL AND (OLD.handyman_id IS DISTINCT FROM NEW.handyman_id) THEN
+    SELECT estimated_duration INTO STRICT v_duration
+    FROM services
+    WHERE id = NEW.service_id;
+
+    SELECT COUNT(*) INTO v_overlapping
+    FROM bookings
+    WHERE handyman_id = NEW.handyman_id
+      AND id != NEW.id
+      AND status NOT IN ('CANCELLED', 'COMPLETED', 'PAID')
+      AND scheduled_at IS NOT NULL
+      AND tsrange(scheduled_at, scheduled_at + v_duration) &&
+          tsrange(NEW.scheduled_at, NEW.scheduled_at + v_duration);
+
+    IF v_overlapping > 0 THEN
+      RAISE EXCEPTION 'Handyman is already booked during this time'
+        USING ERRCODE = '42202';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER enforce_no_double_booking
+  BEFORE UPDATE ON bookings
+  FOR EACH ROW
+  WHEN (NEW.handyman_id IS NOT NULL AND NEW.scheduled_at IS NOT NULL)
+  EXECUTE FUNCTION validate_booking_accept();
+
+-- 6. Notification queue for scheduled booking reminders
+
+ALTER TABLE handymen ADD COLUMN IF NOT EXISTS expo_push_token TEXT;
+
+CREATE TABLE IF NOT EXISTS notification_queue (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE NOT NULL,
+  handyman_id UUID REFERENCES handymen(id) ON DELETE CASCADE NOT NULL,
+  send_at TIMESTAMPTZ NOT NULL,
+  STATUS TEXT NOT NULL DEFAULT 'PENDING' CHECK (STATUS IN ('PENDING', 'PROCESSING', 'SENT', 'FAILED')),
+  error_log TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notification_queue_send_at
+  ON notification_queue(send_at)
+  WHERE STATUS = 'PENDING';
+
+CREATE OR REPLACE FUNCTION enqueue_scheduled_booking_notification()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_lead_time INTERVAL := INTERVAL '1 hour';
+BEGIN
+  IF NEW.handyman_id IS NOT NULL
+     AND (OLD.handyman_id IS DISTINCT FROM NEW.handyman_id)
+     AND NEW.scheduled_at IS NOT NULL
+  THEN
+    INSERT INTO notification_queue (booking_id, handyman_id, send_at)
+    VALUES (NEW.id, NEW.handyman_id, NEW.scheduled_at - v_lead_time);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trigger_enqueue_booking_notification
+  AFTER UPDATE ON bookings
+  FOR EACH ROW
+  EXECUTE FUNCTION enqueue_scheduled_booking_notification();
+
+CREATE OR REPLACE FUNCTION cleanup_notification_on_cancel()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  DELETE FROM notification_queue
+  WHERE booking_id = OLD.id AND STATUS = 'PENDING';
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trigger_cleanup_notification_on_cancel
+  AFTER UPDATE OF STATUS ON bookings
+  FOR EACH ROW
+  WHEN (NEW.STATUS = 'CANCELLED')
+  EXECUTE FUNCTION cleanup_notification_on_cancel();
 
 -- ============================================================================
 -- ✅ DONE! Your database is now fully set up with:
@@ -355,4 +477,6 @@ ON CONFLICT (slug) DO NOTHING;
 --    • Row Level Security (RLS) on every table
 --    • Auto-profile creation on user signup
 --    • Seed service catalog
+--    • Booking schedule validation triggers
+--    • Notification queue for scheduled booking reminders
 -- ============================================================================

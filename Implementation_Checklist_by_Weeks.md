@@ -271,18 +271,18 @@
   - [x] Create `bookings` table with status enum, foreign keys to client/handyman/service, timestamps
   - [x] `booking_events` audit table: logs every state transition with actor, from_status, to_status, timestamp
   - [x] Migration and RLS policies: client sees own bookings; handyman sees assigned bookings
-- [ ] PostGIS-based worker search (radius queries)
-  - [ ] `ST_DWithin` radius query on `handymen.location` filtered by service category and `is_online = true`
-  - [ ] Results sorted by distance ascending; include distance in meters in response
-  - [ ] Add GiST index on `handymen.location` for query performance
-- [ ] On-Demand booking flow (API Client UI)
-  - [ ] `POST /bookings` creates record in `PENDING` state and broadcasts to matching handymen
-  - [ ] Client UI shows "Searching for a handyman…" state with live refresh
-  - [ ] Booking confirmation screen shown after handyman accepts
-- [ ] Scheduled booking flow with calendar
-  - [ ] `scheduled_at` field validated: must be ≥ 2 hours in the future, no double-booking for same handyman
-  - [ ] Calendar UI allows date/time selection with blocked slots greyed out
-  - [ ] Booking created in `PENDING` state; handyman notified at configured lead time
+- [x] PostGIS-based worker search (radius queries)
+  - [x] `ST_DWithin` radius query on `handymen.location` filtered by service category and `is_online = true`
+  - [x] Results sorted by distance ascending; include distance in meters in response
+  - [x] Add GiST index on `handymen.location` for query performance
+- [x] On-Demand booking flow (API Client UI)
+  - [x] `POST /bookings` creates record in `PENDING` state and broadcasts to matching handymen
+  - [x] Client UI shows "Searching for a handyman…" state with live refresh
+  - [x] Booking confirmation screen shown after handyman accepts
+- [x] Scheduled booking flow with calendar
+  - [x] `scheduled_at` field validated: must be ≥ 2 hours in the future, no double-booking for same handyman
+  - [x] Calendar UI allows date/time selection with blocked slots greyed out
+  - [x] Booking created in `PENDING` state; handyman notified at configured lead time
 
 ### [PASS] Week 8 Success Criteria
 
