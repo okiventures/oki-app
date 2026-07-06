@@ -1,6 +1,7 @@
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
-const SERVICE_ROLE_KEY = Deno.env.get('SERVICE_ROLE_KEY')!;
+const SERVICE_ROLE_KEY =
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY');
 const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') ?? '*';
 if (!SUPABASE_URL || !ANON_KEY || !SERVICE_ROLE_KEY) throw new Error('Missing required env vars');
 
@@ -17,6 +18,26 @@ const ok = (b: Record<string, unknown>) =>
     status: 200,
     headers: cors({ 'Content-Type': 'application/json' }),
   });
+
+const REQUIRED_DOC_TYPES = ['GOVERNMENT_ID', 'SELFIE', 'PROOF_OF_ADDRESS'] as const;
+
+const deriveHandymanKycStatus = (
+  docs: Array<{ document_type: string; status: string; submitted_at: string }>
+) => {
+  const latestByType = new Map<string, { status: string; submittedAtMs: number }>();
+  for (const row of docs) {
+    const submittedAtMs = new Date(row.submitted_at).getTime();
+    const current = latestByType.get(row.document_type);
+    if (!current || submittedAtMs > current.submittedAtMs) {
+      latestByType.set(row.document_type, { status: row.status, submittedAtMs });
+    }
+  }
+
+  const latestStatuses = REQUIRED_DOC_TYPES.map((type) => latestByType.get(type)?.status);
+  if (latestStatuses.some((status) => status === 'REJECTED')) return 'REJECTED';
+  if (latestStatuses.every((status) => status === 'APPROVED')) return 'APPROVED';
+  return 'PENDING';
+};
 
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -100,11 +121,43 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const updatedSet = new Set(updatedIds);
   const hasMismatch =
     pendingSet.size !== updatedSet.size || [...pendingSet].some((id) => !updatedSet.has(id));
-  if (hasMismatch)
+  if (hasMismatch) {
+    let rollbackWarning = '';
+    if (updatedIds.length > 0) {
+      const idFilter = updatedIds.map((id) => encodeURIComponent(id)).join(',');
+      const rollback = await fetch(`${SUPABASE_URL}/rest/v1/kyc_documents?id=in.(${idFilter})`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
+          apikey: ANON_KEY,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({
+          status: 'PENDING',
+          reviewed_by: null,
+          reviewed_at: null,
+          rejection_reason: null,
+        }),
+      });
+      if (!rollback.ok) rollbackWarning = ' Rollback also failed; manual reconciliation required.';
+    }
     return err(409, {
       error: 'CONFLICT',
-      message: 'KYC documents changed during review, please retry',
+      message: `KYC documents changed during review, please retry.${rollbackWarning}`,
     });
+  }
+
+  const statusSource = await fetch(
+    `${SUPABASE_URL}/rest/v1/kyc_documents?handyman_id=eq.${encodeURIComponent(hmId)}&select=document_type,status,submitted_at`,
+    {
+      headers: { Authorization: 'Bearer ' + SERVICE_ROLE_KEY, apikey: ANON_KEY },
+    }
+  );
+  if (!statusSource.ok)
+    return err(500, { error: 'DATABASE_ERROR', message: 'Failed to read handyman KYC documents' });
+  const allDocs = await statusSource.json();
+  const handymanStatus = deriveHandymanKycStatus(Array.isArray(allDocs) ? allDocs : []);
 
   const handymanPatch = await fetch(
     `${SUPABASE_URL}/rest/v1/handymen?id=eq.${encodeURIComponent(hmId)}`,
@@ -116,30 +169,31 @@ Deno.serve(async (req: Request): Promise<Response> => {
         'Content-Type': 'application/json',
         Prefer: 'return=minimal',
       },
-      body: JSON.stringify({ kyc_status: newStatus }),
+      body: JSON.stringify({ kyc_status: handymanStatus }),
     }
   );
 
   if (!handymanPatch.ok) {
-    const idFilter = updatedIds.map((id) => encodeURIComponent(id)).join(',');
-    const rollback = await fetch(`${SUPABASE_URL}/rest/v1/kyc_documents?id=in.(${idFilter})`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
-        apikey: ANON_KEY,
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal',
-      },
-      body: JSON.stringify({
-        status: 'PENDING',
-        reviewed_by: null,
-        reviewed_at: null,
-        rejection_reason: null,
-      }),
-    });
-    const rollbackSuffix = rollback.ok
-      ? ''
-      : ' Rollback also failed; manual reconciliation required.';
+    let rollbackSuffix = '';
+    if (updatedIds.length > 0) {
+      const idFilter = updatedIds.map((id) => encodeURIComponent(id)).join(',');
+      const rollback = await fetch(`${SUPABASE_URL}/rest/v1/kyc_documents?id=in.(${idFilter})`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
+          apikey: ANON_KEY,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({
+          status: 'PENDING',
+          reviewed_by: null,
+          reviewed_at: null,
+          rejection_reason: null,
+        }),
+      });
+      if (!rollback.ok) rollbackSuffix = ' Rollback also failed; manual reconciliation required.';
+    }
     return err(500, {
       error: 'DATABASE_ERROR',
       message: `Failed to update handyman status; document rollback was attempted.${rollbackSuffix}`,

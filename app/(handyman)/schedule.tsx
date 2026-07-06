@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { BookingCard } from '../../src/components/cards/BookingCard';
@@ -12,6 +13,7 @@ const HANDYMAN_ID = 'h1';
 
 export default function HandymanSchedule() {
   const { colors } = useTheme();
+  const router = useRouter();
   const { bookings } = useBookings();
   const [selectedDate, setSelectedDate] = useState(() => new Date());
 
@@ -57,7 +59,7 @@ export default function HandymanSchedule() {
                     key={booking.id}
                     booking={booking}
                     userType="handyman"
-                    onPress={() => {}}
+                    onPress={() => router.push(`/booking/${booking.id}?role=handyman`)}
                   />
                 ))
               ) : (

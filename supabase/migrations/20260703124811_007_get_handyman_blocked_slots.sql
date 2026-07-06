@@ -24,3 +24,5 @@ begin
   order by b.scheduled_at asc;
 end;
 $$;
+
+revoke execute on function public.get_handyman_blocked_slots(uuid, timestamptz, timestamptz) from anon;

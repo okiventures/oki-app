@@ -358,7 +358,6 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
         addressText: input.location,
         lat: input.lat,
         lng: input.lng,
-        amount: input.amount,
         scheduledAt: input.scheduledAt ?? null,
         notes: input.notes ?? null,
       },

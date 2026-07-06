@@ -10,26 +10,81 @@ CREATE OR REPLACE FUNCTION execute_payment_transaction(
   handyman_id       UUID
 )
 RETURNS VOID AS $$
+DECLARE
+  v_client_id UUID;
+  v_booking_handyman_id UUID;
+  v_status booking_status;
+  v_current_balance NUMERIC(12, 2);
+  v_new_balance NUMERIC(12, 2);
 BEGIN
+  -- Lock the booking row so concurrent captures for the same booking serialize
+  -- here instead of both racing through to insert/credit.
+  SELECT client_id, handyman_id, status
+    INTO v_client_id, v_booking_handyman_id, v_status
+  FROM bookings
+  WHERE id = booking_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'BOOKING_NOT_FOUND: %', booking_id;
+  END IF;
+
+  -- the handyman being credited must be the one assigned to the booking
+  IF v_booking_handyman_id IS DISTINCT FROM handyman_id THEN
+    RAISE EXCEPTION 'HANDYMAN_MISMATCH: booking % is not assigned to handyman %',
+      booking_id, handyman_id;
+  END IF;
+
+  -- idempotency: a booking can only be captured once. a gateway retry lands here
+  -- after the first capture already flipped status to PAID and wrote the payment.
+  IF EXISTS (
+    SELECT 1 FROM payments p
+    WHERE p.booking_id = execute_payment_transaction.booking_id
+      AND p.status = 'CAPTURED'
+  ) THEN
+    RAISE EXCEPTION 'PAYMENT_ALREADY_CAPTURED: %', booking_id;
+  END IF;
+
+  -- only a COMPLETED booking can move to PAID
+  IF v_status <> 'COMPLETED' THEN
+    RAISE EXCEPTION 'INVALID_BOOKING_STATE: booking % is %, expected COMPLETED',
+      booking_id, v_status;
+  END IF;
+
+  -- Lock handyman wallet balance for update to avoid race conditions
+  SELECT wallet_balance INTO v_current_balance FROM handymen WHERE id = handyman_id FOR UPDATE;
+
+  -- Calculate new balance
+  v_new_balance := COALESCE(v_current_balance, 0) + net_amount;
+
+  -- Update handyman balance
+  UPDATE handymen
+  SET wallet_balance = v_new_balance, updated_at = now()
+  WHERE id = handyman_id;
+
+  -- Update booking status to PAID
   UPDATE bookings
   SET status = 'PAID', updated_at = now()
   WHERE id = booking_id;
 
+  -- Insert payment record matching the core schema
   INSERT INTO payments (
-    booking_id, payment_intent_id, amount, platform_fee, net_amount,
-    status, captured_at
+    booking_id, client_id, status, amount_authorized, amount_captured,
+    provider_payment_id, captured_at, updated_at
   ) VALUES (
-    booking_id, payment_intent_id, amount, platform_fee, net_amount,
-    'CAPTURED', now()
+    booking_id, v_client_id, 'CAPTURED', amount, amount,
+    payment_intent_id, now(), now()
   );
 
+  -- Insert wallet transaction matching the core schema
   INSERT INTO wallet_transactions (
-    handyman_id, booking_id, type, amount, description
+    handyman_id, booking_id, tx_type, amount, balance_after, description
   ) VALUES (
-    handyman_id, booking_id, 'CREDIT', net_amount,
+    handyman_id, booking_id, 'CREDIT', net_amount, v_new_balance,
     'Payment for booking ' || booking_id
   );
 
+  -- Log booking event
   INSERT INTO booking_events (
     booking_id, actor_id, from_status, to_status, metadata
   ) VALUES (

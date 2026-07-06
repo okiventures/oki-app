@@ -19,7 +19,8 @@ export default function HandymanPastJobs() {
     (booking) =>
       booking.status === BookingStatus.Completed ||
       booking.status === BookingStatus.Paid ||
-      booking.status === BookingStatus.Cancelled
+      booking.status === BookingStatus.Cancelled ||
+      booking.status === BookingStatus.Rejected
   );
 
   return (
@@ -43,7 +44,7 @@ export default function HandymanPastJobs() {
                   key={booking.id}
                   booking={booking}
                   userType="handyman"
-                  onPress={() => {}}
+                  onPress={() => router.push(`/booking/${booking.id}?role=handyman`)}
                 />
               ))}
             </View>
