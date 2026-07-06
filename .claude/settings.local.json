@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(Get-ChildItem -Recurse -Depth 1 -Exclude node_modules)",
-      "Bash(Select-Object -First 30)"
+      "Bash(Select-Object -First 30)",
+      "Bash(gh pr *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k: d.get\\(k\\) for k in ['dependencies','devDependencies']}, indent=2\\)\\)\")",
+      "Bash(git show *)",
+      "Bash(gh api *)",
+      "Bash(npx supabase *)",
+      "Bash(docker --version)",
+      "Bash(docker info *)",
+      "Bash(git fetch *)",
+      "Bash(git ls-tree *)"
     ]
   }
 }
