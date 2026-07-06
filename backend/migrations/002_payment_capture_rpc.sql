@@ -12,11 +12,44 @@ CREATE OR REPLACE FUNCTION execute_payment_transaction(
 RETURNS VOID AS $$
 DECLARE
   v_client_id UUID;
+  v_booking_handyman_id UUID;
+  v_status booking_status;
   v_current_balance NUMERIC(12, 2);
   v_new_balance NUMERIC(12, 2);
 BEGIN
-  -- Get client_id from bookings
-  SELECT client_id INTO v_client_id FROM bookings WHERE id = booking_id;
+  -- Lock the booking row so concurrent captures for the same booking serialize
+  -- here instead of both racing through to insert/credit.
+  SELECT client_id, handyman_id, status
+    INTO v_client_id, v_booking_handyman_id, v_status
+  FROM bookings
+  WHERE id = booking_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'BOOKING_NOT_FOUND: %', booking_id;
+  END IF;
+
+  -- the handyman being credited must be the one assigned to the booking
+  IF v_booking_handyman_id IS DISTINCT FROM handyman_id THEN
+    RAISE EXCEPTION 'HANDYMAN_MISMATCH: booking % is not assigned to handyman %',
+      booking_id, handyman_id;
+  END IF;
+
+  -- idempotency: a booking can only be captured once. a gateway retry lands here
+  -- after the first capture already flipped status to PAID and wrote the payment.
+  IF EXISTS (
+    SELECT 1 FROM payments p
+    WHERE p.booking_id = execute_payment_transaction.booking_id
+      AND p.status = 'CAPTURED'
+  ) THEN
+    RAISE EXCEPTION 'PAYMENT_ALREADY_CAPTURED: %', booking_id;
+  END IF;
+
+  -- only a COMPLETED booking can move to PAID
+  IF v_status <> 'COMPLETED' THEN
+    RAISE EXCEPTION 'INVALID_BOOKING_STATE: booking % is %, expected COMPLETED',
+      booking_id, v_status;
+  END IF;
 
   -- Lock handyman wallet balance for update to avoid race conditions
   SELECT wallet_balance INTO v_current_balance FROM handymen WHERE id = handyman_id FOR UPDATE;
