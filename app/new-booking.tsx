@@ -1,17 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../src/context/ThemeContext';
+import { useBookings } from '../src/context/BookingsContext';
+import { BookingType, ServiceCategory } from '../src/types';
+import { useHandymanAvailability } from '../src/hooks/useHandymanAvailability';
 import { Button } from '../src/components/ui/Button';
 
-import { NEW_BOOKING_STEPS } from '../src/components/bookings/NewBookingConstants';
+import {
+  NEW_BOOKING_STEPS,
+  NEW_BOOKING_CATEGORIES,
+} from '../src/components/bookings/NewBookingConstants';
 import { NewBookingCategoryStep } from '../src/components/bookings/NewBookingCategoryStep';
 import { NewBookingDetailsStep } from '../src/components/bookings/NewBookingDetailsStep';
 import { NewBookingScheduleStep } from '../src/components/bookings/NewBookingScheduleStep';
 import { NewBookingReviewStep } from '../src/components/bookings/NewBookingReviewStep';
 import { NewBookingStepDots } from '../src/components/bookings/NewBookingStepDots';
+
+import { supabase } from '../src/lib/supabase';
+
+const CATEGORY_TO_SERVICE: Record<string, ServiceCategory> = {
+  massage: ServiceCategory.General,
+  cleaning: ServiceCategory.Cleaning,
+  painting: ServiceCategory.Painting,
+  general: ServiceCategory.General,
+};
+
+const SUB_SERVICE_TO_SLUG: Record<string, string> = {
+  // Cleaning
+  'cleaning-general': 'cleaning-general',
+  'cleaning-deep': 'cleaning-general',
+  'cleaning-aircon': 'cleaning-general',
+  'cleaning-laundry': 'cleaning-general',
+  // Painting
+  'painting-interior': 'painting-interior',
+  'painting-exterior': 'painting-interior',
+  'painting-touch': 'painting-interior',
+  // Massage → no DB match, use general
+  'massage-swedish': 'general-handyman',
+  'massage-deep': 'general-handyman',
+  'massage-shiatsu': 'general-handyman',
+  'massage-foot': 'general-handyman',
+  // General
+  'general-furniture': 'general-handyman',
+  'general-mounting': 'general-handyman',
+  'general-repair': 'general-handyman',
+  'general-other': 'general-handyman',
+};
+
+const DEFAULT_LAT = 10.3157;
+const DEFAULT_LNG = 123.8854;
 
 export default function NewBookingScreen() {
   const { mode } = useLocalSearchParams<{ mode?: 'now' | 'later' }>();
@@ -20,6 +60,8 @@ export default function NewBookingScreen() {
   );
   const router = useRouter();
   const { colors } = useTheme();
+  const { createBooking } = useBookings();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [step, setStep] = useState(0);
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -30,23 +72,101 @@ export default function NewBookingScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedHour, setSelectedHour] = useState(9);
   const [selectedMinute, setSelectedMinute] = useState(0);
-  const [confirmed, setConfirmed] = useState(false);
 
   const stepIndex = step;
+
+  const targetDate = useMemo(() => {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }, [selectedDate]);
+
+  const { isTimeSlotBlocked } = useHandymanAvailability({ targetDate });
+
+  const isSelectedSlotBlocked = useMemo(() => {
+    if (bookingMode !== 'later') return false;
+    return isTimeSlotBlocked(selectedHour);
+  }, [bookingMode, selectedHour, isTimeSlotBlocked]);
 
   const canAdvance = (): boolean => {
     if (stepIndex === 0) return categoryId !== null && !!subServiceId;
     if (stepIndex === 1) return address.trim().length > 0;
+    if (stepIndex === 2 && bookingMode === 'later') return !isSelectedSlotBlocked;
     return true;
   };
 
-  const handleNext = () => {
+  const findAmount = useCallback((): number => {
+    if (!categoryId || !subServiceId) return 0;
+    const cat = NEW_BOOKING_CATEGORIES.find((c) => c.id === categoryId);
+    if (!cat) return 0;
+    const sub = cat.subServices.find((s) => s.id === subServiceId);
+    return sub?.startingPrice ?? 0;
+  }, [categoryId, subServiceId]);
+
+  const handleNext = useCallback(async () => {
     if (stepIndex < NEW_BOOKING_STEPS.length - 1) {
       setStep((s) => s + 1);
-    } else {
-      setConfirmed(true);
+      return;
     }
-  };
+
+    if (!categoryId || !subServiceId || !address.trim()) return;
+
+    setIsSubmitting(true);
+    try {
+      const serviceCategory = CATEGORY_TO_SERVICE[categoryId] ?? ServiceCategory.General;
+      const scheduledAt =
+        bookingMode === 'later'
+          ? `${selectedDate}T${String(selectedHour).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}:00`
+          : undefined;
+
+      // Look up service ID from slug
+      const slug = SUB_SERVICE_TO_SLUG[subServiceId] ?? 'general-handyman';
+      let serviceId: string | undefined;
+      const { data: svc } = await supabase
+        .from('services')
+        .select('id')
+        .eq('slug', slug)
+        .maybeSingle();
+      serviceId = svc?.id;
+      if (!serviceId) {
+        console.warn(`createBooking: no service found for slug "${slug}"`);
+      }
+
+      const booking = await createBooking({
+        clientId: 'c1',
+        clientName: 'Ishah Bautista',
+        serviceCategory,
+        bookingType: bookingMode === 'now' ? BookingType.OnDemand : BookingType.Scheduled,
+        description,
+        location: address,
+        amount: findAmount(),
+        serviceId,
+        lat: DEFAULT_LAT,
+        lng: DEFAULT_LNG,
+        scheduledAt,
+        notes: notes || undefined,
+      });
+
+      router.replace(`/booking/${booking.id}`);
+    } catch {
+      // Submission failed — stay on review step
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [
+    stepIndex,
+    categoryId,
+    subServiceId,
+    address,
+    bookingMode,
+    selectedDate,
+    selectedHour,
+    selectedMinute,
+    description,
+    notes,
+    findAmount,
+    createBooking,
+    router,
+  ]);
 
   const handleBack = () => {
     if (stepIndex > 0) {
@@ -55,47 +175,6 @@ export default function NewBookingScreen() {
       router.back();
     }
   };
-
-  if (confirmed) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.ui.background }}>
-        <View className="flex-1 items-center justify-center px-8">
-          <View
-            className="mb-6 h-20 w-20 items-center justify-center rounded-full"
-            style={{ backgroundColor: colors.primary['50'] }}>
-            <Ionicons name="checkmark-circle" size={48} color={colors.primary['600']} />
-          </View>
-          <Text
-            className="mb-2 text-center text-[24px] font-bold"
-            style={{ color: colors.ui.text }}>
-            Booking Submitted!
-          </Text>
-          <Text
-            className="mb-8 text-center text-[14px] leading-6"
-            style={{ color: colors.ui.textMuted }}>
-            {bookingMode === 'now'
-              ? "We're finding the nearest available handyman. You'll be notified once confirmed."
-              : "Your booking request has been sent. You'll receive confirmation soon."}
-          </Text>
-          <Button
-            label="Back to Home"
-            onPress={() => router.replace('/(client)')}
-            fullWidth
-            style={{ paddingVertical: 14 }}
-          />
-          <View className="mt-3 w-full">
-            <Button
-              label="View My Bookings"
-              onPress={() => router.push('/bookings')}
-              variant="tertiary"
-              fullWidth
-              style={{ paddingVertical: 14 }}
-            />
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView
@@ -164,6 +243,7 @@ export default function NewBookingScreen() {
               onHourChange={setSelectedHour}
               onMinuteChange={setSelectedMinute}
               onSwitchMode={(newMode) => setBookingMode(newMode)}
+              isSelectedSlotBlocked={isSelectedSlotBlocked}
             />
           )}
           {stepIndex === 3 && (
@@ -189,9 +269,15 @@ export default function NewBookingScreen() {
             borderTopColor: colors.ui.border,
           }}>
           <Button
-            label={stepIndex < NEW_BOOKING_STEPS.length - 1 ? 'Continue' : 'Confirm Booking'}
+            label={
+              isSubmitting
+                ? 'Submitting...'
+                : stepIndex < NEW_BOOKING_STEPS.length - 1
+                  ? 'Continue'
+                  : 'Confirm Booking'
+            }
             onPress={handleNext}
-            disabled={!canAdvance()}
+            disabled={!canAdvance() || isSubmitting}
             fullWidth
             style={{ paddingVertical: 14 }}
           />

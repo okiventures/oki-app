@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
-import { Booking, BookingEvent, BookingStatus } from '../types';
+import { Booking, BookingEvent, BookingStatus, BookingType, ServiceCategory } from '../types';
+import { generateId } from '../utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,16 @@ type StateTransitionAction =
 const USE_MOCK =
   !process.env.EXPO_PUBLIC_SUPABASE_URL ||
   process.env.EXPO_PUBLIC_SUPABASE_URL.includes('your-project');
+
+async function checkSession(): Promise<boolean> {
+  if (USE_MOCK) return false;
+  try {
+    const { data } = await supabase.auth.getSession();
+    return !!data.session;
+  } catch {
+    return false;
+  }
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -179,7 +190,8 @@ export async function transitionBookingState(
   action: StateTransitionAction,
   metadata?: Record<string, unknown>
 ): Promise<Booking> {
-  if (USE_MOCK || metadata?.simulated) {
+  const hasSession = await checkSession();
+  if (!hasSession || metadata?.simulated) {
     return applyLocalTransition(bookingId, action);
   }
 
@@ -196,7 +208,9 @@ export async function transitionBookingState(
         body: { bookingId, ...(metadata ?? {}) },
       });
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        throw new Error(error.message);
+      }
       return mapBookingRow(data as BookingRow);
     }
 
@@ -250,6 +264,90 @@ export function subscribeToBooking(
   return () => {
     supabase.removeChannel(channel);
   };
+}
+
+// ─── Create booking ───────────────────────────────────────────────────────────
+
+export interface CreateBookingInput {
+  clientId: string;
+  clientName: string;
+  serviceCategory: ServiceCategory;
+  bookingType: BookingType;
+  description: string;
+  location: string;
+  amount: number;
+  serviceId?: string;
+  lat?: number;
+  lng?: number;
+  scheduledAt?: string;
+  notes?: string;
+}
+
+function createMockBooking(input: CreateBookingInput): Booking {
+  const id = generateId();
+  const platformFee = Math.round(input.amount * 0.1);
+  return {
+    id,
+    clientId: input.clientId,
+    clientName: input.clientName,
+    handymanId: '',
+    handymanName: '',
+    serviceCategory: input.serviceCategory,
+    bookingType: input.bookingType,
+    status: BookingStatus.Pending,
+    description: input.description,
+    location: input.location,
+    amount: input.amount,
+    platformFee,
+    netAmount: input.amount - platformFee,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    scheduledAt: input.scheduledAt,
+    notes: input.notes,
+  };
+}
+
+export async function createBooking(input: CreateBookingInput): Promise<Booking> {
+  const hasSession = await checkSession();
+  if (!hasSession) {
+    console.log('createBooking: no session, using mock');
+    return createMockBooking(input);
+  }
+
+  if (!input.serviceId || input.lat === undefined || input.lng === undefined) {
+    console.warn('createBooking: missing serviceId or coordinates, falling back to mock');
+    return createMockBooking(input);
+  }
+
+  console.log('createBooking: calling Edge Function with serviceId', input.serviceId);
+  try {
+    const { data, error } = await supabase.functions.invoke('create-booking', {
+      body: {
+        serviceId: input.serviceId,
+        bookingType: input.bookingType === BookingType.OnDemand ? 'ON_DEMAND' : 'SCHEDULED',
+        description: input.description,
+        addressText: input.location,
+        lat: input.lat,
+        lng: input.lng,
+        scheduledAt: input.scheduledAt ?? null,
+        notes: input.notes ?? null,
+      },
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const bookingRow = data.data as BookingRow;
+    return {
+      ...mapBookingRow(bookingRow),
+      clientName: input.clientName,
+      handymanName: '',
+    };
+  } catch (err) {
+    console.warn('createBooking: Edge Function failed, falling back to mock', err);
+    return createMockBooking(input);
+  }
 }
 
 // ─── Guard condition descriptions ────────────────────────────────────────────

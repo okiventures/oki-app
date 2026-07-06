@@ -4,11 +4,13 @@ import { Booking, BookingStatus } from '../../types';
 import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS } from '../../constants/theme';
 import { formatTime } from '../../utils';
 import { Card } from '../ui/Card';
+import { useHandymanAvailability } from '../../hooks/useHandymanAvailability';
 
 interface ScheduleCalendarProps {
   bookings: Booking[];
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
+  handymanId: string;
 }
 
 const SLOT_HOURS = [8, 10, 12, 14, 16, 18];
@@ -30,7 +32,12 @@ function getWeekDays(anchor: Date): Date[] {
   return Array.from({ length: 7 }, (_, index) => new Date(start.getTime() + index * 86400000));
 }
 
-export function ScheduleCalendar({ bookings, selectedDate, onSelectDate }: ScheduleCalendarProps) {
+export function ScheduleCalendar({
+  bookings,
+  selectedDate,
+  onSelectDate,
+  handymanId,
+}: ScheduleCalendarProps) {
   const selectedDayBookings = useMemo(
     () =>
       bookings
@@ -46,6 +53,11 @@ export function ScheduleCalendar({ bookings, selectedDate, onSelectDate }: Sched
   );
 
   const weekDays = useMemo(() => getWeekDays(new Date()), []);
+
+  const { isTimeSlotBlocked } = useHandymanAvailability({
+    handymanId,
+    targetDate: selectedDate,
+  });
 
   return (
     <View>
@@ -93,6 +105,9 @@ export function ScheduleCalendar({ bookings, selectedDate, onSelectDate }: Sched
               return bookingDate.getHours() >= hour && bookingDate.getHours() < hour + 2;
             });
 
+            const isBlocked = isTimeSlotBlocked(hour);
+            const isAvailable = !isBlocked && slotBookings.length === 0;
+
             const slotLabel = new Date(2026, 0, 1, hour).toLocaleTimeString('en-PH', {
               hour: 'numeric',
               minute: '2-digit',
@@ -101,7 +116,10 @@ export function ScheduleCalendar({ bookings, selectedDate, onSelectDate }: Sched
             return (
               <View key={hour} className="flex-row items-start gap-3">
                 <View className="w-20 pt-3">
-                  <Text className="text-[12px] font-medium text-gray-500">{slotLabel}</Text>
+                  <Text
+                    className={`text-[12px] font-medium ${isBlocked ? 'text-gray-300' : 'text-gray-500'}`}>
+                    {slotLabel}
+                  </Text>
                 </View>
                 <View className="flex-1 gap-2">
                   {slotBookings.length > 0 ? (
@@ -126,11 +144,26 @@ export function ScheduleCalendar({ bookings, selectedDate, onSelectDate }: Sched
                         </View>
                       );
                     })
+                  ) : isBlocked ? (
+                    <View
+                      className="rounded-2xl border border-dashed border-gray-200 px-3 py-3"
+                      style={{ backgroundColor: '#F9FAFB' }}>
+                      <Text className="text-[12px] text-gray-300">Unavailable</Text>
+                    </View>
+                  ) : isAvailable ? (
+                    <View
+                      className="rounded-2xl border border-dashed px-3 py-3"
+                      style={{
+                        borderColor: '#BBF7D0',
+                        backgroundColor: '#F0FDF4',
+                      }}>
+                      <Text className="text-[12px]" style={{ color: '#16A34A' }}>
+                        Available
+                      </Text>
+                    </View>
                   ) : (
                     <View className="rounded-2xl border border-dashed border-gray-200 px-3 py-3">
-                      <Text className="text-[12px] text-gray-400">
-                        No booking reserved for this slot.
-                      </Text>
+                      <Text className="text-[12px] text-gray-400">—</Text>
                     </View>
                   )}
                 </View>
