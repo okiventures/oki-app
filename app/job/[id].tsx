@@ -18,7 +18,8 @@ import { ConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 import { formatCurrency, formatDateTime, getInitials } from '../../src/utils';
 
 // Short, human-readable reference derived from the booking UUID.
-function bookingReference(id: string): string {
+function bookingReference(id: string | undefined): string {
+  if (!id) return '#--------';
   return `#${id.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
 }
 
@@ -35,6 +36,7 @@ export default function HandymanJobDetail() {
   const { colors } = useTheme();
   const { getBookingById, acceptBooking, declineBooking, advanceBooking } = useBookings();
   const [pendingAction, setPendingAction] = useState<'accept' | 'decline' | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const booking = id ? getBookingById(id) : undefined;
   const primaryColor = colors.primary['600'];
@@ -68,16 +70,28 @@ export default function HandymanJobDetail() {
   const isTerminal = TERMINAL_STATUSES.includes(booking.status);
   const nextAction = getNextHandymanAction(booking.status);
 
-  const confirmAction = () => {
-    if (pendingAction === 'accept') {
-      acceptBooking(booking.id);
-    } else if (pendingAction === 'decline') {
-      declineBooking(booking.id);
-      setPendingAction(null);
-      goBack();
-      return;
+  const confirmAction = async () => {
+    if (!pendingAction || isSubmitting) return;
+    const action = pendingAction;
+
+    setIsSubmitting(true);
+    try {
+      if (action === 'accept') {
+        await acceptBooking(booking.id);
+        setPendingAction(null);
+      } else {
+        await declineBooking(booking.id);
+        setPendingAction(null);
+        goBack();
+      }
+    } catch {
+      Alert.alert(
+        action === 'accept' ? 'Could not accept job' : 'Could not decline job',
+        'Something went wrong. Please check your connection and try again.'
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-    setPendingAction(null);
   };
 
   const contactClient = (mode: 'call' | 'message') => {
@@ -135,14 +149,14 @@ export default function HandymanJobDetail() {
               Service
             </Text>
             <Text className="mt-1 text-[20px] font-bold text-gray-900">
-              {booking.serviceCategory}
+              {booking.serviceCategory || 'Service request'}
             </Text>
             <View className="mt-3">
               <Text className="text-[11px] tracking-[0.8px] text-gray-500 uppercase">
                 Description
               </Text>
               <Text className="mt-0.5 text-[13px] leading-5 text-gray-600">
-                {booking.description}
+                {booking.description || 'No description provided.'}
               </Text>
             </View>
             {booking.notes ? (
@@ -209,7 +223,9 @@ export default function HandymanJobDetail() {
             </Text>
             <View className="mt-2 flex-row items-start gap-2">
               <Ionicons name="location-outline" size={16} color={primaryColor} />
-              <Text className="flex-1 text-[13px] leading-5 text-gray-700">{booking.location}</Text>
+              <Text className="flex-1 text-[13px] leading-5 text-gray-700">
+                {booking.location || 'Address unavailable'}
+              </Text>
             </View>
           </Card>
 
@@ -311,8 +327,11 @@ export default function HandymanJobDetail() {
         confirmLabel={pendingAction === 'accept' ? 'Accept job' : 'Decline job'}
         cancelLabel="Keep reviewing"
         danger={pendingAction === 'decline'}
+        loading={isSubmitting}
         onConfirm={confirmAction}
-        onCancel={() => setPendingAction(null)}
+        onCancel={() => {
+          if (!isSubmitting) setPendingAction(null);
+        }}
       />
     </SafeAreaView>
   );

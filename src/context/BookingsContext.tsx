@@ -192,23 +192,12 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const acceptBooking = useCallback(async (bookingId: string) => {
-    try {
-      const updated = await transitionBookingState(bookingId, 'ACCEPT');
-      setBookings((current) =>
-        current.map((booking) =>
-          booking.id === bookingId ? mergeTransition(booking, updated) : booking
-        )
-      );
-    } catch {
-      // Fallback to local state transition
-      setBookings((current) =>
-        current.map((booking) =>
-          booking.id === bookingId && booking.status === BookingStatus.Pending
-            ? updateBooking(booking, BookingStatus.Accepted)
-            : booking
-        )
-      );
-    }
+    const updated = await transitionBookingState(bookingId, 'ACCEPT');
+    setBookings((current) =>
+      current.map((booking) =>
+        booking.id === bookingId ? mergeTransition(booking, updated) : booking
+      )
+    );
   }, []);
 
   const declineBooking = useCallback(async (bookingId: string) => {
@@ -228,8 +217,15 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
           booking.id === bookingId ? mergeTransition(booking, updated) : booking
         )
       );
-    } catch {
-      // The optimistic Rejected state already stands in for the local fallback.
+    } catch (err) {
+      setBookings((current) =>
+        current.map((booking) =>
+          booking.id === bookingId && booking.status === BookingStatus.Rejected
+            ? updateBooking(booking, BookingStatus.Pending)
+            : booking
+        )
+      );
+      throw err;
     }
   }, []);
 
