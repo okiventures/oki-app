@@ -94,6 +94,20 @@ function updateBooking(booking: Booking, status: BookingStatus): Booking {
   };
 }
 
+// A state transition only changes status/assignment/photos. Merge just those
+// from the API response so we don't clobber richer local fields (clientName,
+// serviceCategory, amounts) with the edge function's placeholder values.
+function mergeTransition(existing: Booking, updated: Booking): Booking {
+  return {
+    ...existing,
+    status: updated.status,
+    handymanId: updated.handymanId || existing.handymanId,
+    beforePhoto: updated.beforePhoto ?? existing.beforePhoto,
+    afterPhoto: updated.afterPhoto ?? existing.afterPhoto,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export function BookingsProvider({ children }: { children: React.ReactNode }) {
   const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
   const unsubRef = useRef<(() => void) | null>(null);
@@ -192,45 +206,40 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const acceptBooking = useCallback(async (bookingId: string) => {
-    try {
-      const updated = await transitionBookingState(bookingId, 'ACCEPT');
-      setBookings((current) =>
-        current.map((booking) =>
-          booking.id === bookingId
-            ? { ...booking, ...updated, updatedAt: new Date().toISOString() }
-            : booking
-        )
-      );
-    } catch {
-      // Fallback to local state transition
-      setBookings((current) =>
-        current.map((booking) =>
-          booking.id === bookingId && booking.status === BookingStatus.Pending
-            ? updateBooking(booking, BookingStatus.Accepted)
-            : booking
-        )
-      );
-    }
+    const updated = await transitionBookingState(bookingId, 'ACCEPT');
+    setBookings((current) =>
+      current.map((booking) =>
+        booking.id === bookingId ? mergeTransition(booking, updated) : booking
+      )
+    );
   }, []);
 
   const declineBooking = useCallback(async (bookingId: string) => {
+    // Optimistically reflect the rejection so the inbox updates immediately.
+    setBookings((current) =>
+      current.map((booking) =>
+        booking.id === bookingId && booking.status === BookingStatus.Pending
+          ? updateBooking(booking, BookingStatus.Rejected)
+          : booking
+      )
+    );
+
     try {
-      await transitionBookingState(bookingId, 'REJECT');
+      const updated = await transitionBookingState(bookingId, 'REJECT');
       setBookings((current) =>
         current.map((booking) =>
-          booking.id === bookingId && booking.status === BookingStatus.Pending
-            ? updateBooking(booking, BookingStatus.Rejected)
+          booking.id === bookingId ? mergeTransition(booking, updated) : booking
+        )
+      );
+    } catch (err) {
+      setBookings((current) =>
+        current.map((booking) =>
+          booking.id === bookingId && booking.status === BookingStatus.Rejected
+            ? updateBooking(booking, BookingStatus.Pending)
             : booking
         )
       );
-    } catch {
-      setBookings((current) =>
-        current.map((booking) =>
-          booking.id === bookingId && booking.status === BookingStatus.Pending
-            ? updateBooking(booking, BookingStatus.Rejected)
-            : booking
-        )
-      );
+      throw err;
     }
   }, []);
 

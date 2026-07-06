@@ -63,16 +63,39 @@ async function checkSession(): Promise<boolean> {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function mapBookingRow(row: BookingRow): Booking {
+// The database stores statuses as UPPER_SNAKE; the app layer uses the
+// PascalCase BookingStatus enum. Translate on the way in so real Supabase rows
+// match the UI's filters and enum comparisons.
+const DB_STATUS_TO_UI: Record<string, BookingStatus> = {
+  PENDING: BookingStatus.Pending,
+  ACCEPTED: BookingStatus.Accepted,
+  IN_TRANSIT: BookingStatus.InTransit,
+  ARRIVED: BookingStatus.Arrived,
+  WORK_STARTED: BookingStatus.WorkStarted,
+  COMPLETED: BookingStatus.Completed,
+  PAID: BookingStatus.Paid,
+  CANCELLED: BookingStatus.Cancelled,
+  REJECTED: BookingStatus.Rejected,
+};
+
+function toUiStatus(dbStatus: string): BookingStatus {
+  return DB_STATUS_TO_UI[dbStatus] ?? (dbStatus as BookingStatus);
+}
+
+// Rows may arrive with a joined `services(category)` relation; the enum values
+// mirror ServiceCategory exactly, so the joined string maps straight through.
+type BookingRowWithJoins = BookingRow & { services?: { category?: string } | null };
+
+function mapBookingRow(row: BookingRowWithJoins): Booking {
   return {
     id: row.id,
     clientId: row.client_id,
     clientName: '',
     handymanId: row.handyman_id ?? '',
     handymanName: '',
-    serviceCategory: 'General Handyman' as any,
+    serviceCategory: (row.services?.category ?? 'General Handyman') as ServiceCategory,
     bookingType: row.booking_type === 'ON_DEMAND' ? ('OnDemand' as any) : ('Scheduled' as any),
-    status: row.status,
+    status: toUiStatus(row.status as unknown as string),
     description: row.description,
     location: row.address_text,
     amount: row.amount,
@@ -110,7 +133,9 @@ export async function fetchBookings(): Promise<Booking[]> {
 
   const { data, error } = await supabase
     .from('bookings')
-    .select('*, clients:users!client_id(full_name), handymen:users!handyman_id(full_name)')
+    .select(
+      '*, services!service_id(category), clients:users!client_id(full_name), handymen:users!handyman_id(full_name)'
+    )
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(`Failed to fetch bookings: ${error.message}`);
@@ -157,7 +182,7 @@ export async function fetchBookingEvents(bookingId: string): Promise<BookingEven
 
 const ACTION_TO_STATUS: Record<string, BookingStatus> = {
   ACCEPT: 'Accepted' as BookingStatus,
-  REJECT: 'Cancelled' as BookingStatus,
+  REJECT: 'Rejected' as BookingStatus,
   CANCEL: 'Cancelled' as BookingStatus,
   START_TRANSIT: 'InTransit' as BookingStatus,
   MARK_ARRIVED: 'Arrived' as BookingStatus,
@@ -199,6 +224,7 @@ export async function transitionBookingState(
     // Map action to edge function name
     const functionMap: Record<string, string> = {
       ACCEPT: 'accept-booking',
+      REJECT: 'reject-booking',
       COMPLETE: 'complete-booking',
     };
 
@@ -211,7 +237,10 @@ export async function transitionBookingState(
       if (error) {
         throw new Error(error.message);
       }
-      return mapBookingRow(data as BookingRow);
+      // Edge functions respond via ok()/created(), which wrap the row as
+      // `{ data: row }`. Unwrap it; fall back to the raw body defensively.
+      const bookingRow = (data as { data?: BookingRow })?.data ?? (data as BookingRow);
+      return mapBookingRow(bookingRow);
     }
 
     // For other transitions, call a generic state RPC or direct update

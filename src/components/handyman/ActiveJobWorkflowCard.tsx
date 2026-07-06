@@ -13,9 +13,14 @@ import { Link } from 'expo-router';
 interface ActiveJobWorkflowCardProps {
   booking: Booking;
   onAdvance: () => void;
+  onViewDetails?: () => void;
 }
 
-export function ActiveJobWorkflowCard({ booking, onAdvance }: ActiveJobWorkflowCardProps) {
+export function ActiveJobWorkflowCard({
+  booking,
+  onAdvance,
+  onViewDetails,
+}: ActiveJobWorkflowCardProps) {
   const nextAction = getNextHandymanAction(booking.status);
   const statusColor = BOOKING_STATUS_COLORS[booking.status] ?? '#6B7280';
   const statusLabel = BOOKING_STATUS_LABELS[booking.status] ?? booking.status;
@@ -82,6 +87,15 @@ export function ActiveJobWorkflowCard({ booking, onAdvance }: ActiveJobWorkflowC
           }
         />
       </View>
+
+      {onViewDetails && (
+        <TouchableOpacity
+          onPress={onViewDetails}
+          className="mt-3 flex-row items-center justify-center gap-1 py-1">
+          <Text className="text-[13px] font-semibold text-gray-600">View full details</Text>
+          <Ionicons name="chevron-forward" size={14} color="#4B5563" />
+        </TouchableOpacity>
+      )}
     </Card>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../ui/Avatar';
 import { Badge } from '../ui/Badge';
@@ -13,6 +13,7 @@ interface RequestInboxCardProps {
   booking: Booking;
   onAccept: () => void;
   onDecline: () => void;
+  onViewDetails?: () => void;
 }
 
 function formatCountdown(targetDate?: string): string {
@@ -32,7 +33,12 @@ function formatCountdown(targetDate?: string): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')} left`;
 }
 
-export function RequestInboxCard({ booking, onAccept, onDecline }: RequestInboxCardProps) {
+export function RequestInboxCard({
+  booking,
+  onAccept,
+  onDecline,
+  onViewDetails,
+}: RequestInboxCardProps) {
   const { colors } = useTheme();
   const [countdown, setCountdown] = useState(() => formatCountdown(booking.requestExpiresAt));
 
@@ -126,6 +132,17 @@ export function RequestInboxCard({ booking, onAccept, onDecline }: RequestInboxC
           <Text className="text-[12px] text-gray-600">{bookingWindowLabel}</Text>
         </View>
       </View>
+
+      {onViewDetails && (
+        <Pressable
+          onPress={onViewDetails}
+          className="mb-1 flex-row items-center justify-center gap-1 py-2">
+          <Text className="text-[13px] font-semibold" style={{ color: colors.primary['700'] }}>
+            View full details
+          </Text>
+          <Ionicons name="chevron-forward" size={14} color={colors.primary['700']} />
+        </Pressable>
+      )}
 
       <View className="mt-2 flex-row gap-3">
         <View className="flex-1">
