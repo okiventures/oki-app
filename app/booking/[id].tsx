@@ -241,30 +241,55 @@ export default function BookingDetailScreen() {
           {activeTab === 'Payment' && <BookingPaymentTab booking={booking} />}
         </ScrollView>
 
-        {(canClientCancel || nextAction) && (
-          <View
-            className="border-t border-gray-200 px-5 pt-3 pb-6"
-            style={{ backgroundColor: colors.ui.background }}>
-            {isHandyman && nextAction && (
+        <View
+          className="border-t px-5 pt-3 pb-6"
+          style={{
+            backgroundColor: colors.ui.background,
+            borderColor: colors.ui.border,
+          }}>
+          {(canClientCancel || nextAction) && (
+            <View className="gap-2">
+              {isHandyman && nextAction && (
+                <Button
+                  label={nextAction.label}
+                  variant="primary"
+                  fullWidth
+                  onPress={() => setShowAdvanceDialog(true)}
+                />
+              )}
+
+              {canClientCancel && (
+                <Button
+                  label="Cancel Booking"
+                  variant="tertiary"
+                  fullWidth
+                  onPress={() => setShowCancelDialog(true)}
+                  leftIcon={<Ionicons name="close-circle-outline" size={16} color="#EF4444" />}
+                />
+              )}
+            </View>
+          )}
+
+          <View className={canClientCancel || nextAction ? 'mt-3' : 'gap-2'}>
+            {(booking.status === BookingStatus.Completed ||
+              booking.status === BookingStatus.Paid) && (
               <Button
-                label={nextAction.label}
+                label="Leave a Review"
                 variant="primary"
                 fullWidth
-                onPress={() => setShowAdvanceDialog(true)}
+                onPress={() => router.push(`/review/${booking.id}`)}
+                leftIcon={<Ionicons name="star-outline" size={16} color="#FFFFFF" />}
               />
             )}
-
-            {canClientCancel && (
-              <Button
-                label="Cancel Booking"
-                variant="tertiary"
-                fullWidth
-                onPress={() => setShowCancelDialog(true)}
-                leftIcon={<Ionicons name="close-circle-outline" size={16} color="#EF4444" />}
-              />
-            )}
+            <Button
+              label="Report Issue"
+              variant="tertiary"
+              fullWidth
+              onPress={() => router.push(`/report/${booking.id}`)}
+              leftIcon={<Ionicons name="flag-outline" size={16} color={colors.primary['600']} />}
+            />
           </View>
-        )}
+        </View>
       </View>
 
       <ConfirmDialog

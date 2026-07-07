@@ -60,6 +60,7 @@ export default function HandymanSchedule() {
                     booking={booking}
                     userType="handyman"
                     onPress={() => router.push(`/booking/${booking.id}?role=handyman`)}
+                    onReport={() => router.push(`/report/${booking.id}`)}
                   />
                 ))
               ) : (

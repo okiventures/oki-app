@@ -57,7 +57,18 @@ const PREFERENCES_ITEMS: {
   },
 ];
 
-const SUPPORT_ITEMS = [
+const SUPPORT_ITEMS: {
+  icon: string;
+  title: string;
+  subtitle: string;
+  route?: string;
+}[] = [
+  {
+    icon: 'flag-outline',
+    title: 'My Reports',
+    subtitle: 'View your submitted reports',
+    route: '/report',
+  },
   {
     icon: 'help-buoy-outline',
     title: 'Help & Support',
@@ -194,7 +205,9 @@ export default function ClientProfile() {
                 icon={item.icon}
                 title={item.title}
                 subtitle={item.subtitle}
-                onPress={() => {}}
+                onPress={() => {
+                  if (item.route) router.push(item.route);
+                }}
                 hideDivider={i === SUPPORT_ITEMS.length - 1}
               />
             ))}

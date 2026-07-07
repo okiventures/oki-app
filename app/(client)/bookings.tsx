@@ -113,7 +113,8 @@ export default function ClientBookings() {
                       userType="client"
                       onPress={() => router.push(`/booking/${item.id}`)}
                       onRebook={() => {}}
-                      onReport={() => {}}
+                      onReport={() => router.push(`/report/${item.id}`)}
+                      onReview={() => router.push(`/review/${item.id}`)}
                     />
                   ))}
                 </BookingListSection>
