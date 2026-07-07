@@ -48,6 +48,23 @@ export const MOCK_REPORTS: UserReport[] = [
   },
 ];
 
+let nextId = 4;
+
+export function addReport(
+  report: Omit<UserReport, 'id' | 'status' | 'createdAt' | 'updatedAt'>
+): UserReport {
+  const now = new Date().toISOString();
+  const newReport: UserReport = {
+    ...report,
+    id: `rpt-${String(nextId++).padStart(3, '0')}`,
+    status: ReportStatus.Pending,
+    createdAt: now,
+    updatedAt: now,
+  };
+  MOCK_REPORTS.push(newReport);
+  return newReport;
+}
+
 export function getReportsByUser(userId: string): UserReport[] {
   return MOCK_REPORTS.filter((r) => r.reporterId === userId);
 }

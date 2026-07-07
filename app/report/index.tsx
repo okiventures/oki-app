@@ -72,16 +72,19 @@ export default function MyReportsScreen() {
             contentContainerStyle={{ paddingBottom: 40 }}
             showsVerticalScrollIndicator={false}>
             {reports.map((report) => (
-              <View
+              <Pressable
                 key={report.id}
-                style={{
+                onPress={() => router.push(`/report/detail/${report.id}`)}
+                android_ripple={{ color: 'rgba(0,0,0,0.05)' }}
+                style={({ pressed }) => ({
+                  opacity: pressed ? 0.85 : 1,
                   backgroundColor: colors.ui.surface,
                   shadowColor: '#000',
                   shadowOffset: { width: 0, height: 1 },
                   shadowOpacity: 0.04,
                   shadowRadius: 4,
                   elevation: 2,
-                }}
+                })}
                 className="mb-3 rounded-2xl p-4">
                 <View className="flex-row items-start justify-between">
                   <View className="flex-1 pr-3">
@@ -103,7 +106,7 @@ export default function MyReportsScreen() {
                     variant={STATUS_VARIANTS[report.status]}
                   />
                 </View>
-              </View>
+              </Pressable>
             ))}
           </ScrollView>
         )}
