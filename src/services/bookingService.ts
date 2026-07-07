@@ -46,10 +46,13 @@ type StateTransitionAction =
   | 'COMPLETE';
 
 export class BookingTransitionError extends Error {
-  readonly status?: number;
-  readonly body?: Record<string, unknown>;
+  status?: number;
+  body?: Record<string, unknown>;
 
-  constructor(message: string, status?: number, body?: Record<string, unknown>) {
+  constructor(
+    message: string,
+    { status, body }: { status?: number; body?: Record<string, unknown> } = {}
+  ) {
     super(message);
     this.name = 'BookingTransitionError';
     this.status = status;
@@ -227,31 +230,6 @@ async function applyLocalTransition(
   };
 }
 
-async function throwInvokeError(error: { message: string; context?: Response }): Promise<never> {
-  if (error.context) {
-    let body: Record<string, unknown> | undefined;
-    const text = await error.context.text();
-    if (text) {
-      try {
-        body = JSON.parse(text) as Record<string, unknown>;
-      } catch {
-        // Response body may be empty or non-JSON.
-      }
-    }
-    const message =
-      (typeof body?.message === 'string' && body.message) ||
-      error.message ||
-      'State transition failed';
-    throw new BookingTransitionError(message, error.context.status, body);
-  }
-
-  throw new BookingTransitionError(error.message || 'State transition failed');
-}
-
-function isInvokeTransportFailure(error: { context?: Response }): boolean {
-  return !error.context;
-}
-
 function shouldUseLocalTransition(
   hasSession: boolean,
   metadata?: Record<string, unknown>
@@ -286,7 +264,7 @@ export async function transitionBookingState(
       });
 
       if (error) {
-        throw new Error(error.message);
+        throw (error as any).context ? error : new Error(error.message);
       }
 
       const bookingRow = data?.data ?? data;
@@ -300,39 +278,35 @@ export async function transitionBookingState(
     });
 
     if (error) {
-      if (isInvokeTransportFailure(error)) {
-        console.warn(
-          `transitionBookingState: ${functionName} transport failure, falling back to local.`,
-          error.message
-        );
-        return applyLocalTransition(bookingId, action);
-      }
-
-      await throwInvokeError(error);
+      throw new Error(error.message);
     }
 
     return mapBookingRow(data as BookingRow);
   } catch (err) {
     const ctx = (err as any)?.context;
+    let parsedBody: Record<string, unknown> | null = null;
+    let status: number | undefined;
+
     if (ctx && typeof ctx.status === 'number') {
+      status = ctx.status;
       try {
-        const body = await ctx.text();
-        console.warn(
-          `transitionBookingState: remote call returned ${ctx.status}`,
-          body.length < 500 ? body : body.slice(0, 500)
-        );
+        parsedBody = JSON.parse(await ctx.text());
       } catch {
-        console.warn(
-          `transitionBookingState: remote call returned ${ctx.status}, could not read body`
-        );
+        // body is not valid JSON — fall through to raw error message
       }
-    } else {
-      console.warn(
-        `transitionBookingState: remote call failed, falling back to local.`,
-        err instanceof Error ? err.message : err
-      );
     }
-    throw err;
+
+    const message =
+      typeof parsedBody?.message === 'string'
+        ? parsedBody.message
+        : err instanceof Error
+          ? err.message
+          : String(err);
+
+    throw new BookingTransitionError(message, {
+      status,
+      body: parsedBody ?? undefined,
+    });
   }
 }
 
