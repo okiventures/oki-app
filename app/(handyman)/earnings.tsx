@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,15 +27,16 @@ import { DatePickerModal } from '../../src/components/handyman/DatePickerModal';
 type ChartMode = 'bar' | 'category' | 'pie';
 
 const PRESETS = ['This Day', 'This Week', 'This Month', 'Last Month', 'Custom'] as const;
+type Preset = (typeof PRESETS)[number];
 
-const PRESET_RANGES: Record<string, () => { start: Date; end: Date }> = {
+const PRESET_RANGES: Record<Exclude<Preset, 'Custom'>, () => { start: Date; end: Date }> = {
   'This Day': getTodayRange,
   'This Week': getThisWeekRange,
   'This Month': getThisMonthRange,
   'Last Month': getLastMonthRange,
 };
 
-const PRESET_HINTS: Record<string, string> = {
+const PRESET_HINTS: Record<Preset, string> = {
   'This Day': 'Hourly breakdown',
   'This Week': 'Mon–Sun',
   'This Month': 'Full month',
@@ -58,17 +59,22 @@ function dateStr(d: Date) {
 export default function HandymanEarnings() {
   const { colors } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
-  const [selectedPreset, setSelectedPreset] = useState<string>('This Week');
+  const [selectedPreset, setSelectedPreset] = useState<Preset>('This Week');
   const [chartMode, setChartMode] = useState<ChartMode>('bar');
   const [customStart, setCustomStart] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 29);
+    d.setHours(0, 0, 0, 0);
     return d;
   });
-  const [customEnd, setCustomEnd] = useState(() => new Date());
+  const [customEnd, setCustomEnd] = useState(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
   const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null);
   const [dateError, setDateError] = useState(false);
-  const errorTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const contentWidth = screenWidth - 32;
 
@@ -150,9 +156,16 @@ export default function HandymanEarnings() {
 
   const showDateError = () => {
     setDateError(true);
-    clearTimeout(errorTimer.current);
+    if (errorTimer.current) clearTimeout(errorTimer.current);
     errorTimer.current = setTimeout(() => setDateError(false), 2000);
   };
+
+  useEffect(
+    () => () => {
+      if (errorTimer.current) clearTimeout(errorTimer.current);
+    },
+    []
+  );
 
   const wallet = MOCK_HANDYMAN_WALLET;
 

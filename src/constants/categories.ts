@@ -1,3 +1,5 @@
+import { SERVICE_CATEGORY_COLORS } from './theme';
+
 export const CATEGORY_ORDER = [
   'Plumbing',
   'Electrical',
@@ -12,16 +14,16 @@ export const CATEGORY_ORDER = [
 ];
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  Plumbing: '#2563EB',
-  Electrical: '#D97706',
-  Carpentry: '#78350F',
-  Cleaning: '#059669',
-  Painting: '#DC2626',
-  HVAC: '#0891B2',
-  Roofing: '#4B5563',
-  Landscaping: '#16A34A',
-  'Appliance Repair': '#C2410C',
-  'General Handyman': '#7C3AED',
+  Plumbing: SERVICE_CATEGORY_COLORS.Plumbing.icon,
+  Electrical: SERVICE_CATEGORY_COLORS.Electrical.icon,
+  Carpentry: SERVICE_CATEGORY_COLORS.Carpentry.icon,
+  Cleaning: SERVICE_CATEGORY_COLORS.Cleaning.icon,
+  Painting: SERVICE_CATEGORY_COLORS.Painting.icon,
+  HVAC: SERVICE_CATEGORY_COLORS.HVAC.icon,
+  Roofing: SERVICE_CATEGORY_COLORS.Roofing.icon,
+  Landscaping: SERVICE_CATEGORY_COLORS.Landscaping.icon,
+  'Appliance Repair': SERVICE_CATEGORY_COLORS['Appliance Repair'].icon,
+  'General Handyman': SERVICE_CATEGORY_COLORS['General Handyman'].icon,
 };
 
 export const CATEGORY_ICONS: Record<string, string> = {
@@ -38,14 +40,14 @@ export const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export const CATEGORY_BG: Record<string, string> = {
-  Plumbing: '#EFF6FF',
-  Electrical: '#FFFBEB',
-  Carpentry: '#FEF3C7',
-  Cleaning: '#F0FDF4',
-  Painting: '#FEF2F2',
-  HVAC: '#ECFEFF',
-  Roofing: '#F5F5F4',
-  Landscaping: '#F0FDF4',
-  'Appliance Repair': '#FFF7ED',
-  'General Handyman': '#F5F3FF',
+  Plumbing: SERVICE_CATEGORY_COLORS.Plumbing.bg,
+  Electrical: SERVICE_CATEGORY_COLORS.Electrical.bg,
+  Carpentry: SERVICE_CATEGORY_COLORS.Carpentry.bg,
+  Cleaning: SERVICE_CATEGORY_COLORS.Cleaning.bg,
+  Painting: SERVICE_CATEGORY_COLORS.Painting.bg,
+  HVAC: SERVICE_CATEGORY_COLORS.HVAC.bg,
+  Roofing: SERVICE_CATEGORY_COLORS.Roofing.bg,
+  Landscaping: SERVICE_CATEGORY_COLORS.Landscaping.bg,
+  'Appliance Repair': SERVICE_CATEGORY_COLORS['Appliance Repair'].bg,
+  'General Handyman': SERVICE_CATEGORY_COLORS['General Handyman'].bg,
 };

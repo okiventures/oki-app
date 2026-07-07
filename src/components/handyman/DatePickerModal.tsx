@@ -82,6 +82,8 @@ export function DatePickerModal({
   const [mode, setMode] = useState<ViewMode>('days');
   const yearStripRef = useRef<ScrollView>(null);
   const yearLayoutDone = useRef(false);
+  const initialScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const settleScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { days, start } = monthDays(vd.getMonth(), vd.getFullYear());
   const today = new Date();
@@ -121,10 +123,21 @@ export function DatePickerModal({
   }, [curYear, sw, yrs]);
 
   useEffect(() => {
+    if (initialScrollTimeoutRef.current) clearTimeout(initialScrollTimeoutRef.current);
+    if (settleScrollTimeoutRef.current) clearTimeout(settleScrollTimeoutRef.current);
+    initialScrollTimeoutRef.current = null;
+    settleScrollTimeoutRef.current = null;
+
     if (mode === 'months' && yearStripRef.current) {
-      setTimeout(scrollYearStrip, 50);
-      setTimeout(scrollYearStrip, 150);
+      initialScrollTimeoutRef.current = setTimeout(scrollYearStrip, 50);
+      settleScrollTimeoutRef.current = setTimeout(scrollYearStrip, 150);
     }
+    return () => {
+      if (initialScrollTimeoutRef.current) clearTimeout(initialScrollTimeoutRef.current);
+      if (settleScrollTimeoutRef.current) clearTimeout(settleScrollTimeoutRef.current);
+      initialScrollTimeoutRef.current = null;
+      settleScrollTimeoutRef.current = null;
+    };
   }, [mode, scrollYearStrip]);
 
   const atMinMonth =

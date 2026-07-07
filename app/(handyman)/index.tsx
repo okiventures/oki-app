@@ -38,9 +38,14 @@ export default function HandymanDashboard() {
   const [customStart, setCustomStart] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 6);
+    d.setHours(0, 0, 0, 0);
     return d;
   });
-  const [customEnd, setCustomEnd] = useState(() => new Date());
+  const [customEnd, setCustomEnd] = useState(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
 
   const range = useMemo(() => {
     if (selectedPreset === 'Custom') {
@@ -140,8 +145,8 @@ export default function HandymanDashboard() {
             rangeStart={range.start}
             rangeEnd={range.end}
             onCustomDateChange={(s, e) => {
-              setCustomStart(s);
-              setCustomEnd(e);
+              setCustomStart(new Date(s.getFullYear(), s.getMonth(), s.getDate()));
+              setCustomEnd(new Date(e.getFullYear(), e.getMonth(), e.getDate()));
               setSelectedPreset('Custom');
             }}
             onSeeFullReport={() => router.push('/(handyman)/earnings')}

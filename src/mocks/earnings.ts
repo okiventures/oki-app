@@ -47,7 +47,7 @@ const HOUR_CUMULATIVE = HOUR_WEIGHTS.reduce<number[]>(
   []
 );
 
-/* Status weights: ~88% Completed, 5% Cancelled (as Failed), 4% Pending, 3% Failed */
+/* Status weights: ~88% Completed, 5% Failed, 4% Pending, 3% Processing */
 const STATUS_WEIGHTS = [
   { status: PayoutStatus.Completed, weight: 0.88 },
   { status: PayoutStatus.Failed, weight: 0.05 },
@@ -147,7 +147,7 @@ function generateDailyEntries(): EarningsEntry[] {
       /* Cancelled / failed entries have 0 or minimal pay */
       let finalGross = grossAmount;
       let finalFee = Math.round(grossAmount * 0.1);
-      if (status === 'Failed') {
+      if (status === PayoutStatus.Failed) {
         finalGross = 0;
         finalFee = 0;
       }
@@ -218,8 +218,14 @@ export function filterEarningsByRange(
   startDate: Date,
   endDate: Date
 ): EarningsEntry[] {
-  const start = startDate.getTime();
-  const end = endDate.getTime() + 86400000;
+  const start = new Date(
+    startDate.getFullYear(),
+    startDate.getMonth(),
+    startDate.getDate()
+  ).getTime();
+  const endBoundary = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+  endBoundary.setDate(endBoundary.getDate() + 1);
+  const end = endBoundary.getTime();
   return entries.filter((e) => {
     const t = new Date(e.date).getTime();
     return t >= start && t < end;
@@ -315,8 +321,9 @@ export function getTodayRange(): { start: Date; end: Date } {
 export function getThisWeekRange(): { start: Date; end: Date } {
   const now = new Date();
   const dayOfWeek = now.getDay();
+  const daysSinceMonday = (dayOfWeek + 6) % 7;
   const start = new Date(now);
-  start.setDate(now.getDate() - dayOfWeek);
+  start.setDate(now.getDate() - daysSinceMonday);
   start.setHours(0, 0, 0, 0);
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
