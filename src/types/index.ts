@@ -323,3 +323,38 @@ export interface ToastMessage {
   type: ToastType;
   message: string;
 }
+
+export type ReportReason =
+  | 'Poor Work Quality'
+  | 'No Show'
+  | 'Incomplete Job'
+  | 'Overcharging'
+  | 'Unprofessional Conduct'
+  | 'Harassment or Abuse'
+  | 'Payment Dispute'
+  | 'Damaged Property'
+  | 'Late or Delayed'
+  | 'False Accusation'
+  | 'Other';
+
+export enum ReportStatus {
+  Pending = 'Pending',
+  Reviewed = 'Reviewed',
+  Resolved = 'Resolved',
+  Dismissed = 'Dismissed',
+}
+
+export interface UserReport {
+  id: string;
+  reporterId: string;
+  reporterName: string;
+  reporterType: 'client' | 'handyman';
+  targetId: string;
+  targetName: string;
+  bookingId: string;
+  reason: ReportReason;
+  description: string;
+  status: ReportStatus;
+  createdAt: string;
+  updatedAt: string;
+}
