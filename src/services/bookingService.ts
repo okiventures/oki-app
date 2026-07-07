@@ -230,13 +230,6 @@ async function applyLocalTransition(
   };
 }
 
-function shouldUseLocalTransition(
-  hasSession: boolean,
-  metadata?: Record<string, unknown>
-): boolean {
-  return USE_MOCK || !hasSession || metadata?.simulated === true;
-}
-
 // ─── Transition booking state via Edge Function ──────────────────────────────
 
 export async function transitionBookingState(
