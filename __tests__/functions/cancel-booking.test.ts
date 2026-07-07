@@ -43,7 +43,15 @@ function makeReq(body: unknown): Request {
   return new Request('http://localhost/cancel-booking', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+function makeRawReq(rawBody: string): Request {
+  return new Request('http://localhost/cancel-booking', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: rawBody,
   });
 }
 
@@ -142,6 +150,34 @@ describe('request validation', () => {
     const res = await callHandler(makeReq({ bookingId: '' }));
     expect(res.status).toBe(400);
   });
+
+  it('returns 400 for invalid JSON body', async () => {
+    const res = await callHandler(makeRawReq('{not-json'));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.message).toMatch(/invalid json/i);
+  });
+
+  it('returns 400 for empty body', async () => {
+    const res = await callHandler(makeRawReq(''));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.message).toMatch(/invalid json/i);
+  });
+
+  it('returns 400 when body is null', async () => {
+    const res = await callHandler(makeReq(null));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.message).toMatch(/json object/i);
+  });
+
+  it('returns 400 when body is an array', async () => {
+    const res = await callHandler(makeReq([{ bookingId: 'b-1' }]));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.message).toMatch(/json object/i);
+  });
 });
 
 describe('booking existence', () => {
@@ -190,6 +226,7 @@ describe('state guard', () => {
     expect(body.action).toBe('CANCEL');
     expect(body.reason_code).toBe('TRANSITION_NOT_ALLOWED');
     expect(body.details.failed_guards).toContain('Booking must be PENDING');
+    expect(body.message).toBe('Cannot cancel booking in current state');
   });
 
   it.each(['IN_TRANSIT', 'ARRIVED', 'WORK_STARTED', 'COMPLETED'])(
@@ -211,7 +248,7 @@ describe('state guard', () => {
     }
   );
 
-  it.each(['PAID', 'CANCELLED', 'REJECTED'])(
+  it.each(['PAID', 'CANCELLED'])(
     'rejects with 422 and BOOKING_TERMINAL when booking is %s',
     async (status) => {
       (requireClient as jest.Mock).mockResolvedValue({
@@ -226,8 +263,25 @@ describe('state guard', () => {
       expect(res.status).toBe(422);
       const body = await res.json();
       expect(body.reason_code).toBe('BOOKING_TERMINAL');
+      expect(body.message).toBe('Booking is closed');
     }
   );
+
+  it('rejects with 422 and TRANSITION_NOT_ALLOWED when booking is REJECTED', async () => {
+    (requireClient as jest.Mock).mockResolvedValue({
+      user: { id: 'c-1' },
+      supabase: supabaseWith({
+        booking: { id: 'b-1', status: 'REJECTED', client_id: 'c-1' },
+        bookingError: null,
+      }),
+    });
+
+    const res = await callHandler(makeReq({ bookingId: 'b-1' }));
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.reason_code).toBe('TRANSITION_NOT_ALLOWED');
+    expect(body.message).toBe('Cannot cancel booking in current state');
+  });
 });
 
 describe('optimistic lock (PENDING guard on update)', () => {

@@ -7,10 +7,15 @@ import { Button } from '../ui/Button';
 
 interface BookingSearchingStateProps {
   booking: Booking;
-  onCancel?: () => void;
+  onCancel?: () => void | Promise<void>;
+  isCancelling?: boolean;
 }
 
-export function BookingSearchingState({ booking, onCancel }: BookingSearchingStateProps) {
+export function BookingSearchingState({
+  booking,
+  onCancel,
+  isCancelling = false,
+}: BookingSearchingStateProps) {
   const { colors } = useTheme();
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -107,6 +112,8 @@ export function BookingSearchingState({ booking, onCancel }: BookingSearchingSta
             onPress={onCancel}
             variant="tertiary"
             fullWidth
+            loading={isCancelling}
+            disabled={isCancelling}
             style={{ paddingVertical: 14 }}
           />
         </View>

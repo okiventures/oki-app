@@ -20,7 +20,18 @@ serve(async (req: Request) => {
   if ('error' in auth) return auth.error;
   const { user, supabase } = auth;
 
-  const { bookingId, reason }: CancelBookingRequest = await req.json();
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return badRequest('Invalid JSON body');
+  }
+
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    return badRequest('Request body must be a JSON object');
+  }
+
+  const { bookingId, reason } = body as CancelBookingRequest;
   if (!bookingId) return badRequest('bookingId required');
 
   const { data: booking, error: fetchError } = await supabase
@@ -36,18 +47,14 @@ serve(async (req: Request) => {
   }
 
   // Per booking-state-machine.md, client cancel is only valid pre-acceptance.
-  // Any status past PENDING (ACCEPTED, IN_TRANSIT, ARRIVED, WORK_STARTED,
-  // COMPLETED) must go through the Week 21 dispute/cancellation-fee flow, and
-  // terminal states (PAID, CANCELLED, REJECTED) cannot transition at all.
+  // Terminal states are PAID and CANCELLED only; all other non-PENDING statuses
+  // reject with TRANSITION_NOT_ALLOWED.
   if (booking.status !== 'PENDING') {
-    const isTerminal =
-      booking.status === 'PAID' || booking.status === 'CANCELLED' || booking.status === 'REJECTED';
+    const isTerminal = booking.status === 'PAID' || booking.status === 'CANCELLED';
     return new Response(
       JSON.stringify({
         error: 'INVALID_STATE_TRANSITION',
-        message: isTerminal
-          ? 'Booking is closed'
-          : 'Booking cannot be cancelled after a handyman has accepted',
+        message: isTerminal ? 'Booking is closed' : 'Cannot cancel booking in current state',
         from_status: booking.status,
         to_status: 'CANCELLED',
         action: 'CANCEL',
