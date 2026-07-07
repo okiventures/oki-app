@@ -51,6 +51,13 @@ const USE_MOCK =
   !process.env.EXPO_PUBLIC_SUPABASE_URL ||
   process.env.EXPO_PUBLIC_SUPABASE_URL.includes('your-project');
 
+// True when no real backend is configured — the app runs on local mock data.
+// Demo-only behaviour (e.g. simulated auto-accept) must be gated on this so it
+// never runs against a live backend.
+export function isMockEnv(): boolean {
+  return USE_MOCK;
+}
+
 async function checkSession(): Promise<boolean> {
   if (USE_MOCK) return false;
   try {
@@ -221,7 +228,6 @@ export async function transitionBookingState(
   }
 
   try {
-    // Map action to edge function name
     const functionMap: Record<string, string> = {
       ACCEPT: 'accept-booking',
       REJECT: 'reject-booking',
@@ -237,20 +243,21 @@ export async function transitionBookingState(
       if (error) {
         throw new Error(error.message);
       }
-      // Edge functions respond via ok()/created(), which wrap the row as
-      // `{ data: row }`. Unwrap it; fall back to the raw body defensively.
-      const bookingRow = (data as { data?: BookingRow })?.data ?? (data as BookingRow);
-      return mapBookingRow(bookingRow);
+
+      const bookingRow = data?.data ?? data;
+      return mapBookingRow(bookingRow as BookingRow);
     }
 
-    // For other transitions, call a generic state RPC or direct update
     const { data, error } = await supabase.rpc('transition_booking_state', {
       p_booking_id: bookingId,
       p_action: action,
       p_metadata: metadata ?? {},
     });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      throw new Error(error.message);
+    }
+
     return mapBookingRow(data as BookingRow);
   } catch (err) {
     const ctx = (err as any)?.context;
@@ -351,17 +358,18 @@ function createMockBooking(input: CreateBookingInput): Booking {
 
 export async function createBooking(input: CreateBookingInput): Promise<Booking> {
   const hasSession = await checkSession();
+  // Offline demo only: no session → local mock booking.
   if (!hasSession) {
-    console.log('createBooking: no session, using mock');
     return createMockBooking(input);
   }
 
+  // With a live session, serviceId + coordinates are required to place a real
+  // booking. Missing them is a caller bug — surface it instead of silently
+  // fabricating a booking that doesn't exist on the server.
   if (!input.serviceId || input.lat === undefined || input.lng === undefined) {
-    console.warn('createBooking: missing serviceId or coordinates, falling back to mock');
-    return createMockBooking(input);
+    throw new Error('createBooking requires serviceId and coordinates for a live booking');
   }
 
-  console.log('createBooking: calling Edge Function with serviceId', input.serviceId);
   try {
     const { data, error } = await supabase.functions.invoke('create-booking', {
       body: {

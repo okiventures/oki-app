@@ -9,18 +9,25 @@ CREATE OR REPLACE FUNCTION execute_payment_transaction(
   net_amount        NUMERIC,
   handyman_id       UUID
 )
-RETURNS VOID AS $$
+RETURNS VOID
+LANGUAGE plpgsql
+-- SECURITY DEFINER with a pinned search_path; the default PUBLIC EXECUTE grant
+-- is revoked at the bottom so only the service role (webhook) can call it.
+SECURITY DEFINER SET search_path = public
+AS $$
 DECLARE
   v_client_id UUID;
   v_booking_handyman_id UUID;
   v_status booking_status;
+  v_booking_amount NUMERIC(12, 2);
+  v_booking_platform_fee NUMERIC(12, 2);
   v_current_balance NUMERIC(12, 2);
   v_new_balance NUMERIC(12, 2);
 BEGIN
   -- Lock the booking row so concurrent captures for the same booking serialize
   -- here instead of both racing through to insert/credit.
-  SELECT client_id, handyman_id, status
-    INTO v_client_id, v_booking_handyman_id, v_status
+  SELECT client_id, handyman_id, status, amount, platform_fee
+    INTO v_client_id, v_booking_handyman_id, v_status, v_booking_amount, v_booking_platform_fee
   FROM bookings
   WHERE id = booking_id
   FOR UPDATE;
@@ -33,6 +40,17 @@ BEGIN
   IF v_booking_handyman_id IS DISTINCT FROM handyman_id THEN
     RAISE EXCEPTION 'HANDYMAN_MISMATCH: booking % is not assigned to handyman %',
       booking_id, handyman_id;
+  END IF;
+
+  -- SECURITY: reconcile the caller-supplied money against the server-owned
+  -- booking record. A forged/mismatched webhook cannot inflate the payout.
+  IF amount IS DISTINCT FROM v_booking_amount THEN
+    RAISE EXCEPTION 'AMOUNT_MISMATCH: capture amount % does not match booking amount %',
+      amount, v_booking_amount;
+  END IF;
+  IF net_amount IS DISTINCT FROM (v_booking_amount - v_booking_platform_fee) THEN
+    RAISE EXCEPTION 'NET_AMOUNT_MISMATCH: % does not match booking net %',
+      net_amount, (v_booking_amount - v_booking_platform_fee);
   END IF;
 
   -- idempotency: a booking can only be captured once. a gateway retry lands here
@@ -96,4 +114,12 @@ BEGIN
     )
   );
 END;
-$$ LANGUAGE plpgsql;
+$$;
+
+-- Revoke the default PUBLIC grant (revoking anon/authenticated alone is a no-op
+-- while PUBLIC still holds EXECUTE) and grant only the service role — the
+-- payment webhook is the sole intended caller.
+REVOKE EXECUTE ON FUNCTION execute_payment_transaction(UUID, TEXT, NUMERIC, NUMERIC, NUMERIC, UUID)
+  FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION execute_payment_transaction(UUID, TEXT, NUMERIC, NUMERIC, NUMERIC, UUID)
+  TO service_role;
