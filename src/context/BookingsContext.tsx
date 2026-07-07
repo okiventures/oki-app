@@ -54,7 +54,11 @@ const HANDYMAN_WORKFLOW: Partial<Record<BookingStatus, HandymanNextAction>> = {
   },
 };
 
+// Client cancellation is only allowed pre-acceptance (see
+// backend/docs/booking-state-machine.md). Post-acceptance cancellations must
+// go through the Week 21 dispute / cancellation-fee flow, not this path.
 const NON_CANCELLABLE_STATUSES: BookingStatus[] = [
+  BookingStatus.Accepted,
   BookingStatus.InTransit,
   BookingStatus.Arrived,
   BookingStatus.WorkStarted,

@@ -24,8 +24,7 @@ type Tab = (typeof TABS)[number];
 export default function BookingDetailScreen() {
   const { id, role } = useLocalSearchParams<{ id: string; role?: string }>();
   const router = useRouter();
-  const { getBookingById, cancelBooking, advanceBooking, getNextHandymanAction, declineBooking } =
-    useBookings();
+  const { getBookingById, cancelBooking, advanceBooking, getNextHandymanAction } = useBookings();
   const { colors } = useTheme();
   const { session } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
@@ -63,9 +62,9 @@ export default function BookingDetailScreen() {
   const viewerRole = role ?? session?.user?.userType ?? 'client';
   const isHandyman = viewerRole === 'handyman';
 
-  const canClientCancel =
-    !isHandyman &&
-    (booking.status === BookingStatus.Pending || booking.status === BookingStatus.Accepted);
+  // Only PENDING bookings can be cancelled by the client; once ACCEPTED, the
+  // Week 21 dispute / cancellation-fee flow takes over.
+  const canClientCancel = !isHandyman && booking.status === BookingStatus.Pending;
 
   const nextAction = isHandyman ? getNextHandymanAction(booking.status) : null;
 
@@ -128,7 +127,7 @@ export default function BookingDetailScreen() {
         <BookingSearchingState
           booking={liveBooking ?? booking}
           onCancel={() => {
-            declineBooking(booking.id);
+            cancelBooking(booking.id);
             router.replace('/(client)');
           }}
         />
@@ -270,11 +269,7 @@ export default function BookingDetailScreen() {
       <ConfirmDialog
         visible={showCancelDialog}
         title="Cancel this booking?"
-        message={
-          booking.status === BookingStatus.Accepted
-            ? 'This booking has already been accepted by the handyman. Are you sure you want to cancel?'
-            : 'Your pending booking will be cancelled immediately at no charge.'
-        }
+        message="Your pending booking will be cancelled immediately at no charge."
         confirmLabel="Yes, cancel it"
         cancelLabel="Keep booking"
         danger

@@ -307,10 +307,10 @@
   - [x] Client view: service, handyman profile snippet, address, price, status stepper, action CTA (`app/booking/[id].tsx`, from Week 8 scaffolding)
   - [x] Handyman view: service details, client info, address, agreed price, state-driven CTA (new `app/job/[id].tsx`)
   - [x] Both views: booking reference ID, timestamps, and contact shortcut
-- [ ] Cancellation logic (pre-acceptance)
-  - [ ] Client can cancel a `PENDING` booking with no fee; booking moves to `CANCELLED`
-  - [ ] API guard: cancellation endpoint rejects requests on `ACCEPTED` or later states with 422
-  - [ ] Cancelled bookings appear in history with `CANCELLED` badge
+- [x] Cancellation logic (pre-acceptance)
+  - [x] Client can cancel a `PENDING` booking with no fee; booking moves to `CANCELLED`
+  - [x] API guard: cancellation endpoint rejects requests on `ACCEPTED` or later states with 422
+  - [x] Cancelled bookings appear in history with `CANCELLED` badge
 - [ ] Integration tests for booking endpoints
   - [ ] Happy path: create → accept → view detail
   - [ ] Rejection path: create → reject → re-broadcast

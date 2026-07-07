@@ -93,6 +93,7 @@ export async function requireRole(
 
 export const requireAdmin = (req: Request) => requireRole(req, 'admin');
 export const requireHandyman = (req: Request) => requireRole(req, 'handyman');
+export const requireClient = (req: Request) => requireRole(req, 'client');
 
 export function unauthorized(message = 'Authentication required'): Response {
   return new Response(JSON.stringify({ error: 'UNAUTHORIZED', message }), {

@@ -37,13 +37,7 @@ export interface BookingEventRow {
 }
 
 type StateTransitionAction =
-  | 'ACCEPT'
-  | 'REJECT'
-  | 'CANCEL'
-  | 'START_TRANSIT'
-  | 'MARK_ARRIVED'
-  | 'START_WORK'
-  | 'COMPLETE';
+  'ACCEPT' | 'REJECT' | 'CANCEL' | 'START_TRANSIT' | 'MARK_ARRIVED' | 'START_WORK' | 'COMPLETE';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -225,6 +219,7 @@ export async function transitionBookingState(
     const functionMap: Record<string, string> = {
       ACCEPT: 'accept-booking',
       REJECT: 'reject-booking',
+      CANCEL: 'cancel-booking',
       COMPLETE: 'complete-booking',
     };
 
