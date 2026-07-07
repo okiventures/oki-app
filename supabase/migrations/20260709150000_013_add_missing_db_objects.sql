@@ -1,8 +1,5 @@
--- ============================================================================
--- Patch: Missing RPCs and objects for Edge Functions
--- Run in Supabase SQL Editor AFTER RUN_ME_IN_SUPABASE_SQL_EDITOR.sql
--- All statements are idempotent (CREATE IF NOT EXISTS / CREATE OR REPLACE).
--- ============================================================================
+-- Add missing database objects required by Edge Functions.
+-- All statements are idempotent (IF NOT EXISTS / OR REPLACE / IF NOT FOUND).
 
 -- 0. Add REJECTED to booking_status enum (needed by reject-booking Edge Function)
 ALTER TYPE booking_status ADD VALUE IF NOT EXISTS 'REJECTED';
@@ -18,7 +15,8 @@ ALTER TABLE public.handyman_locations ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE tablename = 'handyman_locations' AND policyname = 'handyman_locations_upsert_own'
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'handyman_locations' AND policyname = 'handyman_locations_upsert_own'
   ) THEN
     CREATE POLICY handyman_locations_upsert_own
       ON public.handyman_locations FOR INSERT
@@ -26,7 +24,8 @@ DO $$ BEGIN
       WITH CHECK (id = auth.uid());
   END IF;
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE tablename = 'handyman_locations' AND policyname = 'handyman_locations_update_own'
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'handyman_locations' AND policyname = 'handyman_locations_update_own'
   ) THEN
     CREATE POLICY handyman_locations_update_own
       ON public.handyman_locations FOR UPDATE
@@ -35,7 +34,8 @@ DO $$ BEGIN
       WITH CHECK (id = auth.uid());
   END IF;
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE tablename = 'handyman_locations' AND policyname = 'handyman_locations_select_searchable'
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'handyman_locations' AND policyname = 'handyman_locations_select_searchable'
   ) THEN
     CREATE POLICY handyman_locations_select_searchable
       ON public.handyman_locations FOR SELECT
@@ -58,7 +58,7 @@ CREATE INDEX IF NOT EXISTS handyman_locations_gist
 
 DROP INDEX IF EXISTS idx_handymen_location;
 
--- 2. upsert_handyman_location RPC (3-param version — client locationService.ts expects p_handyman_id)
+-- 2. upsert_handyman_location (security-definer: caller must match p_handyman_id)
 CREATE OR REPLACE FUNCTION public.upsert_handyman_location(
   p_handyman_id uuid,
   p_lat double precision,
@@ -69,6 +69,11 @@ LANGUAGE plpgsql
 SECURITY DEFINER SET search_path = public
 AS $$
 BEGIN
+  IF p_handyman_id <> auth.uid() THEN
+    RAISE EXCEPTION 'Handyman ID does not match authenticated user'
+      USING ERRCODE = '42501';
+  END IF;
+
   INSERT INTO public.handyman_locations (id, location, updated_at)
   VALUES (
     p_handyman_id,
@@ -82,9 +87,12 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.upsert_handyman_location(uuid, double precision, double precision) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.upsert_handyman_location(uuid, double precision, double precision)
+  FROM public;
+GRANT  EXECUTE ON FUNCTION public.upsert_handyman_location(uuid, double precision, double precision)
+  TO authenticated;
 
--- 3. search_nearest_handymen RPC (reads from handyman_locations instead of handymen.location)
+-- 3. search_nearest_handymen — only callable by service_role (notify_nearby_handymen)
 CREATE OR REPLACE FUNCTION public.search_nearest_handymen(
   p_client_lat double precision,
   p_client_lng double precision,
@@ -131,7 +139,11 @@ BEGIN
 END;
 $$;
 
--- 4. get_handyman_blocked_slots RPC
+REVOKE EXECUTE ON FUNCTION public.search_nearest_handymen(double precision, double precision, float, service_category)
+  FROM public;
+-- Only notify_nearby_handymen calls this, which itself is service_role only.
+
+-- 4. get_handyman_blocked_slots
 CREATE OR REPLACE FUNCTION public.get_handyman_blocked_slots(
   p_handyman_id uuid,
   p_start_date timestamptz,
@@ -154,14 +166,17 @@ BEGIN
   WHERE b.handyman_id = p_handyman_id
     AND b.scheduled_at >= p_start_date
     AND b.scheduled_at <= p_end_date
-    AND b.status NOT IN ('CANCELLED', 'COMPLETED', 'PAID')
+    AND b.status NOT IN ('CANCELLED', 'COMPLETED', 'PAID', 'REJECTED')
   ORDER BY b.scheduled_at ASC;
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.get_handyman_blocked_slots(uuid, timestamptz, timestamptz) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.get_handyman_blocked_slots(uuid, timestamptz, timestamptz)
+  FROM public;
+GRANT  EXECUTE ON FUNCTION public.get_handyman_blocked_slots(uuid, timestamptz, timestamptz)
+  TO authenticated;
 
--- 5. create_booking RPC (CRITICAL — called by create-booking Edge Function)
+-- 5. create_booking RPC (called by create-booking Edge Function)
 -- Derives client_id from auth.uid() and amount from services.base_rate — cannot impersonate.
 CREATE OR REPLACE FUNCTION public.create_booking(
   p_service_id uuid,
@@ -227,64 +242,19 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.create_booking(uuid, booking_type, text, text, double precision, double precision, timestamptz, text) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.create_booking(uuid, booking_type, text, text, double precision, double precision, timestamptz, text)
+  FROM public;
+-- Only callable via service_role key (Edge Function). Not exposed to anon/authenticated.
 
--- 6. notify_nearby_handymen RPC (broadcasts new booking to nearby matching handymen)
-CREATE OR REPLACE FUNCTION public.notify_nearby_handymen(
-  p_booking_id uuid
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = public
-AS $$
-DECLARE
-  v_service_id uuid;
-  v_category   service_category;
-  v_lat        double precision;
-  v_lng        double precision;
-  v_notified   jsonb;
-BEGIN
-  SELECT b.service_id,
-         st_y(b.location::geometry) AS lat,
-         st_x(b.location::geometry) AS lng
-  INTO v_service_id, v_lat, v_lng
-  FROM public.bookings b
-  WHERE b.id = p_booking_id;
+-- 6. kyc_rate_limits table (rate-limit tracking for KYC uploads)
+-- The kyc_check_rate_limit function is created/replaced in 012, but the table
+-- itself only exists in backend/migrations/004. Add it here so the hardening
+-- migration's ALTER TABLE succeeds.
+CREATE TABLE IF NOT EXISTS public.kyc_rate_limits (
+  handyman_id UUID NOT NULL,
+  window_start TIMESTAMPTZ NOT NULL DEFAULT date_trunc('minute', now()),
+  count INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY (handyman_id, window_start)
+);
 
-  IF NOT FOUND THEN
-    RETURN '[]'::jsonb;
-  END IF;
-
-  SELECT s.category INTO v_category
-  FROM public.services s
-  WHERE s.id = v_service_id;
-
-  IF v_category IS NULL THEN
-    RETURN '[]'::jsonb;
-  END IF;
-
-  INSERT INTO public.notification_queue (booking_id, handyman_id, send_at)
-  SELECT p_booking_id, handyman_id, now()
-  FROM public.search_nearest_handymen(v_lat, v_lng, 50000, v_category);
-
-  SELECT jsonb_agg(
-    jsonb_build_object(
-      'handyman_id', handyman_id,
-      'distance_meters', distance_meters
-    )
-  )
-  INTO v_notified
-  FROM public.search_nearest_handymen(v_lat, v_lng, 50000, v_category);
-
-  RETURN COALESCE(v_notified, '[]'::jsonb);
-END;
-$$;
-
-REVOKE EXECUTE ON FUNCTION public.notify_nearby_handymen(uuid) FROM anon, authenticated;
-
--- ============================================================================
--- Done. After running this, the create-booking Edge Function will:
---   1. Call create_booking RPC — inserts booking + payment + audit event
---   2. Call notify_nearby_handymen RPC — queues push notifications for nearby
---      handymen matching the service category within 50km radius
--- ============================================================================
+ALTER TABLE public.kyc_rate_limits ENABLE ROW LEVEL SECURITY;
