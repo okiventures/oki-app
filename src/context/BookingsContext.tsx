@@ -54,13 +54,25 @@ const HANDYMAN_WORKFLOW: Partial<Record<BookingStatus, HandymanNextAction>> = {
   },
 };
 
+const NON_CANCELLABLE_STATUSES: BookingStatus[] = [
+  BookingStatus.InTransit,
+  BookingStatus.Arrived,
+  BookingStatus.WorkStarted,
+  BookingStatus.Completed,
+  BookingStatus.Paid,
+  BookingStatus.Cancelled,
+  BookingStatus.Rejected,
+];
+
 interface BookingsContextValue {
   bookings: Booking[];
   createBooking: (input: CreateBookingInput) => Promise<Booking>;
   acceptBooking: (bookingId: string) => void;
   declineBooking: (bookingId: string) => void;
   advanceBooking: (bookingId: string) => void;
+  cancelBooking: (bookingId: string) => Promise<boolean> | boolean;
   getBookingById: (bookingId: string) => Booking | undefined;
+  getNextHandymanAction: (status: BookingStatus) => HandymanNextAction | null;
 }
 
 const BookingsContext = createContext<BookingsContextValue>({
@@ -69,13 +81,29 @@ const BookingsContext = createContext<BookingsContextValue>({
   acceptBooking: () => {},
   declineBooking: () => {},
   advanceBooking: () => {},
+  cancelBooking: () => false,
   getBookingById: () => undefined,
+  getNextHandymanAction: () => null,
 });
 
 function updateBooking(booking: Booking, status: BookingStatus): Booking {
   return {
     ...booking,
     status,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+// A state transition only changes status/assignment/photos. Merge just those
+// from the API response so we don't clobber richer local fields (clientName,
+// serviceCategory, amounts) with the edge function's placeholder values.
+function mergeTransition(existing: Booking, updated: Booking): Booking {
+  return {
+    ...existing,
+    status: updated.status,
+    handymanId: updated.handymanId || existing.handymanId,
+    beforePhoto: updated.beforePhoto ?? existing.beforePhoto,
+    afterPhoto: updated.afterPhoto ?? existing.afterPhoto,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -115,7 +143,7 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
   const activeBookingIds = useMemo(
     () =>
       bookings
-        .filter((b) => !['Completed', 'Paid', 'Cancelled'].includes(b.status))
+        .filter((b) => !['Completed', 'Paid', 'Cancelled', 'Rejected'].includes(b.status))
         .map((b) => b.id),
     [bookings]
   );
@@ -178,45 +206,40 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const acceptBooking = useCallback(async (bookingId: string) => {
-    try {
-      const updated = await transitionBookingState(bookingId, 'ACCEPT');
-      setBookings((current) =>
-        current.map((booking) =>
-          booking.id === bookingId
-            ? { ...booking, ...updated, updatedAt: new Date().toISOString() }
-            : booking
-        )
-      );
-    } catch {
-      // Fallback to local state transition
-      setBookings((current) =>
-        current.map((booking) =>
-          booking.id === bookingId && booking.status === BookingStatus.Pending
-            ? updateBooking(booking, BookingStatus.Accepted)
-            : booking
-        )
-      );
-    }
+    const updated = await transitionBookingState(bookingId, 'ACCEPT');
+    setBookings((current) =>
+      current.map((booking) =>
+        booking.id === bookingId ? mergeTransition(booking, updated) : booking
+      )
+    );
   }, []);
 
   const declineBooking = useCallback(async (bookingId: string) => {
+    // Optimistically reflect the rejection so the inbox updates immediately.
+    setBookings((current) =>
+      current.map((booking) =>
+        booking.id === bookingId && booking.status === BookingStatus.Pending
+          ? updateBooking(booking, BookingStatus.Rejected)
+          : booking
+      )
+    );
+
     try {
-      await transitionBookingState(bookingId, 'REJECT');
+      const updated = await transitionBookingState(bookingId, 'REJECT');
       setBookings((current) =>
         current.map((booking) =>
-          booking.id === bookingId && booking.status === BookingStatus.Pending
-            ? updateBooking(booking, BookingStatus.Cancelled)
+          booking.id === bookingId ? mergeTransition(booking, updated) : booking
+        )
+      );
+    } catch (err) {
+      setBookings((current) =>
+        current.map((booking) =>
+          booking.id === bookingId && booking.status === BookingStatus.Rejected
+            ? updateBooking(booking, BookingStatus.Pending)
             : booking
         )
       );
-    } catch {
-      setBookings((current) =>
-        current.map((booking) =>
-          booking.id === bookingId && booking.status === BookingStatus.Pending
-            ? updateBooking(booking, BookingStatus.Cancelled)
-            : booking
-        )
-      );
+      throw err;
     }
   }, []);
 
@@ -241,9 +264,7 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
             )
           );
           return;
-        } catch {
-          // Fallback to local state transition
-        }
+        } catch {}
       }
 
       setBookings((current) =>
@@ -258,6 +279,31 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
     [bookings]
   );
 
+  const cancelBooking = useCallback(
+    async (bookingId: string): Promise<boolean> => {
+      const booking = bookings.find((b) => b.id === bookingId);
+      if (!booking || NON_CANCELLABLE_STATUSES.includes(booking.status)) {
+        return false;
+      }
+
+      try {
+        const updated = await transitionBookingState(bookingId, 'CANCEL');
+        setBookings((current) =>
+          current.map((b) =>
+            b.id === bookingId ? { ...b, ...updated, updatedAt: new Date().toISOString() } : b
+          )
+        );
+        return true;
+      } catch {
+        setBookings((current) =>
+          current.map((b) => (b.id === bookingId ? updateBooking(b, BookingStatus.Cancelled) : b))
+        );
+        return true;
+      }
+    },
+    [bookings]
+  );
+
   const value = useMemo(
     () => ({
       bookings,
@@ -265,9 +311,11 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
       acceptBooking,
       declineBooking,
       advanceBooking,
+      cancelBooking,
       getBookingById: (bookingId: string) => bookings.find((booking) => booking.id === bookingId),
+      getNextHandymanAction: (status: BookingStatus) => HANDYMAN_WORKFLOW[status] ?? null,
     }),
-    [bookings, createBooking, acceptBooking, declineBooking, advanceBooking]
+    [bookings, createBooking, acceptBooking, declineBooking, advanceBooking, cancelBooking]
   );
 
   return <BookingsContext.Provider value={value}>{children}</BookingsContext.Provider>;

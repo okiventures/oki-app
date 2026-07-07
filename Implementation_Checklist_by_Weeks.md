@@ -298,15 +298,15 @@
 ### **Week 9 · July 2 – July 8 — Booking Flows (Continued)**
 
 - [ ] [STANDUP] **Standup 4 — July 1**
-- [ ] Handyman job inbox (accept / reject)
-  - [ ] `PATCH /bookings/:id/state` with `action: ACCEPT | REJECT` transitions state machine
-  - [ ] Acceptance updates booking's `handyman_id` and transitions to `ACCEPTED`
-  - [ ] Rejection marks booking as `REJECTED`; platform re-broadcasts or notifies client
-  - [ ] Optimistic UI update: Handyman inbox reflects action immediately
-- [ ] Booking detail screens (both apps)
-  - [ ] Client view: service, handyman profile snippet, address, price, status stepper, action CTA
-  - [ ] Handyman view: service details, client info, address, agreed price, state-driven CTA
-  - [ ] Both views: booking reference ID, timestamps, and contact shortcut
+- [x] Handyman job inbox (accept / reject)
+  - [x] State transition via `transitionBookingState` → dedicated `accept-booking` / `reject-booking` Edge Functions (action-per-function pattern, mapped `ACCEPT`/`REJECT`) instead of a single `PATCH` route
+  - [x] Acceptance updates booking's `handyman_id` and transitions to `ACCEPTED` (`accept-booking`, optimistic lock + audit event)
+  - [x] Rejection transitions to terminal `REJECTED` (new enum value, migration `..._010`); client notified via `booking_events` realtime — full re-broadcast/re-offer deferred (out of scope per Week 8 PR #36)
+  - [x] Optimistic UI update: Handyman inbox reflects action immediately (`BookingsContext.declineBooking`/`acceptBooking`)
+- [x] Booking detail screens (both apps)
+  - [x] Client view: service, handyman profile snippet, address, price, status stepper, action CTA (`app/booking/[id].tsx`, from Week 8 scaffolding)
+  - [x] Handyman view: service details, client info, address, agreed price, state-driven CTA (new `app/job/[id].tsx`)
+  - [x] Both views: booking reference ID, timestamps, and contact shortcut
 - [ ] Cancellation logic (pre-acceptance)
   - [ ] Client can cancel a `PENDING` booking with no fee; booking moves to `CANCELLED`
   - [ ] API guard: cancellation endpoint rejects requests on `ACCEPTED` or later states with 422

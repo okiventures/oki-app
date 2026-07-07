@@ -136,6 +136,7 @@ export const BOOKING_STATUS_LABELS: Record<string, string> = {
   Completed: 'Completed',
   Paid: 'Paid',
   Cancelled: 'Cancelled',
+  Rejected: 'Rejected',
 };
 
 export const BOOKING_STATUS_COLORS: Record<string, string> = {
@@ -147,6 +148,7 @@ export const BOOKING_STATUS_COLORS: Record<string, string> = {
   Completed: '#10B981',
   Paid: '#059669',
   Cancelled: '#EF4444',
+  Rejected: '#DC2626',
 };
 
 export const MEMBERSHIP_TIER_COLORS: Record<string, string> = {

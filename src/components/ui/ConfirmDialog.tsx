@@ -12,6 +12,7 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   danger?: boolean;
+  loading?: boolean;
 }
 
 export function ConfirmDialog({
@@ -23,19 +24,27 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   danger = false,
+  loading = false,
 }: ConfirmDialogProps) {
   return (
-    <Modal visible={visible} onClose={onCancel} title={title}>
+    <Modal visible={visible} onClose={loading ? () => {} : onCancel} title={title}>
       <Text className="mb-5 text-[15px] leading-6 text-gray-700">{message}</Text>
       <View className="flex-row gap-2">
         <View className="flex-1">
-          <Button label={cancelLabel} onPress={onCancel} variant="tertiary" fullWidth />
+          <Button
+            label={cancelLabel}
+            onPress={onCancel}
+            variant="tertiary"
+            disabled={loading}
+            fullWidth
+          />
         </View>
         <View className="flex-1">
           <Button
             label={confirmLabel}
             onPress={onConfirm}
             variant={danger ? 'danger' : 'primary'}
+            loading={loading}
             fullWidth
           />
         </View>
