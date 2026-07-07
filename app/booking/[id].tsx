@@ -270,9 +270,9 @@ export default function BookingDetailScreen() {
             </View>
           )}
 
-          <View className={canClientCancel || nextAction ? 'mt-3' : 'gap-2'}>
-            {(booking.status === BookingStatus.Completed ||
-              booking.status === BookingStatus.Paid) && (
+          {(booking.status === BookingStatus.Completed ||
+            booking.status === BookingStatus.Paid) && (
+            <View className={canClientCancel || nextAction ? 'mt-3' : ''}>
               <Button
                 label="Leave a Review"
                 variant="primary"
@@ -280,15 +280,8 @@ export default function BookingDetailScreen() {
                 onPress={() => router.push(`/review/${booking.id}`)}
                 leftIcon={<Ionicons name="star-outline" size={16} color="#FFFFFF" />}
               />
-            )}
-            <Button
-              label="Report Issue"
-              variant="tertiary"
-              fullWidth
-              onPress={() => router.push(`/report/${booking.id}`)}
-              leftIcon={<Ionicons name="flag-outline" size={16} color={colors.primary['600']} />}
-            />
-          </View>
+            </View>
+          )}
         </View>
       </View>
 
