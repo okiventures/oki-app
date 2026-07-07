@@ -9,21 +9,7 @@ import { Badge } from '../../src/components/ui/Badge';
 import { EmptyState } from '../../src/components/ui/EmptyState';
 import { getReportsByUser } from '../../src/mocks/reports';
 import { MOCK_CLIENT, MOCK_HANDYMAN } from '../../src/mocks';
-import type { ReportStatus } from '../../src/types';
-
-const STATUS_LABELS: Record<ReportStatus, string> = {
-  Pending: 'Pending',
-  Reviewed: 'Reviewed',
-  Resolved: 'Resolved',
-  Dismissed: 'Dismissed',
-};
-
-const STATUS_VARIANTS: Record<ReportStatus, 'warning' | 'status' | 'success' | 'error'> = {
-  Pending: 'warning',
-  Reviewed: 'status',
-  Resolved: 'success',
-  Dismissed: 'error',
-};
+import { REPORT_STATUS_LABELS, REPORT_STATUS_VARIANTS } from '../../src/constants/reports';
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -102,8 +88,8 @@ export default function MyReportsScreen() {
                     </Text>
                   </View>
                   <Badge
-                    text={STATUS_LABELS[report.status]}
-                    variant={STATUS_VARIANTS[report.status]}
+                    text={REPORT_STATUS_LABELS[report.status]}
+                    variant={REPORT_STATUS_VARIANTS[report.status]}
                   />
                 </View>
               </Pressable>

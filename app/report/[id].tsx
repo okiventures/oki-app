@@ -8,7 +8,6 @@ import { useAuth } from '../../src/context/AuthContext';
 import { Button } from '../../src/components/ui/Button';
 import { ReportReasonSelector } from '../../src/components/report/ReportReasonSelector';
 import { MOCK_BOOKING_DETAILS } from '../../src/mocks/bookingDetails';
-import { MOCK_CLIENT, MOCK_HANDYMAN } from '../../src/mocks';
 import { addReport } from '../../src/mocks/reports';
 import type { ReportReason } from '../../src/types';
 
@@ -55,12 +54,11 @@ export default function ReportUserScreen() {
     if (!canSubmit || !booking || !selectedReason) return;
     setSubmitting(true);
 
-    const currentUser = isClient ? MOCK_CLIENT : MOCK_HANDYMAN;
     const targetId = isClient ? booking.handymanId : booking.clientId;
 
     addReport({
-      reporterId: currentUser.id,
-      reporterName: currentUser.name,
+      reporterId: isClient ? booking.clientId : booking.handymanId,
+      reporterName: isClient ? booking.clientName : booking.handymanName,
       reporterType: isClient ? 'client' : 'handyman',
       targetId,
       targetName,
