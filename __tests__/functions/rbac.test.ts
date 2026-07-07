@@ -15,9 +15,23 @@ import {
   requireHandyman,
   requireRole,
   unauthorized,
+  type AuthFailure,
+  type AuthSuccess,
 } from '../../supabase/functions/_shared/rbac';
 
 const mockCreateClient = getCreateClientMock();
+
+function assertAuthFailure(result: AuthSuccess | AuthFailure): asserts result is AuthFailure {
+  if (!('error' in result)) {
+    throw new Error('Expected auth failure');
+  }
+}
+
+function assertAuthSuccess(result: AuthSuccess | AuthFailure): asserts result is AuthSuccess {
+  if (!('user' in result)) {
+    throw new Error('Expected auth success');
+  }
+}
 
 const DENO_ENV: Record<string, string> = {
   SUPABASE_URL: 'https://wvrhxxtvefeyynglfibq.supabase.co',
@@ -98,7 +112,7 @@ describe('response helpers', () => {
 describe('getAuthUser', () => {
   it('returns 401 when Authorization header is missing', async () => {
     const result = await getAuthUser(mockReq());
-    expect(result.error).not.toBeNull();
+    assertAuthFailure(result);
     expect(result.error.status).toBe(401);
   });
 
@@ -113,7 +127,7 @@ describe('getAuthUser', () => {
     });
 
     const result = await getAuthUser(mockReq({ Authorization: 'Bearer bad-token' }));
-    expect(result.error).not.toBeNull();
+    assertAuthFailure(result);
     expect(result.error.status).toBe(401);
   });
 
@@ -135,6 +149,7 @@ describe('getAuthUser', () => {
 
     const result = await getAuthUser(mockReq({ Authorization: 'Bearer valid-token' }));
 
+    assertAuthSuccess(result);
     expect(result.user.id).toBe('u1');
     expect(result.user.email).toBe('test@oki.test');
     expect(mockCreateClient).toHaveBeenCalledWith(
@@ -170,6 +185,7 @@ describe('requireRole', () => {
 
     const result = await requireRole(validTokenReq, 'handyman');
 
+    assertAuthSuccess(result);
     expect(result.user.id).toBe('u1');
   });
 
@@ -178,6 +194,7 @@ describe('requireRole', () => {
 
     const result = await requireRole(validTokenReq, 'admin');
 
+    assertAuthSuccess(result);
     expect(result.user.id).toBe('u1');
   });
 
@@ -186,7 +203,7 @@ describe('requireRole', () => {
 
     const result = await requireRole(validTokenReq, 'handyman');
 
-    expect(result.error).not.toBeNull();
+    assertAuthFailure(result);
     expect(result.error.status).toBe(403);
     const body = await result.error.json();
     expect(body.error).toBe('FORBIDDEN');
@@ -203,7 +220,7 @@ describe('requireRole', () => {
     });
 
     const result = await requireRole(validTokenReq, 'handyman');
-    expect(result.error).not.toBeNull();
+    assertAuthFailure(result);
     expect(result.error.status).toBe(401);
   });
 });
@@ -220,6 +237,7 @@ describe('requireAdmin / requireHandyman', () => {
     });
 
     const result = await requireAdmin(mockReq({ Authorization: 'Bearer token' }));
+    assertAuthFailure(result);
     expect(result.error.status).toBe(401);
   });
 
@@ -237,6 +255,7 @@ describe('requireAdmin / requireHandyman', () => {
     mockFetch([{ id: 'u1' }]);
 
     const result = await requireHandyman(mockReq({ Authorization: 'Bearer token' }));
+    assertAuthSuccess(result);
     expect(result.user.id).toBe('u1');
   });
 });
