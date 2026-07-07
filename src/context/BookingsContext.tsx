@@ -14,7 +14,6 @@ import {
   subscribeToBooking,
   createBooking as createBookingService,
   BookingTransitionError,
-  isMockEnv,
 } from '../services/bookingService';
 import type { CreateBookingInput } from '../services/bookingService';
 
