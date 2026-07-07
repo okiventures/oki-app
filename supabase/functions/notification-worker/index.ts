@@ -1,14 +1,30 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
+import { timingSafeEqual } from 'https://deno.land/std@0.224.0/crypto/timing_safe_equal.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const BATCH_LIMIT = 50;
 
-serve(async (_req: Request) => {
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  );
+serve(async (req: Request) => {
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+  // SECURITY: this worker mutates state and sends pushes with the service role.
+  // It must only ever be driven by the cron job, so require the service-role
+  // bearer. Without this the endpoint is open to the whole internet (a push-spam
+  // / queue-abuse vector). The cron job supplies this header (see migration 012).
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const expected = `Bearer ${serviceRoleKey}`;
+  const authBytes = new TextEncoder().encode(authHeader);
+  const expectedBytes = new TextEncoder().encode(expected);
+  if (
+    !serviceRoleKey ||
+    authBytes.length !== expectedBytes.length ||
+    !timingSafeEqual(authBytes, expectedBytes)
+  ) {
+    return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), { status: 401 });
+  }
+
+  const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', serviceRoleKey);
 
   try {
     // 1. Atomically claim pending items using UPDATE ... RETURNING
@@ -46,7 +62,7 @@ serve(async (_req: Request) => {
             .from('notification_queue')
             .update({ status: 'FAILED', error_log: 'No Expo push token on handyman profile' })
             .eq('id', item.id);
-          return;
+          return false;
         }
 
         try {
@@ -68,17 +84,20 @@ serve(async (_req: Request) => {
           }
 
           await supabase.from('notification_queue').update({ status: 'SENT' }).eq('id', item.id);
+          return true;
         } catch (err) {
           const message = err instanceof Error ? err.message : 'Unknown error';
           await supabase
             .from('notification_queue')
             .update({ status: 'FAILED', error_log: message })
             .eq('id', item.id);
+          return false;
         }
       })
     );
 
-    const sent = results.filter((r) => r.status === 'fulfilled').length;
+    // count only genuinely-sent notifications, not every settled promise
+    const sent = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
     return new Response(JSON.stringify({ success: true, processed: queueItems.length, sent }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

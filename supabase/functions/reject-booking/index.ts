@@ -24,8 +24,26 @@ serve(async (req: Request) => {
 
   if (fetchError || !booking) return notFound('Booking not found');
 
+  // SECURITY: same gating as accept-booking. Without this any registered
+  // handyman (even non-KYC'd / offline) could reject arbitrary PENDING bookings
+  // by iterating ids — a platform-wide cancellation DoS.
+  const { data: handyman, error: handymanError } = await supabase
+    .from('handymen')
+    .select('is_online, kyc_status')
+    .eq('id', user.id)
+    .single();
+
+  if (handymanError || !handyman) {
+    return new Response(
+      JSON.stringify({ error: 'FORBIDDEN', message: 'Only handymen can reject bookings' }),
+      { status: 403 }
+    );
+  }
+
   const guards: string[] = [];
   if (booking.status !== 'PENDING') guards.push('Booking must be PENDING');
+  if (!handyman.is_online) guards.push('Handyman must be online');
+  if (handyman.kyc_status !== 'APPROVED') guards.push('KYC must be approved');
   if (booking.handyman_id && booking.handyman_id !== user.id)
     guards.push('Booking already assigned to another handyman');
 

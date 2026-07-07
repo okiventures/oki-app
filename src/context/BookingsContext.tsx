@@ -14,6 +14,7 @@ import {
   subscribeToBooking,
   createBooking as createBookingService,
   BookingTransitionError,
+  isMockEnv,
 } from '../services/bookingService';
 import type { CreateBookingInput } from '../services/bookingService';
 
@@ -117,7 +118,7 @@ function mergeTransition(existing: Booking, updated: Booking): Booking {
 
 export function BookingsProvider({ children }: { children: React.ReactNode }) {
   const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
-  const unsubRef = useRef<(() => void) | null>(null);
+  const subsRef = useRef<Map<string, () => void>>(new Map());
 
   useEffect(() => {
     setBookings(MOCK_BOOKINGS);
@@ -146,7 +147,9 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [bookings]);
 
-  // Subscribe to real-time updates for active bookings
+  // Subscribe to real-time updates for ALL active bookings (a user can have
+  // several in flight at once). Join the ids into a stable key so the effect
+  // only re-runs when the active set actually changes.
   const activeBookingIds = useMemo(
     () =>
       bookings
@@ -154,60 +157,72 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
         .map((b) => b.id),
     [bookings]
   );
-  const trackedBookingId = activeBookingIds.length > 0 ? activeBookingIds[0] : null;
+  const activeIdsKey = useMemo(() => [...activeBookingIds].sort().join(','), [activeBookingIds]);
 
   useEffect(() => {
-    // Clean up previous subscription
-    if (unsubRef.current) {
-      unsubRef.current();
-    }
+    const active = new Set(activeIdsKey ? activeIdsKey.split(',') : []);
+    const subs = subsRef.current;
 
-    // Subscribe to the first active booking for real-time events
-    if (trackedBookingId) {
-      unsubRef.current = subscribeToBooking(trackedBookingId, (event) => {
-        // Update booking status when a state transition event is received
-        setBookings((current) =>
-          current.map((b) =>
-            b.id === event.bookingId
-              ? { ...b, status: event.toStatus, updatedAt: new Date().toISOString() }
-              : b
-          )
-        );
-      });
-    }
-
-    return () => {
-      if (unsubRef.current) {
-        unsubRef.current();
+    // Drop subscriptions for bookings that are no longer active
+    for (const [id, unsub] of subs) {
+      if (!active.has(id)) {
+        unsub();
+        subs.delete(id);
       }
+    }
+
+    // Add subscriptions for newly-active bookings
+    for (const id of active) {
+      if (!subs.has(id)) {
+        subs.set(
+          id,
+          subscribeToBooking(id, (event) => {
+            setBookings((current) =>
+              current.map((b) =>
+                b.id === event.bookingId
+                  ? { ...b, status: event.toStatus, updatedAt: new Date().toISOString() }
+                  : b
+              )
+            );
+          })
+        );
+      }
+    }
+  }, [activeIdsKey]);
+
+  // Tear down every channel on unmount
+  useEffect(() => {
+    const subs = subsRef.current;
+    return () => {
+      for (const unsub of subs.values()) unsub();
+      subs.clear();
     };
-  }, [trackedBookingId]);
+  }, []);
 
   const createBooking = useCallback(async (input: CreateBookingInput) => {
     const booking = await createBookingService(input);
     setBookings((current) => [...current, booking]);
 
-    // Simulate handyman acceptance after 5 seconds for demo
-    setTimeout(async () => {
-      try {
-        await transitionBookingState(booking.id, 'ACCEPT');
-      } catch {
-        // Fallback: apply locally
-      }
-      setBookings((current) =>
-        current.map((b) =>
-          b.id === booking.id && b.status === BookingStatus.Pending
-            ? {
-                ...b,
-                status: BookingStatus.Accepted,
-                handymanId: 'h1',
-                handymanName: 'Ceferino Jumao-as V',
-                updatedAt: new Date().toISOString(),
-              }
-            : b
-        )
-      );
-    }, 5000);
+    // DEMO ONLY: with no real backend, simulate a handyman accepting after 5s so
+    // the prototype flow is visible. Never runs against a live backend, where a
+    // real handyman drives acceptance and realtime events reflect it.
+    if (isMockEnv()) {
+      setTimeout(() => {
+        setBookings((current) =>
+          current.map((b) =>
+            b.id === booking.id && b.status === BookingStatus.Pending
+              ? {
+                  ...b,
+                  status: BookingStatus.Accepted,
+                  handymanId: 'h1',
+                  handymanName: 'Ceferino Jumao-as V',
+                  updatedAt: new Date().toISOString(),
+                }
+              : b
+          )
+        );
+      }, 5000);
+    }
 
     return booking;
   }, []);

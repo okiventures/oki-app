@@ -11,6 +11,7 @@ export interface ScreenHeaderProps {
   showNotifications?: boolean;
   showBack?: boolean;
   onBackPress?: () => void;
+  rightAction?: React.ReactNode;
 }
 
 export function ScreenHeader({
@@ -21,6 +22,7 @@ export function ScreenHeader({
   showNotifications = false,
   showBack = false,
   onBackPress,
+  rightAction,
 }: ScreenHeaderProps) {
   const { colors } = useTheme();
 
@@ -51,7 +53,9 @@ export function ScreenHeader({
 
         <Text className="flex-1 text-center text-[17px] font-semibold text-white">{title}</Text>
 
-        {showNotifications ? (
+        {rightAction ? (
+          <View className="p-1">{rightAction}</View>
+        ) : showNotifications ? (
           <Pressable
             onPress={onNotificationsPress}
             accessibilityLabel="Notifications"

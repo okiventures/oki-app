@@ -21,9 +21,25 @@ CREATE POLICY users_select_own ON users
   FOR SELECT TO authenticated
   USING (id = auth.uid() OR is_admin());
 
-CREATE POLICY users_select_public ON users
+-- SECURITY: do NOT expose every ACTIVE user's row (emails/phones) to every
+-- authenticated caller. Scope broad reads to booking counterparties and
+-- searchable (online + KYC-approved) handymen; own-row/admin is covered by
+-- users_select_own above.
+CREATE POLICY users_select_related ON users
   FOR SELECT TO authenticated
-  USING (user_status = 'ACTIVE');
+  USING (
+    id = auth.uid()
+    OR is_admin()
+    OR EXISTS (
+      SELECT 1 FROM bookings b
+      WHERE (b.client_id = auth.uid() AND b.handyman_id = users.id)
+         OR (b.handyman_id = auth.uid() AND b.client_id = users.id)
+    )
+    OR EXISTS (
+      SELECT 1 FROM handymen h
+      WHERE h.id = users.id AND h.is_online = true AND h.kyc_status = 'APPROVED'
+    )
+  );
 
 CREATE POLICY users_update_own ON users
   FOR UPDATE TO authenticated
@@ -132,17 +148,32 @@ CREATE POLICY bookings_insert_client ON bookings
     AND status = 'PENDING'
   );
 
+-- SECURITY: clients may only cancel a PENDING booking; amount/platform_fee and
+-- other server-owned columns are pinned to their prior values so pricing can't
+-- be tampered with via a direct PostgREST UPDATE.
 CREATE POLICY bookings_update_client ON bookings
   FOR UPDATE TO authenticated
   USING (client_id = auth.uid())
   WITH CHECK (
     client_id = auth.uid()
+    AND amount        = (SELECT b.amount        FROM bookings b WHERE b.id = bookings.id)
+    AND platform_fee  = (SELECT b.platform_fee  FROM bookings b WHERE b.id = bookings.id)
+    AND service_id    = (SELECT b.service_id    FROM bookings b WHERE b.id = bookings.id)
+    AND client_id     = (SELECT b.client_id     FROM bookings b WHERE b.id = bookings.id)
+    AND handyman_id IS NOT DISTINCT FROM (SELECT b.handyman_id FROM bookings b WHERE b.id = bookings.id)
+    AND surge_multiplier = (SELECT b.surge_multiplier FROM bookings b WHERE b.id = bookings.id)
     AND (
-      status IN ('PENDING', 'CANCELLED')
-      OR (SELECT status FROM bookings WHERE id = bookings.id) = status
+      status = (SELECT b.status FROM bookings b WHERE b.id = bookings.id)
+      OR (
+        (SELECT b.status FROM bookings b WHERE b.id = bookings.id) = 'PENDING'
+        AND status = 'CANCELLED'
+      )
     )
   );
 
+-- SECURITY: the assigned handyman must not change status or money columns
+-- directly. All lifecycle transitions go through transition_booking_state /
+-- the Edge Functions (SECURITY DEFINER) which enforce the state machine.
 CREATE POLICY bookings_update_handyman ON bookings
   FOR UPDATE TO authenticated
   USING (
@@ -152,6 +183,12 @@ CREATE POLICY bookings_update_handyman ON bookings
   WITH CHECK (
     handyman_id = auth.uid()
     AND EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND user_type = 'handyman')
+    AND status       = (SELECT b.status       FROM bookings b WHERE b.id = bookings.id)
+    AND amount       = (SELECT b.amount       FROM bookings b WHERE b.id = bookings.id)
+    AND platform_fee = (SELECT b.platform_fee FROM bookings b WHERE b.id = bookings.id)
+    AND client_id    = (SELECT b.client_id    FROM bookings b WHERE b.id = bookings.id)
+    AND service_id   = (SELECT b.service_id   FROM bookings b WHERE b.id = bookings.id)
+    AND handyman_id  = (SELECT b.handyman_id  FROM bookings b WHERE b.id = bookings.id)
   );
 
 CREATE POLICY bookings_admin ON bookings

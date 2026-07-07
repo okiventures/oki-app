@@ -23,6 +23,23 @@ serve(async (req: Request) => {
   const { bookingId, afterPhotoUrl }: CompleteBookingRequest = await req.json();
   if (!bookingId) return badRequest('bookingId required');
 
+  // If a photo reference is supplied, validate it before persisting — the value
+  // is later rendered in client/admin UIs. Allow a bare storage key or an
+  // https URL within project storage; reject script schemes, off-domain URLs,
+  // path traversal, and injection-prone characters.
+  if (afterPhotoUrl !== undefined && afterPhotoUrl !== null) {
+    const v = afterPhotoUrl;
+    const unsafe =
+      typeof v !== 'string' ||
+      v.length === 0 ||
+      v.length > 1024 ||
+      /[\s<>"'`\\]/.test(v) ||
+      /^(javascript|data|vbscript|file):/i.test(v) ||
+      v.includes('..') ||
+      (/^https?:/i.test(v) && !v.includes('/storage/v1/object/'));
+    if (unsafe) return badRequest('afterPhotoUrl is not a valid storage reference');
+  }
+
   const { data: booking, error: fetchError } = await supabase
     .from('bookings')
     .select('*')
