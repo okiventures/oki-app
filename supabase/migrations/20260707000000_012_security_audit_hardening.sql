@@ -6,7 +6,9 @@
 -- Fixes: C1 (admin escalation at signup), H2/H3 (booking column tampering via
 -- RLS), M8 (RLS on notification_queue + kyc_rate_limits), M9 (users PII
 -- enumeration), M10 (payment RPC hardening + amount reconciliation),
--- M11 (accept race), M13 (REJECTED status trigger misfires).
+-- M10b (close the default PUBLIC EXECUTE grant on the service-role RPCs —
+-- payment/kyc/create_booking), M11 (accept race),
+-- M13 (REJECTED status trigger misfires).
 -- The canonical source files under backend/ are updated to match.
 -- ============================================================================
 
@@ -156,13 +158,17 @@ BEGIN
   END IF;
 END;
 $$;
-REVOKE EXECUTE ON FUNCTION kyc_check_rate_limit(UUID) FROM anon;
+-- Revoking anon alone is a no-op while PUBLIC still holds the default EXECUTE
+-- grant; revoke PUBLIC and grant only the service role (the kyc-upload Edge
+-- Function calls this with the service-role key).
+REVOKE EXECUTE ON FUNCTION kyc_check_rate_limit(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION kyc_check_rate_limit(UUID) TO service_role;
 
 -- ─── M10: harden the payment capture RPC ────────────────────────────────────
 -- (a) run as owner with a pinned search_path, (b) reconcile the caller-supplied
 -- amount against the booking's stored amount so a forged/mismatched webhook
--- can't inflate the payout, (c) revoke EXECUTE from anon/authenticated so only
--- the service role (webhook) can call it.
+-- can't inflate the payout, (c) revoke the default PUBLIC EXECUTE grant and hand
+-- it to service_role only so just the service role (webhook) can call it.
 CREATE OR REPLACE FUNCTION execute_payment_transaction(
   booking_id        UUID,
   payment_intent_id TEXT,
@@ -268,7 +274,19 @@ BEGIN
 END;
 $$;
 REVOKE EXECUTE ON FUNCTION execute_payment_transaction(UUID, TEXT, NUMERIC, NUMERIC, NUMERIC, UUID)
-  FROM anon, authenticated;
+  FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION execute_payment_transaction(UUID, TEXT, NUMERIC, NUMERIC, NUMERIC, UUID)
+  TO service_role;
+
+-- ─── M10b: same PUBLIC-grant gap on create_booking. Migrations 008/010 revoked ─
+-- anon/authenticated, but the default PUBLIC EXECUTE grant let any authenticated
+-- PostgREST caller invoke it directly and bypass the create-booking Edge
+-- Function's validation. Revoke PUBLIC and grant only the service role (the sole
+-- caller). Idempotent re-grant is safe on an already-provisioned project.
+REVOKE EXECUTE ON FUNCTION public.create_booking(uuid, booking_type, text, text, double precision, double precision, timestamptz, text)
+  FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.create_booking(uuid, booking_type, text, text, double precision, double precision, timestamptz, text)
+  TO service_role;
 
 -- ─── M11: lock the booking row on read inside transition_booking_state so two ─
 -- handymen can't both pass the PENDING check and double-accept. Full function

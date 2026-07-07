@@ -45,4 +45,9 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION kyc_check_rate_limit(UUID) FROM anon;
+-- Postgres grants EXECUTE to PUBLIC by default, and revoking a single role
+-- (anon) leaves that PUBLIC grant intact — every authenticated PostgREST caller
+-- could still invoke this. Revoke PUBLIC, then grant only the service role: the
+-- kyc-upload Edge Function is the sole caller and uses the service-role key.
+REVOKE EXECUTE ON FUNCTION kyc_check_rate_limit(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION kyc_check_rate_limit(UUID) TO service_role;

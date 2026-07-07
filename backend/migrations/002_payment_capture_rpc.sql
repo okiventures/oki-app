@@ -11,8 +11,8 @@ CREATE OR REPLACE FUNCTION execute_payment_transaction(
 )
 RETURNS VOID
 LANGUAGE plpgsql
--- SECURITY DEFINER with a pinned search_path; EXECUTE revoked from anon/
--- authenticated at the bottom so only the service role (webhook) can call it.
+-- SECURITY DEFINER with a pinned search_path; the default PUBLIC EXECUTE grant
+-- is revoked at the bottom so only the service role (webhook) can call it.
 SECURITY DEFINER SET search_path = public
 AS $$
 DECLARE
@@ -116,5 +116,10 @@ BEGIN
 END;
 $$;
 
+-- Revoke the default PUBLIC grant (revoking anon/authenticated alone is a no-op
+-- while PUBLIC still holds EXECUTE) and grant only the service role — the
+-- payment webhook is the sole intended caller.
 REVOKE EXECUTE ON FUNCTION execute_payment_transaction(UUID, TEXT, NUMERIC, NUMERIC, NUMERIC, UUID)
-  FROM anon, authenticated;
+  FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION execute_payment_transaction(UUID, TEXT, NUMERIC, NUMERIC, NUMERIC, UUID)
+  TO service_role;
