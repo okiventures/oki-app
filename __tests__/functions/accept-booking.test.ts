@@ -1,11 +1,5 @@
-import {
-  requireHandyman,
-  methodNotAllowed,
-  badRequest,
-  notFound,
-  ok,
-} from '../../supabase/functions/_shared/rbac';
-import { serve, __getHandler } from '../__mocks__/deno-serve';
+import { requireHandyman } from '../../supabase/functions/_shared/rbac';
+import { __getHandler } from '../__mocks__/deno-serve';
 import '../../supabase/functions/accept-booking/index';
 
 jest.mock('../../supabase/functions/_shared/rbac', () => {
