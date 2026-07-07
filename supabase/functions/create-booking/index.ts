@@ -19,6 +19,7 @@ serve(async (req: Request) => {
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
+    console.error('create-booking: missing Authorization header');
     return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), { status: 401 });
   }
 
@@ -33,6 +34,7 @@ serve(async (req: Request) => {
     error: authError,
   } = await supabase.auth.getUser();
   if (authError || !user) {
+    console.error('create-booking: auth.getUser failed', authError?.message ?? 'No user returned');
     return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), { status: 401 });
   }
 
@@ -62,6 +64,11 @@ serve(async (req: Request) => {
   });
 
   if (rpcError) {
+    console.error('create-booking: create_booking RPC failed', {
+      message: rpcError.message,
+      details: rpcError.details,
+      hint: rpcError.hint,
+    });
     return new Response(
       JSON.stringify({
         error: 'INTERNAL_ERROR',
@@ -72,7 +79,29 @@ serve(async (req: Request) => {
     );
   }
 
-  return new Response(JSON.stringify({ data: booking }), {
+  console.log('create-booking: booking created', { bookingId: booking.id });
+
+  // ─── Broadcast to nearby matching handymen ──────────────────────────────────
+  let notifiedHandymen: Array<{ handyman_id: string; distance_meters: number }> = [];
+  try {
+    const { data: notifications, error: notifyError } = await supabase.rpc(
+      'notify_nearby_handymen',
+      { p_booking_id: booking.id }
+    );
+
+    if (notifyError) {
+      console.error('create-booking: notify_nearby_handymen RPC failed', notifyError.message);
+    } else {
+      notifiedHandymen = (notifications ?? []) as any;
+      console.log(
+        `create-booking: notified ${notifiedHandymen.length} handymen for booking ${booking.id}`
+      );
+    }
+  } catch (err) {
+    console.error('create-booking: broadcast exception', err instanceof Error ? err.message : err);
+  }
+
+  return new Response(JSON.stringify({ data: booking, notifiedHandymen }), {
     status: 201,
     headers: { 'Content-Type': 'application/json' },
   });

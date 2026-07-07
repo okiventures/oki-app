@@ -59,6 +59,12 @@ export default function ClientHome() {
             onSearchChange={setSearchText}
           />
 
+          <QuickBookCards modes={MOCK_QUICK_BOOK_MODES} />
+
+          <PromoCard promo={MOCK_PROMO} />
+
+          <CategoryGrid categories={filteredCategories} />
+
           {MOCK_ACTIVE_BOOKING && (
             <ActiveBookingCard
               booking={MOCK_ACTIVE_BOOKING}
@@ -66,12 +72,6 @@ export default function ClientHome() {
               onViewDetailsPress={() => router.push('/booking/b1')}
             />
           )}
-
-          <CategoryGrid categories={filteredCategories} />
-
-          <QuickBookCards modes={MOCK_QUICK_BOOK_MODES} />
-
-          <PromoCard promo={MOCK_PROMO} />
 
           <RecentActivity
             rows={MOCK_RECENT_ACTIVITY_ROWS.slice(0, 2)}
