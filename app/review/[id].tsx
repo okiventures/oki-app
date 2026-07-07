@@ -9,6 +9,8 @@ import { Button } from '../../src/components/ui/Button';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { StarRatingInput } from '../../src/components/ui/StarRatingInput';
 import { MOCK_BOOKING_DETAILS } from '../../src/mocks/bookingDetails';
+import { MOCK_CLIENT, MOCK_HANDYMAN } from '../../src/mocks';
+import { addReview } from '../../src/mocks/reviews';
 
 const MAX_COMMENT_LENGTH = 500;
 
@@ -52,8 +54,22 @@ export default function ReviewBookingScreen() {
   const canSubmit = rating > 0;
 
   const handleSubmit = () => {
-    if (!canSubmit) return;
+    if (!canSubmit || !booking) return;
     setSubmitting(true);
+
+    const currentUser = isClient ? MOCK_CLIENT : MOCK_HANDYMAN;
+    const revieweeId = isClient ? booking.handymanId : booking.clientId;
+
+    addReview({
+      bookingId: booking.id,
+      reviewerId: currentUser.id,
+      reviewerName: currentUser.name,
+      reviewerPhotoUrl: currentUser.photoUrl,
+      revieweeId,
+      rating,
+      comment,
+    });
+
     setTimeout(() => {
       setSubmitting(false);
       setShowSuccess(true);

@@ -11,6 +11,7 @@ import {
 import { useTheme } from '../../context/ThemeContext';
 import { Button } from '../ui/Button';
 import { RecentActivityRow } from '../../mocks/dashboard';
+import { getRatingForBooking } from '../../mocks/reviews';
 
 interface BookingCardProps {
   booking: Booking | RecentActivityRow;
@@ -68,6 +69,7 @@ export function BookingCard({
     dateText = formatDate(std.createdAt);
     amount = std.amount;
     status = std.status;
+    rating = getRatingForBooking(std.id);
 
     const categoryName = std.serviceCategory;
     const iconBase = SERVICE_CATEGORY_ICONS[categoryName] || 'construct';
