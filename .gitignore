@@ -47,3 +47,6 @@ supabase/.temp/
 
 # Stray generated projects
 my-expo-app/
+
+# Agent configuration
+.superpowers/
