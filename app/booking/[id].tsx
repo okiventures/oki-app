@@ -269,19 +269,6 @@ export default function BookingDetailScreen() {
               )}
             </View>
           )}
-
-          {(booking.status === BookingStatus.Completed ||
-            booking.status === BookingStatus.Paid) && (
-            <View className={canClientCancel || nextAction ? 'mt-3' : ''}>
-              <Button
-                label="Leave a Review"
-                variant="primary"
-                fullWidth
-                onPress={() => router.push(`/review/${booking.id}`)}
-                leftIcon={<Ionicons name="star-outline" size={16} color="#FFFFFF" />}
-              />
-            </View>
-          )}
         </View>
       </View>
 
