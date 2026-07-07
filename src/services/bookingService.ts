@@ -37,7 +37,13 @@ export interface BookingEventRow {
 }
 
 type StateTransitionAction =
-  'ACCEPT' | 'REJECT' | 'CANCEL' | 'START_TRANSIT' | 'MARK_ARRIVED' | 'START_WORK' | 'COMPLETE';
+  | 'ACCEPT'
+  | 'REJECT'
+  | 'CANCEL'
+  | 'START_TRANSIT'
+  | 'MARK_ARRIVED'
+  | 'START_WORK'
+  | 'COMPLETE';
 
 export class BookingTransitionError extends Error {
   readonly status?: number;
