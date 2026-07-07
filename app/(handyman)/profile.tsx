@@ -139,6 +139,23 @@ export default function HandymanProfile() {
 
             <TouchableOpacity
               className="flex-row items-center border-b border-gray-100 p-4"
+              onPress={() => router.push('/report')}>
+              <View
+                className="h-10 w-10 items-center justify-center rounded-full"
+                style={{ backgroundColor: colors.primary['50'] }}>
+                <Ionicons name="flag-outline" size={18} color={colors.primary['600']} />
+              </View>
+              <View className="ml-4 flex-1">
+                <Text className="text-[15px] font-bold text-gray-900">My Reports</Text>
+                <Text className="mt-0.5 text-[11px] text-gray-500">
+                  View your submitted reports
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="flex-row items-center border-b border-gray-100 p-4"
               onPress={() => router.push('/profile/settings')}>
               <View
                 className="h-10 w-10 items-center justify-center rounded-full"

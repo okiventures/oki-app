@@ -8,9 +8,11 @@ import { Button } from '../ui/Button';
 interface RecentActivityProps {
   rows: RecentActivityRow[];
   onViewHistory?: () => void;
+  onReport?: (rowId: string) => void;
+  onReview?: (rowId: string) => void;
 }
 
-export function RecentActivity({ rows, onViewHistory }: RecentActivityProps) {
+export function RecentActivity({ rows, onViewHistory, onReport, onReview }: RecentActivityProps) {
   const { colors } = useTheme();
 
   if (!rows.length) return null;
@@ -22,7 +24,12 @@ export function RecentActivity({ rows, onViewHistory }: RecentActivityProps) {
       </Text>
       <View className="gap-1">
         {rows.map((row) => (
-          <BookingCard key={row.id} booking={row} />
+          <BookingCard
+            key={row.id}
+            booking={row}
+            onReport={onReport ? () => onReport(row.id) : undefined}
+            onReview={onReview ? () => onReview(row.id) : undefined}
+          />
         ))}
       </View>
       <View className="mt-3">

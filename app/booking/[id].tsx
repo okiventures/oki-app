@@ -271,30 +271,35 @@ export default function BookingDetailScreen() {
           {activeTab === 'Payment' && <BookingPaymentTab booking={booking} />}
         </ScrollView>
 
-        {(canClientCancel || nextAction) && (
-          <View
-            className="border-t border-gray-200 px-5 pt-3 pb-6"
-            style={{ backgroundColor: colors.ui.background }}>
-            {isHandyman && nextAction && (
-              <Button
-                label={nextAction.label}
-                variant="primary"
-                fullWidth
-                onPress={() => setShowAdvanceDialog(true)}
-              />
-            )}
+        <View
+          className="border-t px-5 pt-3 pb-6"
+          style={{
+            backgroundColor: colors.ui.background,
+            borderColor: colors.ui.border,
+          }}>
+          {(canClientCancel || nextAction) && (
+            <View className="gap-2">
+              {isHandyman && nextAction && (
+                <Button
+                  label={nextAction.label}
+                  variant="primary"
+                  fullWidth
+                  onPress={() => setShowAdvanceDialog(true)}
+                />
+              )}
 
-            {canClientCancel && (
-              <Button
-                label="Cancel Booking"
-                variant="tertiary"
-                fullWidth
-                onPress={() => setShowCancelDialog(true)}
-                leftIcon={<Ionicons name="close-circle-outline" size={16} color="#EF4444" />}
-              />
-            )}
-          </View>
-        )}
+              {canClientCancel && (
+                <Button
+                  label="Cancel Booking"
+                  variant="tertiary"
+                  fullWidth
+                  onPress={() => setShowCancelDialog(true)}
+                  leftIcon={<Ionicons name="close-circle-outline" size={16} color="#EF4444" />}
+                />
+              )}
+            </View>
+          )}
+        </View>
       </View>
 
       <ConfirmDialog
