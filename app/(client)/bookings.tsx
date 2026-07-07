@@ -42,11 +42,10 @@ export default function ClientBookings() {
   );
 
   const historyBookings = filteredBookings.filter(
-    (b) =>
-      b.status === BookingStatus.Completed ||
-      b.status === BookingStatus.Paid ||
-      b.status === BookingStatus.Cancelled
+    (b) => b.status === BookingStatus.Completed || b.status === BookingStatus.Paid
   );
+
+  const cancelledBookings = filteredBookings.filter((b) => b.status === BookingStatus.Cancelled);
 
   const hasAnyBookings = filteredBookings.length > 0;
 
@@ -115,6 +114,19 @@ export default function ClientBookings() {
                       onRebook={() => {}}
                       onReport={() => router.push(`/report/${item.id}`)}
                       onReview={() => router.push(`/review/${item.id}`)}
+                    />
+                  ))}
+                </BookingListSection>
+              )}
+
+              {cancelledBookings.length > 0 && (
+                <BookingListSection title="Cancelled Requests">
+                  {cancelledBookings.map((item) => (
+                    <BookingCard
+                      key={item.id}
+                      booking={item}
+                      userType="client"
+                      onPress={() => router.push(`/booking/${item.id}`)}
                     />
                   ))}
                 </BookingListSection>

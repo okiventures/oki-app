@@ -16,7 +16,8 @@ import { BookingSearchingState } from '../../src/components/bookings/BookingSear
 import { Tabs } from '../../src/components/ui/Tabs';
 import { ConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 import { Button } from '../../src/components/ui/Button';
-import { BookingStatus } from '../../src/types';
+import { Toast } from '../../src/components/ui/Toast';
+import { BookingStatus, ToastMessage } from '../../src/types';
 
 const TABS = ['Overview', 'Timeline', 'Payment'] as const;
 type Tab = (typeof TABS)[number];
@@ -24,14 +25,15 @@ type Tab = (typeof TABS)[number];
 export default function BookingDetailScreen() {
   const { id, role } = useLocalSearchParams<{ id: string; role?: string }>();
   const router = useRouter();
-  const { getBookingById, cancelBooking, advanceBooking, getNextHandymanAction, declineBooking } =
-    useBookings();
+  const { getBookingById, cancelBooking, advanceBooking, getNextHandymanAction } = useBookings();
   const { colors } = useTheme();
   const { session } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showAdvanceDialog, setShowAdvanceDialog] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelToast, setCancelToast] = useState<ToastMessage | null>(null);
   const prevStatusRef = useRef<BookingStatus | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -63,16 +65,45 @@ export default function BookingDetailScreen() {
   const viewerRole = role ?? session?.user?.userType ?? 'client';
   const isHandyman = viewerRole === 'handyman';
 
-  const canClientCancel =
-    !isHandyman &&
-    (booking.status === BookingStatus.Pending || booking.status === BookingStatus.Accepted);
+  // Only PENDING bookings can be cancelled by the client; once ACCEPTED, the
+  // Week 21 dispute / cancellation-fee flow takes over.
+  const canClientCancel = !isHandyman && booking.status === BookingStatus.Pending;
 
   const nextAction = isHandyman ? getNextHandymanAction(booking.status) : null;
 
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     setShowCancelDialog(false);
-    cancelBooking(booking.id);
-    router.back();
+    setIsCancelling(true);
+    const result = await cancelBooking(booking.id);
+    setIsCancelling(false);
+
+    if (result.ok) {
+      router.back();
+      return;
+    }
+
+    setCancelToast({
+      id: `cancel-error-${Date.now()}`,
+      type: 'error',
+      message: result.message,
+    });
+  };
+
+  const handleSearchingCancel = async () => {
+    setIsCancelling(true);
+    const result = await cancelBooking(booking.id);
+    setIsCancelling(false);
+
+    if (result.ok) {
+      router.replace('/(client)');
+      return;
+    }
+
+    setCancelToast({
+      id: `cancel-error-${Date.now()}`,
+      type: 'error',
+      message: result.message,
+    });
   };
 
   const handleConfirmAdvance = () => {
@@ -127,11 +158,10 @@ export default function BookingDetailScreen() {
         </View>
         <BookingSearchingState
           booking={liveBooking ?? booking}
-          onCancel={() => {
-            declineBooking(booking.id);
-            router.replace('/(client)');
-          }}
+          onCancel={handleSearchingCancel}
+          isCancelling={isCancelling}
         />
+        {cancelToast && <Toast toast={cancelToast} onDismiss={() => setCancelToast(null)} />}
       </SafeAreaView>
     );
   }
@@ -275,11 +305,7 @@ export default function BookingDetailScreen() {
       <ConfirmDialog
         visible={showCancelDialog}
         title="Cancel this booking?"
-        message={
-          booking.status === BookingStatus.Accepted
-            ? 'This booking has already been accepted by the handyman. Are you sure you want to cancel?'
-            : 'Your pending booking will be cancelled immediately at no charge.'
-        }
+        message="Your pending booking will be cancelled immediately at no charge."
         confirmLabel="Yes, cancel it"
         cancelLabel="Keep booking"
         danger
@@ -296,6 +322,8 @@ export default function BookingDetailScreen() {
         onConfirm={handleConfirmAdvance}
         onCancel={() => setShowAdvanceDialog(false)}
       />
+
+      {cancelToast && <Toast toast={cancelToast} onDismiss={() => setCancelToast(null)} />}
     </SafeAreaView>
   );
 }
