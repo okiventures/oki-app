@@ -1,19 +1,69 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, Switch, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { Card } from '../../src/components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
-import { MOCK_HANDYMAN } from '../../src/mocks';
-import { formatCurrency } from '../../src/utils';
+import {
+  MOCK_HANDYMAN,
+  MOCK_EARNINGS,
+  filterEarningsByRange,
+  getTodayRange,
+  getThisWeekRange,
+  getThisMonthRange,
+  getLastMonthRange,
+  getRangeLabel,
+} from '../../src/mocks';
 import { useBookings, ACTIVE_HANDYMAN_BOOKING_STATUSES } from '../../src/context/BookingsContext';
 import { ActiveJobWorkflowCardOverview } from '../../src/components/handyman/ActiveJobWorkflowCard';
+import { EarningsSummaryCard } from '../../src/components/handyman/EarningsSummaryCard';
+import { Preset } from '../../src/components/handyman/EarningsDateRangeFilter';
+
+const PRESET_RANGES: Record<string, () => { start: Date; end: Date }> = {
+  'This Day': getTodayRange,
+  'This Week': getThisWeekRange,
+  'This Month': getThisMonthRange,
+  'Last Month': getLastMonthRange,
+};
 
 export default function HandymanDashboard() {
   const { colors } = useTheme();
+  const router = useRouter();
   const [isActive, setIsActive] = useState(MOCK_HANDYMAN.isOnline);
   const { bookings } = useBookings();
+
+  const [selectedPreset, setSelectedPreset] = useState<Preset>('This Week');
+  const [customStart, setCustomStart] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 6);
+    return d;
+  });
+  const [customEnd, setCustomEnd] = useState(() => new Date());
+
+  const range = useMemo(() => {
+    if (selectedPreset === 'Custom') {
+      return { start: customStart, end: customEnd };
+    }
+    const fn = PRESET_RANGES[selectedPreset];
+    return fn ? fn() : getThisWeekRange();
+  }, [selectedPreset, customStart, customEnd]);
+
+  const filteredTotal = useMemo(
+    () =>
+      filterEarningsByRange(MOCK_EARNINGS, range.start, range.end).reduce(
+        (sum: number, e: { netEarnings: number }) => sum + e.netEarnings,
+        0
+      ),
+    [range.start, range.end]
+  );
+
+  const rangeLabel = useMemo(
+    () => getRangeLabel(selectedPreset, range.start, range.end),
+    [selectedPreset, range]
+  );
+
   const myBookings = bookings.filter((booking) => booking.handymanId === MOCK_HANDYMAN.id);
   const activeJob = myBookings.filter((booking) =>
     ACTIVE_HANDYMAN_BOOKING_STATUSES.includes(booking.status)
@@ -61,20 +111,24 @@ export default function HandymanDashboard() {
           </Card>
 
           {/* Earnings Overview */}
-          <View className="flex-row gap-2">
-            <Card className="flex-1 items-center py-3">
-              <Ionicons name="wallet-outline" size={20} color="#6B7280" className="mb-2" />
-              <Text className="mb-1 text-[11px] font-medium text-gray-500">Today</Text>
-              <Text className="font-heading text-lg text-gray-900">{formatCurrency(120)}</Text>
-            </Card>
-            <Card className="flex-1 items-center py-3">
-              <Ionicons name="stats-chart-outline" size={20} color="#6B7280" className="mb-2" />
-              <Text className="mb-1 text-[11px] font-medium text-gray-500">This Week</Text>
-              <Text className="font-heading text-lg text-gray-900">{formatCurrency(845)}</Text>
-            </Card>
-          </View>
+          <EarningsSummaryCard
+            totalEarnings={filteredTotal}
+            rangeLabel={rangeLabel}
+            selectedPreset={selectedPreset}
+            onPresetChange={setSelectedPreset}
+            customStartDate={customStart}
+            customEndDate={customEnd}
+            rangeStart={range.start}
+            rangeEnd={range.end}
+            onCustomDateChange={(s, e) => {
+              setCustomStart(s);
+              setCustomEnd(e);
+              setSelectedPreset('Custom');
+            }}
+            onSeeFullReport={() => router.push('/(handyman)/earnings')}
+          />
 
-          {/* Placeholder for Active Jobs */}
+          {/* Active Jobs */}
           <View>
             <Text className="font-heading mb-4 text-base text-gray-900">Active Jobs</Text>
             {activeJob ? (
