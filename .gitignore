@@ -48,5 +48,17 @@ supabase/.temp/
 # Stray generated projects
 my-expo-app/
 
+# Scratch / temp / debug artifacts (should never be committed)
+_temp_*
+*_export/
+scratch/
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# Stray npm lockfiles (this repo standardises on pnpm)
+package-lock.json
+apps/*/package-lock.json
+
 # Agent configuration
 .superpowers/

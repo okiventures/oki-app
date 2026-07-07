@@ -29,6 +29,10 @@ import_map = "./import_map.json"
 verify_jwt = true
 import_map = "./import_map.json"
 
+[functions.kyc-admin-bulk-review]
+verify_jwt = true
+import_map = "./import_map.json"
+
 [functions.accept-booking]
 verify_jwt = true
 import_map = "./import_map.json"
@@ -53,6 +57,8 @@ import_map = "./import_map.json"
 verify_jwt = true
 import_map = "./import_map.json"
 
+# verify_jwt stays false because the function itself requires the service-role
+# bearer (constant-time compare); the cron job in migration 012 supplies it.
 [functions.notification-worker]
 verify_jwt = false
 import_map = "./import_map.json"

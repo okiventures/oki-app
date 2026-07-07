@@ -46,10 +46,12 @@ BEGIN
   FROM users
   WHERE id = v_actor_id;
 
-  -- 3. Fetch booking
+  -- 3. Fetch booking. FOR UPDATE locks the row for the transaction so two
+  --    handymen can't both pass the PENDING check and double-accept.
   SELECT * INTO STRICT v_booking
   FROM bookings
-  WHERE id = p_booking_id;
+  WHERE id = p_booking_id
+  FOR UPDATE;
 
   v_from_status := v_booking.status;
 

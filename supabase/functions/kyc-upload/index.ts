@@ -2,7 +2,9 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SERVICE_ROLE_KEY =
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY');
-const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') ?? '*';
+// Fail closed: default to no cross-origin access. Set ALLOWED_ORIGIN to the
+// admin/web origin in each environment. Native apps don't enforce CORS.
+const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') ?? '';
 
 if (!SUPABASE_URL || !ANON_KEY || !SERVICE_ROLE_KEY) throw new Error('Missing required env vars');
 
@@ -82,24 +84,30 @@ Deno.serve(async (req: Request): Promise<Response> => {
     },
     body: JSON.stringify({ p_handyman_id: userId }),
   });
-  if (rlResp.ok) {
-    const rl = await rlResp.json();
-    if (!rl.allowed) {
-      return new Response(
-        JSON.stringify({
-          error: 'RATE_LIMITED',
-          message: 'Too many uploads. Try again shortly.',
-          retry_after_seconds: rl.retry_after,
+  // Fail closed: if the rate-limit check itself errors, reject the upload
+  // rather than letting it through unthrottled.
+  if (!rlResp.ok) {
+    return err(503, {
+      error: 'SERVICE_UNAVAILABLE',
+      message: 'Rate limit check unavailable. Try again shortly.',
+    });
+  }
+  const rl = await rlResp.json();
+  if (!rl.allowed) {
+    return new Response(
+      JSON.stringify({
+        error: 'RATE_LIMITED',
+        message: 'Too many uploads. Try again shortly.',
+        retry_after_seconds: rl.retry_after,
+      }),
+      {
+        status: 429,
+        headers: cors({
+          'Content-Type': 'application/json',
+          'Retry-After': String(rl.retry_after),
         }),
-        {
-          status: 429,
-          headers: cors({
-            'Content-Type': 'application/json',
-            'Retry-After': String(rl.retry_after),
-          }),
-        }
-      );
-    }
+      }
+    );
   }
 
   const ct = req.headers.get('Content-Type') ?? '';

@@ -287,10 +287,22 @@ CREATE TRIGGER trg_payments_updated_at
 CREATE TRIGGER trg_disputes_updated_at
   BEFORE UPDATE ON disputes FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- Auto-create profile on auth signup
+-- Auto-create profile on auth signup.
+-- SECURITY: user_type is self-asserted in signup metadata, so we only ever
+-- honour 'handyman'; anything else (including a spoofed 'admin') collapses to
+-- 'client'. Admins must be provisioned out-of-band (service-role UPDATE), never
+-- via self-signup.
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_requested TEXT := NEW.raw_user_meta_data ->> 'user_type';
+  v_user_type user_type;
 BEGIN
+  v_user_type := CASE
+    WHEN v_requested = 'handyman' THEN 'handyman'::user_type
+    ELSE 'client'::user_type
+  END;
+
   INSERT INTO public.users (id, email, phone, full_name, user_type)
   VALUES (
     NEW.id,
@@ -301,14 +313,11 @@ BEGIN
       NULLIF(split_part(COALESCE(NEW.email, ''), '@', 1), ''),
       'User'
     ),
-    COALESCE(
-      (NEW.raw_user_meta_data ->> 'user_type')::user_type,
-      'client'::user_type
-    )
+    v_user_type
   );
 
   -- Auto-create handyman profile row if user_type is handyman
-  IF (NEW.raw_user_meta_data ->> 'user_type') = 'handyman' THEN
+  IF v_user_type = 'handyman' THEN
     INSERT INTO public.handymen (id)
     VALUES (NEW.id);
   END IF;
