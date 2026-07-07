@@ -1,5 +1,22 @@
 import { Review } from '../types';
 
+let nextReviewId = 3;
+
+export function addReview(review: Omit<Review, 'id' | 'createdAt'>): Review {
+  const newReview: Review = {
+    ...review,
+    id: `rev-${String(nextReviewId++).padStart(3, '0')}`,
+    createdAt: new Date().toISOString(),
+  };
+  MOCK_REVIEWS.push(newReview);
+  return newReview;
+}
+
+export function getRatingForBooking(bookingId: string): number {
+  const review = MOCK_REVIEWS.find((r) => r.bookingId === bookingId);
+  return review?.rating ?? 0;
+}
+
 export const MOCK_REVIEWS: Review[] = [
   {
     id: 'r1',

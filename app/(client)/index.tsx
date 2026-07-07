@@ -138,6 +138,8 @@ export default function ClientHome() {
           <RecentActivity
             rows={MOCK_RECENT_ACTIVITY_ROWS.slice(0, 2)}
             onViewHistory={() => router.push('/bookings')}
+            onReport={(id) => router.push(`/report/${id}`)}
+            onReview={(id) => router.push(`/review/${id}`)}
           />
         </ScrollView>
       </View>

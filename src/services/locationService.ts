@@ -1,5 +1,7 @@
+/* eslint-disable import/no-unresolved */
 import * as TaskManager from 'expo-task-manager';
 import * as Location from 'expo-location';
+/* eslint-enable import/no-unresolved */
 import { supabase } from '../lib/supabase';
 
 export const LOCATION_TASK_NAME = 'background-handyman-location-task';
