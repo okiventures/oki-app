@@ -14,7 +14,6 @@ import {
   subscribeToBooking,
   createBooking as createBookingService,
   BookingTransitionError,
-  isMockEnv,
 } from '../services/bookingService';
 import type { CreateBookingInput } from '../services/bookingService';
 
@@ -202,28 +201,6 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
   const createBooking = useCallback(async (input: CreateBookingInput) => {
     const booking = await createBookingService(input);
     setBookings((current) => [...current, booking]);
-
-    // DEMO ONLY: with no real backend, simulate a handyman accepting after 5s so
-    // the prototype flow is visible. Never runs against a live backend, where a
-    // real handyman drives acceptance and realtime events reflect it.
-    if (isMockEnv()) {
-      setTimeout(() => {
-        setBookings((current) =>
-          current.map((b) =>
-            b.id === booking.id && b.status === BookingStatus.Pending
-              ? {
-                  ...b,
-                  status: BookingStatus.Accepted,
-                  handymanId: 'h1',
-                  handymanName: 'Ceferino Jumao-as V',
-                  updatedAt: new Date().toISOString(),
-                }
-              : b
-          )
-        );
-      }, 5000);
-    }
-
     return booking;
   }, []);
 

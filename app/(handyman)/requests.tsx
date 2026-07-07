@@ -31,7 +31,12 @@ export default function HandymanRequests() {
   const handymanId = session?.user?.id ?? DEMO_HANDYMAN_ID;
 
   const myBookings = useMemo(
-    () => bookings.filter((booking) => booking.handymanId === handymanId),
+    () =>
+      bookings.filter(
+        (booking) =>
+          booking.handymanId === handymanId ||
+          (booking.handymanId === '' && booking.status === 'Pending')
+      ),
     [bookings, handymanId]
   );
 

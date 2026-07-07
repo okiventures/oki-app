@@ -125,7 +125,14 @@ ALTER TABLE public.notification_queue ENABLE ROW LEVEL SECURITY;
 
 -- ─── M8: same for kyc_rate_limits (bypass/lock-out vector). Only the ─────────
 -- SECURITY DEFINER RPC touches it; deny the authenticated role.
-ALTER TABLE public.kyc_rate_limits ENABLE ROW LEVEL SECURITY;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_tables WHERE tablename = 'kyc_rate_limits' AND schemaname = 'public'
+  ) THEN
+    ALTER TABLE public.kyc_rate_limits ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
 
 -- kyc_check_rate_limit is called from the Edge Function with the user's token,
 -- so it must run as owner to write kyc_rate_limits under the new RLS. Make it

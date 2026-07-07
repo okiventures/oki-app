@@ -46,10 +46,13 @@ type StateTransitionAction =
   | 'COMPLETE';
 
 export class BookingTransitionError extends Error {
-  readonly status?: number;
-  readonly body?: Record<string, unknown>;
+  status?: number;
+  body?: Record<string, unknown>;
 
-  constructor(message: string, status?: number, body?: Record<string, unknown>) {
+  constructor(
+    message: string,
+    { status, body }: { status?: number; body?: Record<string, unknown> } = {}
+  ) {
     super(message);
     this.name = 'BookingTransitionError';
     this.status = status;
@@ -227,38 +230,6 @@ async function applyLocalTransition(
   };
 }
 
-async function throwInvokeError(error: { message: string; context?: Response }): Promise<never> {
-  if (error.context) {
-    let body: Record<string, unknown> | undefined;
-    const text = await error.context.text();
-    if (text) {
-      try {
-        body = JSON.parse(text) as Record<string, unknown>;
-      } catch {
-        // Response body may be empty or non-JSON.
-      }
-    }
-    const message =
-      (typeof body?.message === 'string' && body.message) ||
-      error.message ||
-      'State transition failed';
-    throw new BookingTransitionError(message, error.context.status, body);
-  }
-
-  throw new BookingTransitionError(error.message || 'State transition failed');
-}
-
-function isInvokeTransportFailure(error: { context?: Response }): boolean {
-  return !error.context;
-}
-
-function shouldUseLocalTransition(
-  hasSession: boolean,
-  metadata?: Record<string, unknown>
-): boolean {
-  return USE_MOCK || !hasSession || metadata?.simulated === true;
-}
-
 // ─── Transition booking state via Edge Function ──────────────────────────────
 
 export async function transitionBookingState(
@@ -267,58 +238,69 @@ export async function transitionBookingState(
   metadata?: Record<string, unknown>
 ): Promise<Booking> {
   const hasSession = await checkSession();
-  // Only the offline demo (no session) or an explicitly-simulated action uses
-  // the local mock. With a real session a backend rejection (not your booking,
-  // KYC/online guard, wrong state, already assigned) MUST surface to the caller
-  // — never silently fake success, which would desync the UI from the server.
-  if (shouldUseLocalTransition(hasSession, metadata)) {
+  if (!hasSession || metadata?.simulated) {
     return applyLocalTransition(bookingId, action);
   }
 
-  // Map action to edge function name
-  const functionMap: Record<string, string> = {
-    ACCEPT: 'accept-booking',
-    REJECT: 'reject-booking',
-    CANCEL: 'cancel-booking',
-    COMPLETE: 'complete-booking',
-  };
+  try {
+    const functionMap: Record<string, string> = {
+      ACCEPT: 'accept-booking',
+      REJECT: 'reject-booking',
+      CANCEL: 'cancel-booking',
+      COMPLETE: 'complete-booking',
+    };
 
-  const functionName = functionMap[action];
-  if (functionName) {
-    const { data, error } = await supabase.functions.invoke(functionName, {
-      body: { bookingId, ...(metadata ?? {}) },
+    const functionName = functionMap[action];
+    if (functionName) {
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: { bookingId, ...(metadata ?? {}) },
+      });
+
+      if (error) {
+        throw (error as any).context ? error : new Error(error.message);
+      }
+
+      const bookingRow = data?.data ?? data;
+      return mapBookingRow(bookingRow as BookingRow);
+    }
+
+    const { data, error } = await supabase.rpc('transition_booking_state', {
+      p_booking_id: bookingId,
+      p_action: action,
+      p_metadata: metadata ?? {},
     });
 
     if (error) {
-      if (isInvokeTransportFailure(error)) {
-        console.warn(
-          `transitionBookingState: ${functionName} transport failure, falling back to local.`,
-          error.message
-        );
-        return applyLocalTransition(bookingId, action);
-      }
-
-      await throwInvokeError(error);
+      throw new Error(error.message);
     }
 
-    // Edge functions respond via ok()/created(), which wrap the row as
-    // `{ data: row }`. Unwrap it; fall back to the raw body defensively.
-    const bookingRow = (data as { data?: BookingRow })?.data ?? (data as BookingRow);
-    return mapBookingRow(bookingRow);
+    return mapBookingRow(data as BookingRow);
+  } catch (err) {
+    const ctx = (err as any)?.context;
+    let parsedBody: Record<string, unknown> | null = null;
+    let status: number | undefined;
+
+    if (ctx && typeof ctx.status === 'number') {
+      status = ctx.status;
+      try {
+        parsedBody = JSON.parse(await ctx.text());
+      } catch {
+        // body is not valid JSON — fall through to raw error message
+      }
+    }
+
+    const message =
+      typeof parsedBody?.message === 'string'
+        ? parsedBody.message
+        : err instanceof Error
+          ? err.message
+          : String(err);
+
+    throw new BookingTransitionError(message, {
+      status,
+      body: parsedBody ?? undefined,
+    });
   }
-
-  // For other transitions, call the generic state-machine RPC
-  const { data, error } = await supabase.rpc('transition_booking_state', {
-    p_booking_id: bookingId,
-    p_action: action,
-    p_metadata: metadata ?? {},
-  });
-
-  if (error) {
-    throw new BookingTransitionError(error.message);
-  }
-
-  return mapBookingRow(data as BookingRow);
 }
 
 // ─── Subscribe to real-time booking updates ──────────────────────────────────
@@ -408,29 +390,47 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
     throw new Error('createBooking requires serviceId and coordinates for a live booking');
   }
 
-  const { data, error } = await supabase.functions.invoke('create-booking', {
-    body: {
-      serviceId: input.serviceId,
-      bookingType: input.bookingType === BookingType.OnDemand ? 'ON_DEMAND' : 'SCHEDULED',
-      description: input.description,
-      addressText: input.location,
-      lat: input.lat,
-      lng: input.lng,
-      scheduledAt: input.scheduledAt ?? null,
-      notes: input.notes ?? null,
-    },
-  });
+  try {
+    const { data, error } = await supabase.functions.invoke('create-booking', {
+      body: {
+        serviceId: input.serviceId,
+        bookingType: input.bookingType === BookingType.OnDemand ? 'ON_DEMAND' : 'SCHEDULED',
+        description: input.description,
+        addressText: input.location,
+        lat: input.lat,
+        lng: input.lng,
+        scheduledAt: input.scheduledAt ?? null,
+        notes: input.notes ?? null,
+      },
+    });
 
-  if (error) {
-    throw new Error(error.message);
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const bookingRow = data.data as BookingRow;
+    return {
+      ...mapBookingRow(bookingRow),
+      clientName: input.clientName,
+      handymanName: '',
+    };
+  } catch (err) {
+    const ctx = (err as any)?.context;
+    if (ctx && typeof ctx.status === 'number') {
+      try {
+        const body = await ctx.text();
+        console.warn(
+          `createBooking: Edge Function returned ${ctx.status}`,
+          body.length < 500 ? body : body.slice(0, 500)
+        );
+      } catch {
+        console.warn(`createBooking: Edge Function returned ${ctx.status}, could not read body`);
+      }
+    } else {
+      console.warn('createBooking: Edge Function failed, falling back to mock', err);
+    }
+    throw err;
   }
-
-  const bookingRow = data.data as BookingRow;
-  return {
-    ...mapBookingRow(bookingRow),
-    clientName: input.clientName,
-    handymanName: '',
-  };
 }
 
 // ─── Guard condition descriptions ────────────────────────────────────────────

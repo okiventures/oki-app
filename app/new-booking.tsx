@@ -89,7 +89,7 @@ export default function NewBookingScreen() {
 
   const canAdvance = (): boolean => {
     if (stepIndex === 0) return categoryId !== null && !!subServiceId;
-    if (stepIndex === 1) return address.trim().length > 0;
+    if (stepIndex === 1) return address.trim().length > 0 && description.trim().length > 0;
     if (stepIndex === 2 && bookingMode === 'later') return !isSelectedSlotBlocked;
     return true;
   };
