@@ -26,6 +26,12 @@ export default function HandymanLayout() {
       route: '/(handyman)/schedule',
     },
     {
+      key: 'earnings',
+      label: 'Earnings',
+      icon: 'trending-up-outline',
+      route: '/(handyman)/earnings',
+    },
+    {
       key: 'profile',
       label: 'Profile',
       icon: 'person-outline',
@@ -38,6 +44,7 @@ export default function HandymanLayout() {
       <Tabs.Screen name="index" />
       <Tabs.Screen name="requests" />
       <Tabs.Screen name="schedule" />
+      <Tabs.Screen name="earnings" />
       <Tabs.Screen name="profile" />
     </Tabs>
   );
