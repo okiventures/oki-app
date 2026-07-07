@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, Pressable, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Booking, BookingStatus } from '../../types';
 import { formatDate } from '../../utils';
@@ -11,6 +11,7 @@ import {
 import { useTheme } from '../../context/ThemeContext';
 import { Button } from '../ui/Button';
 import { RecentActivityRow } from '../../mocks/dashboard';
+import { getRatingForBooking } from '../../mocks/reviews';
 
 interface BookingCardProps {
   booking: Booking | RecentActivityRow;
@@ -18,6 +19,7 @@ interface BookingCardProps {
   onPress?: () => void;
   onRebook?: () => void;
   onReport?: () => void;
+  onReview?: () => void;
 }
 
 export function BookingCard({
@@ -26,6 +28,7 @@ export function BookingCard({
   onPress,
   onRebook,
   onReport,
+  onReview,
 }: BookingCardProps) {
   const { colors } = useTheme();
 
@@ -37,6 +40,7 @@ export function BookingCard({
   let amount = 0;
   let status: string = '';
   let categoryIcon = 'construct-outline'; // default
+  let rating = 0;
 
   if (isRecentActivity) {
     const row = booking as RecentActivityRow;
@@ -46,6 +50,7 @@ export function BookingCard({
     dateText = row.dateLabel;
     amount = row.price;
     status = row.status;
+    rating = row.rating ?? 0;
 
     // Map category ID to icon
     const catId = row.categoryId.toLowerCase();
@@ -64,6 +69,7 @@ export function BookingCard({
     dateText = formatDate(std.createdAt);
     amount = std.amount;
     status = std.status;
+    rating = getRatingForBooking(std.id);
 
     const categoryName = std.serviceCategory;
     const iconBase = SERVICE_CATEGORY_ICONS[categoryName] || 'construct';
@@ -151,20 +157,28 @@ export function BookingCard({
         </View>
 
         {status === 'Completed' && (
-          <View className="flex-row items-center gap-1.5">
+          <Pressable
+            onPress={rating > 0 ? undefined : onReview}
+            disabled={!onReview || rating > 0}
+            className="flex-row items-center gap-1.5">
             <View className="flex-row">
               {[1, 2, 3, 4, 5].map((i) => (
-                <Ionicons key={i} name="star-outline" size={12} color="#F59E0B" />
+                <Ionicons
+                  key={i}
+                  name={i <= rating ? 'star' : 'star-outline'}
+                  size={12}
+                  color="#F59E0B"
+                />
               ))}
             </View>
             <Text className="text-[11px] font-medium" style={{ color: colors.ui.textLight }}>
-              Your rating
+              {rating > 0 ? `${rating}.0` : 'Your rating'}
             </Text>
-          </View>
+          </Pressable>
         )}
       </View>
 
-      {!isRecentActivity && (onRebook || onReport) && status === BookingStatus.Paid && (
+      {!isRecentActivity && (onRebook || onReport) && status !== BookingStatus.Pending && (
         <View className="mt-3 flex-row gap-2 border-t border-gray-50 pt-3">
           {onRebook && (
             <View className="flex-1">

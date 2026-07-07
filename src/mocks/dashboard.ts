@@ -133,6 +133,7 @@ export interface RecentActivityRow {
   workerName: string;
   price: number;
   status: 'Completed' | 'Cancelled' | 'In Progress';
+  rating?: number;
 }
 
 export const MOCK_RECENT_ACTIVITY_ROWS: RecentActivityRow[] = [
@@ -144,6 +145,7 @@ export const MOCK_RECENT_ACTIVITY_ROWS: RecentActivityRow[] = [
     workerName: 'Ceferino Jumao-as V',
     price: 450,
     status: 'Completed',
+    rating: 4,
   },
   {
     id: 'r2',
@@ -153,6 +155,7 @@ export const MOCK_RECENT_ACTIVITY_ROWS: RecentActivityRow[] = [
     workerName: 'James Ty',
     price: 380,
     status: 'Completed',
+    rating: 5,
   },
   {
     id: 'r3',
@@ -162,5 +165,6 @@ export const MOCK_RECENT_ACTIVITY_ROWS: RecentActivityRow[] = [
     workerName: 'Maria Santos',
     price: 800,
     status: 'Completed',
+    rating: 2,
   },
 ];
