@@ -1,7 +1,5 @@
 /* eslint-disable import/no-unresolved */
-// @ts-expect-error expo-task-manager not installed (peer dep conflict)
 import * as TaskManager from 'expo-task-manager';
-// @ts-expect-error expo-location not installed (peer dep conflict)
 import * as Location from 'expo-location';
 /* eslint-enable import/no-unresolved */
 import { supabase } from '../lib/supabase';
