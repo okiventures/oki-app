@@ -45,6 +45,18 @@ type StateTransitionAction =
   | 'START_WORK'
   | 'COMPLETE';
 
+export class BookingTransitionError extends Error {
+  readonly status?: number;
+  readonly body?: Record<string, unknown>;
+
+  constructor(message: string, status?: number, body?: Record<string, unknown>) {
+    super(message);
+    this.name = 'BookingTransitionError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const USE_MOCK =
@@ -215,6 +227,38 @@ async function applyLocalTransition(
   };
 }
 
+async function throwInvokeError(error: { message: string; context?: Response }): Promise<never> {
+  if (error.context) {
+    let body: Record<string, unknown> | undefined;
+    const text = await error.context.text();
+    if (text) {
+      try {
+        body = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        // Response body may be empty or non-JSON.
+      }
+    }
+    const message =
+      (typeof body?.message === 'string' && body.message) ||
+      error.message ||
+      'State transition failed';
+    throw new BookingTransitionError(message, error.context.status, body);
+  }
+
+  throw new BookingTransitionError(error.message || 'State transition failed');
+}
+
+function isInvokeTransportFailure(error: { context?: Response }): boolean {
+  return !error.context;
+}
+
+function shouldUseLocalTransition(
+  hasSession: boolean,
+  metadata?: Record<string, unknown>
+): boolean {
+  return USE_MOCK || !hasSession || metadata?.simulated === true;
+}
+
 // ─── Transition booking state via Edge Function ──────────────────────────────
 
 export async function transitionBookingState(
@@ -231,6 +275,7 @@ export async function transitionBookingState(
     const functionMap: Record<string, string> = {
       ACCEPT: 'accept-booking',
       REJECT: 'reject-booking',
+      CANCEL: 'cancel-booking',
       COMPLETE: 'complete-booking',
     };
 
@@ -255,7 +300,15 @@ export async function transitionBookingState(
     });
 
     if (error) {
-      throw new Error(error.message);
+      if (isInvokeTransportFailure(error)) {
+        console.warn(
+          `transitionBookingState: ${functionName} transport failure, falling back to local.`,
+          error.message
+        );
+        return applyLocalTransition(bookingId, action);
+      }
+
+      await throwInvokeError(error);
     }
 
     return mapBookingRow(data as BookingRow);

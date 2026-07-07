@@ -6,6 +6,7 @@ import {
   confirmPasswordReset,
   ensureUserProfile,
 } from '../../src/services/authService';
+import { supabase } from '../../src/lib/supabase';
 
 jest.mock('../../src/lib/supabase', () => {
   const auth = {
@@ -30,8 +31,6 @@ jest.mock('../../src/lib/supabase', () => {
 
   return { supabase: { auth, from } };
 });
-
-const { supabase } = require('../../src/lib/supabase');
 
 beforeEach(() => {
   jest.clearAllMocks();

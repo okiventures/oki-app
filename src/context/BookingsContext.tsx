@@ -13,6 +13,7 @@ import {
   transitionBookingState,
   subscribeToBooking,
   createBooking as createBookingService,
+  BookingTransitionError,
   isMockEnv,
 } from '../services/bookingService';
 import type { CreateBookingInput } from '../services/bookingService';
@@ -55,7 +56,11 @@ const HANDYMAN_WORKFLOW: Partial<Record<BookingStatus, HandymanNextAction>> = {
   },
 };
 
+// Client cancellation is only allowed pre-acceptance (see
+// backend/docs/booking-state-machine.md). Post-acceptance cancellations must
+// go through the Week 21 dispute / cancellation-fee flow, not this path.
 const NON_CANCELLABLE_STATUSES: BookingStatus[] = [
+  BookingStatus.Accepted,
   BookingStatus.InTransit,
   BookingStatus.Arrived,
   BookingStatus.WorkStarted,
@@ -65,13 +70,15 @@ const NON_CANCELLABLE_STATUSES: BookingStatus[] = [
   BookingStatus.Rejected,
 ];
 
+export type CancelBookingResult = { ok: true } | { ok: false; message: string };
+
 interface BookingsContextValue {
   bookings: Booking[];
   createBooking: (input: CreateBookingInput) => Promise<Booking>;
   acceptBooking: (bookingId: string) => void;
   declineBooking: (bookingId: string) => void;
   advanceBooking: (bookingId: string) => void;
-  cancelBooking: (bookingId: string) => Promise<boolean> | boolean;
+  cancelBooking: (bookingId: string) => Promise<CancelBookingResult>;
   getBookingById: (bookingId: string) => Booking | undefined;
   getNextHandymanAction: (status: BookingStatus) => HandymanNextAction | null;
 }
@@ -82,7 +89,7 @@ const BookingsContext = createContext<BookingsContextValue>({
   acceptBooking: () => {},
   declineBooking: () => {},
   advanceBooking: () => {},
-  cancelBooking: () => false,
+  cancelBooking: async () => ({ ok: false, message: 'This booking cannot be cancelled.' }),
   getBookingById: () => undefined,
   getNextHandymanAction: () => null,
 });
@@ -273,10 +280,10 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const cancelBooking = useCallback(
-    async (bookingId: string): Promise<boolean> => {
+    async (bookingId: string): Promise<CancelBookingResult> => {
       const booking = bookings.find((b) => b.id === bookingId);
       if (!booking || NON_CANCELLABLE_STATUSES.includes(booking.status)) {
-        return false;
+        return { ok: false, message: 'This booking cannot be cancelled.' };
       }
 
       try {
@@ -286,12 +293,15 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
             b.id === bookingId ? { ...b, ...updated, updatedAt: new Date().toISOString() } : b
           )
         );
-        return true;
-      } catch {
-        setBookings((current) =>
-          current.map((b) => (b.id === bookingId ? updateBooking(b, BookingStatus.Cancelled) : b))
-        );
-        return true;
+        return { ok: true };
+      } catch (err) {
+        const message =
+          err instanceof BookingTransitionError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : 'Could not cancel booking. Please try again.';
+        return { ok: false, message };
       }
     },
     [bookings]
