@@ -1,4 +1,3 @@
-import { createHmac } from 'node:crypto';
 import { __getHandler, serve } from '../__mocks__/deno-serve';
 import { getCreateClientMock } from '../__mocks__/supabase-cdn';
 
@@ -9,8 +8,21 @@ const DENO_ENV: Record<string, string> = {
   SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
 };
 
-function sign(ts: string, body: string): string {
-  return createHmac('sha256', SECRET).update(`${ts}.${body}`).digest('hex');
+// Sign with the WebCrypto global (the same primitive the function uses) so the
+// test needs no node built-ins / @types/node — which pnpm's strict CI layout
+// doesn't expose. `g: any` avoids depending on the DOM/node lib typings.
+const g: any = globalThis;
+async function sign(ts: string, body: string): Promise<string> {
+  const enc = new g.TextEncoder();
+  const key = await g.crypto.subtle.importKey(
+    'raw',
+    enc.encode(SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const mac = await g.crypto.subtle.sign('HMAC', key, enc.encode(`${ts}.${body}`));
+  return Array.from(new Uint8Array(mac), (b: number) => b.toString(16).padStart(2, '0')).join('');
 }
 
 function callHandler(req: Request): Promise<Response> {
@@ -21,13 +33,13 @@ function callHandler(req: Request): Promise<Response> {
 
 // Build a signed POST request. Overrides let individual tests corrupt the
 // timestamp/signature to exercise the rejection paths.
-function makeReq(
+async function makeReq(
   payload: object,
   opts: { ts?: string; signature?: string; omitTs?: boolean; omitSig?: boolean } = {}
-): Request {
+): Promise<Request> {
   const body = JSON.stringify(payload);
   const ts = opts.ts ?? String(Math.floor(Date.now() / 1000));
-  const signature = opts.signature ?? sign(ts, body);
+  const signature = opts.signature ?? (await sign(ts, body));
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (!opts.omitTs) headers['x-webhook-timestamp'] = ts;
   if (!opts.omitSig) headers['x-webhook-signature'] = signature;
@@ -72,23 +84,26 @@ describe('payment-webhook — method + signature', () => {
 
   it('returns 403 when signature or timestamp header is missing', async () => {
     getCreateClientMock().mockReturnValue(supabaseWith({}));
-    const noSig = await callHandler(makeReq({ event: 'x' }, { omitSig: true }));
+    const noSig = await callHandler(await makeReq({ event: 'x' }, { omitSig: true }));
     expect(noSig.status).toBe(403);
-    const noTs = await callHandler(makeReq({ event: 'x' }, { omitTs: true }));
+    const noTs = await callHandler(await makeReq({ event: 'x' }, { omitTs: true }));
     expect(noTs.status).toBe(403);
   });
 
   it('returns 403 for a stale timestamp (replay window)', async () => {
     const staleTs = String(Math.floor(Date.now() / 1000) - 10_000);
     const res = await callHandler(
-      makeReq({ event: 'payment_intent.succeeded', bookingId: 'b1', amount: 100 }, { ts: staleTs })
+      await makeReq(
+        { event: 'payment_intent.succeeded', bookingId: 'b1', amount: 100 },
+        { ts: staleTs }
+      )
     );
     expect(res.status).toBe(403);
   });
 
   it('returns 403 for a bad signature (tampered body)', async () => {
     const res = await callHandler(
-      makeReq(
+      await makeReq(
         { event: 'payment_intent.succeeded', bookingId: 'b1', amount: 100 },
         { signature: 'deadbeef' }
       )
@@ -101,7 +116,7 @@ describe('payment-webhook — amount integrity', () => {
   it('rejects a non-positive amount with 400', async () => {
     getCreateClientMock().mockReturnValue(supabaseWith({}));
     const res = await callHandler(
-      makeReq({ event: 'payment_intent.succeeded', bookingId: 'b1', amount: -5 })
+      await makeReq({ event: 'payment_intent.succeeded', bookingId: 'b1', amount: -5 })
     );
     expect(res.status).toBe(400);
   });
@@ -122,7 +137,7 @@ describe('payment-webhook — amount integrity', () => {
     );
     const res = await callHandler(
       // valid signature over an inflated amount — signature can't save a wrong amount
-      makeReq({ event: 'payment_intent.succeeded', bookingId: 'b1', amount: 999 })
+      await makeReq({ event: 'payment_intent.succeeded', bookingId: 'b1', amount: 999 })
     );
     expect(res.status).toBe(422);
     const body = await res.json();
@@ -145,7 +160,7 @@ describe('payment-webhook — amount integrity', () => {
       })
     );
     const res = await callHandler(
-      makeReq({
+      await makeReq({
         event: 'payment_intent.succeeded',
         bookingId: 'b1',
         paymentIntentId: 'pi_1',
@@ -168,7 +183,7 @@ describe('payment-webhook — amount integrity', () => {
       })
     );
     const res = await callHandler(
-      makeReq({ event: 'payment_intent.succeeded', bookingId: 'b1', amount: 100 })
+      await makeReq({ event: 'payment_intent.succeeded', bookingId: 'b1', amount: 100 })
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -183,7 +198,7 @@ describe('payment-webhook — amount integrity', () => {
       })
     );
     const res = await callHandler(
-      makeReq({ event: 'payment_intent.succeeded', bookingId: 'b1', amount: 100 })
+      await makeReq({ event: 'payment_intent.succeeded', bookingId: 'b1', amount: 100 })
     );
     expect(res.status).toBe(422);
   });
