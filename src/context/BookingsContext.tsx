@@ -179,29 +179,6 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
   const createBooking = useCallback(async (input: CreateBookingInput) => {
     const booking = await createBookingService(input);
     setBookings((current) => [...current, booking]);
-
-    // Simulate handyman acceptance after 5 seconds for demo
-    setTimeout(async () => {
-      try {
-        await transitionBookingState(booking.id, 'ACCEPT');
-      } catch {
-        // Fallback: apply locally
-      }
-      setBookings((current) =>
-        current.map((b) =>
-          b.id === booking.id && b.status === BookingStatus.Pending
-            ? {
-                ...b,
-                status: BookingStatus.Accepted,
-                handymanId: 'h1',
-                handymanName: 'Ceferino Jumao-as V',
-                updatedAt: new Date().toISOString(),
-              }
-            : b
-        )
-      );
-    }, 5000);
-
     return booking;
   }, []);
 

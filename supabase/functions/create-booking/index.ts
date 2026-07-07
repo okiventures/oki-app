@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { createClient } from '@supabase/supabase-js';
 
 interface CreateBookingRequest {
   serviceId: string;
@@ -23,16 +23,26 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), { status: 401 });
   }
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    { global: { headers: { Authorization: authHeader } } }
-  );
+  const ampKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const ampUrl = Deno.env.get('SUPABASE_URL')!;
+
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+
+  const supabase = createClient(ampUrl, ampKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+    global: {
+      headers: { Authorization: authHeader },
+    },
+  });
 
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser(token);
   if (authError || !user) {
     console.error('create-booking: auth.getUser failed', authError?.message ?? 'No user returned');
     return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), { status: 401 });
@@ -40,7 +50,8 @@ serve(async (req: Request) => {
 
   const body: CreateBookingRequest = await req.json();
 
-  if (!body.serviceId || !body.description || !body.addressText) {
+  // description can be empty (form allows it); addressText and serviceId must be present
+  if (!body.serviceId || body.description == null || !body.addressText) {
     return new Response(
       JSON.stringify({
         error: 'BAD_REQUEST',

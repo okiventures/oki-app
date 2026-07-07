@@ -253,12 +253,25 @@ export async function transitionBookingState(
     if (error) throw new Error(error.message);
     return mapBookingRow(data as BookingRow);
   } catch (err) {
-    // If Edge Function / RPC fails, fall back to local state change
-    // so the UI demo remains functional without a live backend.
-    console.warn(
-      `transitionBookingState: remote call failed, falling back to local.`,
-      err instanceof Error ? err.message : err
-    );
+    const ctx = (err as any)?.context;
+    if (ctx && typeof ctx.status === 'number') {
+      try {
+        const body = await ctx.text();
+        console.warn(
+          `transitionBookingState: remote call returned ${ctx.status}`,
+          body.length < 500 ? body : body.slice(0, 500)
+        );
+      } catch {
+        console.warn(
+          `transitionBookingState: remote call returned ${ctx.status}, could not read body`
+        );
+      }
+    } else {
+      console.warn(
+        `transitionBookingState: remote call failed, falling back to local.`,
+        err instanceof Error ? err.message : err
+      );
+    }
     return applyLocalTransition(bookingId, action);
   }
 }
@@ -374,7 +387,20 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
       handymanName: '',
     };
   } catch (err) {
-    console.warn('createBooking: Edge Function failed, falling back to mock', err);
+    const ctx = (err as any)?.context;
+    if (ctx && typeof ctx.status === 'number') {
+      try {
+        const body = await ctx.text();
+        console.warn(
+          `createBooking: Edge Function returned ${ctx.status}`,
+          body.length < 500 ? body : body.slice(0, 500)
+        );
+      } catch {
+        console.warn(`createBooking: Edge Function returned ${ctx.status}, could not read body`);
+      }
+    } else {
+      console.warn('createBooking: Edge Function failed, falling back to mock', err);
+    }
     return createMockBooking(input);
   }
 }
