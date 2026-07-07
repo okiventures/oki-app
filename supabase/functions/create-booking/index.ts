@@ -38,14 +38,39 @@ serve(async (req: Request) => {
 
   const body: CreateBookingRequest = await req.json();
 
-  if (!body.serviceId || !body.description || !body.addressText) {
-    return new Response(
-      JSON.stringify({
-        error: 'BAD_REQUEST',
-        message: 'Missing required fields: serviceId, description, addressText',
-      }),
-      { status: 400 }
-    );
+  const bad = (message: string) =>
+    new Response(JSON.stringify({ error: 'BAD_REQUEST', message }), { status: 400 });
+
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  if (!body.serviceId || !UUID_RE.test(body.serviceId))
+    return bad('serviceId must be a valid UUID');
+  if (body.bookingType !== 'ON_DEMAND' && body.bookingType !== 'SCHEDULED')
+    return bad('bookingType must be ON_DEMAND or SCHEDULED');
+  if (typeof body.description !== 'string' || body.description.trim().length === 0)
+    return bad('description is required');
+  if (body.description.length > 2000) return bad('description too long (max 2000)');
+  if (typeof body.addressText !== 'string' || body.addressText.trim().length === 0)
+    return bad('addressText is required');
+  if (body.addressText.length > 500) return bad('addressText too long (max 500)');
+  if (typeof body.lat !== 'number' || !Number.isFinite(body.lat) || body.lat < -90 || body.lat > 90)
+    return bad('lat must be a number between -90 and 90');
+  if (
+    typeof body.lng !== 'number' ||
+    !Number.isFinite(body.lng) ||
+    body.lng < -180 ||
+    body.lng > 180
+  )
+    return bad('lng must be a number between -180 and 180');
+  if (body.notes != null && (typeof body.notes !== 'string' || body.notes.length > 2000))
+    return bad('notes must be a string (max 2000)');
+
+  if (body.bookingType === 'SCHEDULED') {
+    const when = body.scheduledAt ? Date.parse(body.scheduledAt) : NaN;
+    if (Number.isNaN(when)) return bad('scheduledAt must be a valid ISO timestamp for SCHEDULED');
+    if (when <= Date.now()) return bad('scheduledAt must be in the future');
+  } else if (body.scheduledAt) {
+    return bad('ON_DEMAND bookings must not include scheduledAt');
   }
 
   // Call RPC with service_role key — no client_id/amount passed;

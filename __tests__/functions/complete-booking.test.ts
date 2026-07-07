@@ -162,6 +162,34 @@ describe('request validation', () => {
   });
 });
 
+describe('afterPhotoUrl validation', () => {
+  beforeEach(() => {
+    (requireHandyman as jest.Mock).mockResolvedValue({
+      user: { id: 'hm-1' },
+      supabase: supabaseWith({}),
+    });
+  });
+
+  it.each([
+    ['javascript: scheme', 'javascript:alert(1)'],
+    ['off-domain https URL', 'https://evil.example.com/x.jpg'],
+    ['path traversal', '../../etc/passwd'],
+    ['embedded html/quotes', 'a"><img src=x>.jpg'],
+  ])('rejects %s with 400', async (_label, value) => {
+    const res = await callHandler(makeReq({ bookingId: 'b-1', afterPhotoUrl: value }));
+    expect(res.status).toBe(400);
+  });
+
+  it('accepts a bare storage key', async () => {
+    (requireHandyman as jest.Mock).mockResolvedValue({
+      user: { id: 'hm-1' },
+      supabase: supabaseWith({ updateResolved: { data: null, error: null } }),
+    });
+    const res = await callHandler(makeReq({ bookingId: 'b-1', afterPhotoUrl: 'after.jpg' }));
+    expect(res.status).not.toBe(400);
+  });
+});
+
 describe('booking existence', () => {
   it('returns 404 when booking not found', async () => {
     (requireHandyman as jest.Mock).mockResolvedValue({

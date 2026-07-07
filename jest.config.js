@@ -24,5 +24,9 @@ module.exports = {
       '<rootDir>/__tests__/__mocks__/supabase-cdn.ts',
     '^https://deno.land/std@0\\.224\\.0/http/server\\.ts$':
       '<rootDir>/__tests__/__mocks__/deno-serve.ts',
+    '^https://deno.land/std@0\\.224\\.0/crypto/timing_safe_equal\\.ts$':
+      '<rootDir>/__tests__/__mocks__/deno-timing-safe-equal.ts',
+    '^https://esm.sh/@supabase/supabase-js@2\\.49\\.1$':
+      '<rootDir>/__tests__/__mocks__/supabase-cdn.ts',
   },
 };

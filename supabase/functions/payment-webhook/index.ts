@@ -10,6 +10,35 @@ interface PaymentWebhookPayload {
   metadata?: Record<string, string>;
 }
 
+// Reject requests whose timestamp is more than this far from now (replay window).
+const MAX_SKEW_SECONDS = 300;
+
+// HMAC-SHA256 of `${timestamp}.${rawBody}`, hex-encoded. Signing the timestamp
+// AND the body binds the signature to this exact payload and blocks replays —
+// unlike a static shared-secret compare, a captured request can't be reused and
+// the body can't be altered without invalidating the signature.
+async function computeSignature(
+  secret: string,
+  timestamp: string,
+  rawBody: string
+): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const mac = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(`${timestamp}.${rawBody}`)
+  );
+  return Array.from(new Uint8Array(mac))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'METHOD_NOT_ALLOWED' }), { status: 405 });
@@ -23,12 +52,34 @@ serve(async (req: Request) => {
     );
   }
 
-  // constant-time compare so an attacker can't recover the secret byte-by-byte by
-  // timing a plain `!==`. timingSafeEqual returns false on a length mismatch too.
   const signature = req.headers.get('x-webhook-signature');
-  const expectedBytes = new TextEncoder().encode(webhookSecret);
-  const signatureBytes = new TextEncoder().encode(signature ?? '');
-  if (!signature || !timingSafeEqual(signatureBytes, expectedBytes)) {
+  const timestamp = req.headers.get('x-webhook-timestamp');
+  if (!signature || !timestamp) {
+    return new Response(
+      JSON.stringify({ error: 'FORBIDDEN', message: 'Missing signature or timestamp' }),
+      { status: 403 }
+    );
+  }
+
+  // reject stale/forward-dated requests to bound the replay window
+  const ts = Number(timestamp);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  if (!Number.isFinite(ts) || Math.abs(nowSeconds - ts) > MAX_SKEW_SECONDS) {
+    return new Response(
+      JSON.stringify({ error: 'FORBIDDEN', message: 'Stale or invalid timestamp' }),
+      { status: 403 }
+    );
+  }
+
+  // read the raw body once and verify the HMAC over it before parsing
+  const rawBody = await req.text();
+  const expected = await computeSignature(webhookSecret, timestamp, rawBody);
+  const expectedBytes = new TextEncoder().encode(expected);
+  const signatureBytes = new TextEncoder().encode(signature);
+  if (
+    expectedBytes.length !== signatureBytes.length ||
+    !timingSafeEqual(signatureBytes, expectedBytes)
+  ) {
     return new Response(JSON.stringify({ error: 'FORBIDDEN', message: 'Invalid signature' }), {
       status: 403,
     });
@@ -39,7 +90,31 @@ serve(async (req: Request) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
-  const payload: PaymentWebhookPayload = await req.json();
+  let payload: PaymentWebhookPayload;
+  try {
+    payload = JSON.parse(rawBody);
+  } catch {
+    return new Response(JSON.stringify({ error: 'BAD_REQUEST', message: 'Invalid JSON body' }), {
+      status: 400,
+    });
+  }
+
+  // validate the amount is a sane positive, finite number before any math
+  if (
+    typeof payload.amount !== 'number' ||
+    !Number.isFinite(payload.amount) ||
+    payload.amount <= 0
+  ) {
+    return new Response(
+      JSON.stringify({ error: 'BAD_REQUEST', message: 'amount must be a positive number' }),
+      { status: 400 }
+    );
+  }
+  if (!payload.bookingId) {
+    return new Response(JSON.stringify({ error: 'BAD_REQUEST', message: 'bookingId required' }), {
+      status: 400,
+    });
+  }
 
   switch (payload.event) {
     case 'payment_intent.succeeded': {
@@ -83,13 +158,29 @@ serve(async (req: Request) => {
         );
       }
 
-      const platformFee = Math.round(payload.amount * 0.1 * 100) / 100;
-      const netAmount = payload.amount - platformFee;
+      // SECURITY: reconcile the webhook amount against the server-owned booking
+      // price. The payout is derived from booking.amount, never the payload, so
+      // a valid-but-tampered webhook cannot inflate what the handyman is paid.
+      // (execute_payment_transaction re-checks this too — defence in depth.)
+      if (Number(payload.amount) !== Number(booking.amount)) {
+        return new Response(
+          JSON.stringify({
+            error: 'AMOUNT_MISMATCH',
+            message: 'Webhook amount does not match booking amount',
+            expected: booking.amount,
+            received: payload.amount,
+          }),
+          { status: 422 }
+        );
+      }
+
+      const platformFee = Number(booking.platform_fee);
+      const netAmount = Number(booking.amount) - platformFee;
 
       const { error: transactionError } = await supabase.rpc('execute_payment_transaction', {
         booking_id: payload.bookingId,
         payment_intent_id: payload.paymentIntentId,
-        amount: payload.amount,
+        amount: Number(booking.amount),
         platform_fee: platformFee,
         net_amount: netAmount,
         handyman_id: booking.handyman_id,
