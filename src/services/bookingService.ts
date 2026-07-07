@@ -279,7 +279,7 @@ export async function transitionBookingState(
         err instanceof Error ? err.message : err
       );
     }
-    return applyLocalTransition(bookingId, action);
+    throw err;
   }
 }
 
@@ -409,7 +409,7 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
     } else {
       console.warn('createBooking: Edge Function failed, falling back to mock', err);
     }
-    return createMockBooking(input);
+    throw err;
   }
 }
 
