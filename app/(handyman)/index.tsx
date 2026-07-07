@@ -110,24 +110,6 @@ export default function HandymanDashboard() {
             />
           </Card>
 
-          {/* Earnings Overview */}
-          <EarningsSummaryCard
-            totalEarnings={filteredTotal}
-            rangeLabel={rangeLabel}
-            selectedPreset={selectedPreset}
-            onPresetChange={setSelectedPreset}
-            customStartDate={customStart}
-            customEndDate={customEnd}
-            rangeStart={range.start}
-            rangeEnd={range.end}
-            onCustomDateChange={(s, e) => {
-              setCustomStart(s);
-              setCustomEnd(e);
-              setSelectedPreset('Custom');
-            }}
-            onSeeFullReport={() => router.push('/(handyman)/earnings')}
-          />
-
           {/* Active Jobs */}
           <View>
             <Text className="font-heading mb-4 text-base text-gray-900">Active Jobs</Text>
@@ -146,6 +128,24 @@ export default function HandymanDashboard() {
             <Text className="text-[13px] font-semibold text-gray-800">Plumbing Fix</Text>
             <Text className="mt-1 text-[11px] text-gray-500">Today, 2:00 PM • 123 Main St</Text>
           </Card>
+
+          {/* Earnings Overview */}
+          <EarningsSummaryCard
+            totalEarnings={filteredTotal}
+            rangeLabel={rangeLabel}
+            selectedPreset={selectedPreset}
+            onPresetChange={setSelectedPreset}
+            customStartDate={customStart}
+            customEndDate={customEnd}
+            rangeStart={range.start}
+            rangeEnd={range.end}
+            onCustomDateChange={(s, e) => {
+              setCustomStart(s);
+              setCustomEnd(e);
+              setSelectedPreset('Custom');
+            }}
+            onSeeFullReport={() => router.push('/(handyman)/earnings')}
+          />
         </ScrollView>
       </View>
     </SafeAreaView>
