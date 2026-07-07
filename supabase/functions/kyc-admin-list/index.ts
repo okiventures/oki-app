@@ -3,7 +3,9 @@ const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SERVICE_ROLE_KEY =
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY');
 
-const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') ?? '*';
+// Fail closed: default to no cross-origin access. Set ALLOWED_ORIGIN to the
+// admin/web origin in each environment. Native apps don't enforce CORS.
+const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') ?? '';
 if (!SUPABASE_URL || !ANON_KEY || !SERVICE_ROLE_KEY) throw new Error('Missing required env vars');
 
 const CORS = {

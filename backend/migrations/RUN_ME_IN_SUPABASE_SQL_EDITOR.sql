@@ -232,9 +232,15 @@ CREATE TRIGGER trg_payments_updated_at
 CREATE TRIGGER trg_disputes_updated_at
   BEFORE UPDATE ON disputes FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- Auto-create profile on signup
+-- Auto-create profile on signup.
+-- SECURITY: user_type is self-asserted in signup metadata, so only 'handyman'
+-- is honoured; anything else (incl. a spoofed 'admin') becomes 'client'.
+-- Admins are provisioned out-of-band, never via self-signup.
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_requested TEXT := NEW.raw_user_meta_data ->> 'user_type';
+  v_user_type user_type := CASE WHEN v_requested = 'handyman' THEN 'handyman'::user_type ELSE 'client'::user_type END;
 BEGIN
   INSERT INTO public.users (id, email, phone, full_name, user_type)
   VALUES (
@@ -246,10 +252,10 @@ BEGIN
       NULLIF(split_part(COALESCE(NEW.email, ''), '@', 1), ''),
       'User'
     ),
-    COALESCE((NEW.raw_user_meta_data ->> 'user_type')::user_type, 'client')
+    v_user_type
   );
 
-  IF NEW.raw_user_meta_data->>'user_type' = 'handyman' THEN
+  IF v_user_type = 'handyman' THEN
     INSERT INTO public.handymen (id)
     VALUES (NEW.id);
   END IF;
@@ -286,7 +292,7 @@ ALTER TABLE booking_events ENABLE ROW LEVEL SECURITY;
 
 -- Users RLS
 CREATE POLICY users_select_own ON users FOR SELECT TO authenticated USING (id = auth.uid() OR is_admin());
-CREATE POLICY users_select_public ON users FOR SELECT TO authenticated USING (user_status = 'ACTIVE');
+CREATE POLICY users_select_related ON users FOR SELECT TO authenticated USING (id = auth.uid() OR is_admin() OR EXISTS (SELECT 1 FROM bookings b WHERE (b.client_id = auth.uid() AND b.handyman_id = users.id) OR (b.handyman_id = auth.uid() AND b.client_id = users.id)) OR EXISTS (SELECT 1 FROM handymen h WHERE h.id = users.id AND h.is_online = true AND h.kyc_status = 'APPROVED'));
 CREATE POLICY users_update_own ON users FOR UPDATE TO authenticated USING (id = auth.uid()) WITH CHECK (id = auth.uid() AND user_type = (SELECT user_type FROM users WHERE id = auth.uid()));
 CREATE POLICY users_admin_all ON users FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
 
@@ -310,8 +316,8 @@ CREATE POLICY handyman_services_admin ON handyman_services FOR ALL TO authentica
 -- Bookings RLS
 CREATE POLICY bookings_select_participant ON bookings FOR SELECT TO authenticated USING (is_admin() OR client_id = auth.uid() OR handyman_id = auth.uid());
 CREATE POLICY bookings_insert_client ON bookings FOR INSERT TO authenticated WITH CHECK (client_id = auth.uid() AND EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND user_type = 'client') AND status = 'PENDING');
-CREATE POLICY bookings_update_client ON bookings FOR UPDATE TO authenticated USING (client_id = auth.uid()) WITH CHECK (client_id = auth.uid() AND (status IN ('PENDING', 'CANCELLED') OR (SELECT status FROM bookings WHERE id = bookings.id) = status));
-CREATE POLICY bookings_update_handyman ON bookings FOR UPDATE TO authenticated USING (handyman_id = auth.uid()) WITH CHECK (handyman_id = auth.uid());
+CREATE POLICY bookings_update_client ON bookings FOR UPDATE TO authenticated USING (client_id = auth.uid()) WITH CHECK (client_id = auth.uid() AND amount = (SELECT b.amount FROM bookings b WHERE b.id = bookings.id) AND platform_fee = (SELECT b.platform_fee FROM bookings b WHERE b.id = bookings.id) AND service_id = (SELECT b.service_id FROM bookings b WHERE b.id = bookings.id) AND client_id = (SELECT b.client_id FROM bookings b WHERE b.id = bookings.id) AND handyman_id IS NOT DISTINCT FROM (SELECT b.handyman_id FROM bookings b WHERE b.id = bookings.id) AND surge_multiplier = (SELECT b.surge_multiplier FROM bookings b WHERE b.id = bookings.id) AND (status = (SELECT b.status FROM bookings b WHERE b.id = bookings.id) OR ((SELECT b.status FROM bookings b WHERE b.id = bookings.id) = 'PENDING' AND status = 'CANCELLED')));
+CREATE POLICY bookings_update_handyman ON bookings FOR UPDATE TO authenticated USING (handyman_id = auth.uid() AND EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND user_type = 'handyman')) WITH CHECK (handyman_id = auth.uid() AND EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND user_type = 'handyman') AND status = (SELECT b.status FROM bookings b WHERE b.id = bookings.id) AND amount = (SELECT b.amount FROM bookings b WHERE b.id = bookings.id) AND platform_fee = (SELECT b.platform_fee FROM bookings b WHERE b.id = bookings.id) AND client_id = (SELECT b.client_id FROM bookings b WHERE b.id = bookings.id) AND service_id = (SELECT b.service_id FROM bookings b WHERE b.id = bookings.id) AND handyman_id = (SELECT b.handyman_id FROM bookings b WHERE b.id = bookings.id));
 CREATE POLICY bookings_admin ON bookings FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
 
 -- Payments RLS

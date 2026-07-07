@@ -51,6 +51,13 @@ const USE_MOCK =
   !process.env.EXPO_PUBLIC_SUPABASE_URL ||
   process.env.EXPO_PUBLIC_SUPABASE_URL.includes('your-project');
 
+// True when no real backend is configured — the app runs on local mock data.
+// Demo-only behaviour (e.g. simulated auto-accept) must be gated on this so it
+// never runs against a live backend.
+export function isMockEnv(): boolean {
+  return USE_MOCK;
+}
+
 async function checkSession(): Promise<boolean> {
   if (USE_MOCK) return false;
   try {
@@ -216,51 +223,45 @@ export async function transitionBookingState(
   metadata?: Record<string, unknown>
 ): Promise<Booking> {
   const hasSession = await checkSession();
+  // Only the offline demo (no session) or an explicitly-simulated action uses
+  // the local mock. With a real session a backend rejection (not your booking,
+  // KYC/online guard, wrong state, already assigned) MUST surface to the caller
+  // — never silently fake success, which would desync the UI from the server.
   if (!hasSession || metadata?.simulated) {
     return applyLocalTransition(bookingId, action);
   }
 
-  try {
-    // Map action to edge function name
-    const functionMap: Record<string, string> = {
-      ACCEPT: 'accept-booking',
-      REJECT: 'reject-booking',
-      COMPLETE: 'complete-booking',
-    };
+  // Map action to edge function name
+  const functionMap: Record<string, string> = {
+    ACCEPT: 'accept-booking',
+    REJECT: 'reject-booking',
+    COMPLETE: 'complete-booking',
+  };
 
-    const functionName = functionMap[action];
-    if (functionName) {
-      const { data, error } = await supabase.functions.invoke(functionName, {
-        body: { bookingId, ...(metadata ?? {}) },
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-      // Edge functions respond via ok()/created(), which wrap the row as
-      // `{ data: row }`. Unwrap it; fall back to the raw body defensively.
-      const bookingRow = (data as { data?: BookingRow })?.data ?? (data as BookingRow);
-      return mapBookingRow(bookingRow);
-    }
-
-    // For other transitions, call a generic state RPC or direct update
-    const { data, error } = await supabase.rpc('transition_booking_state', {
-      p_booking_id: bookingId,
-      p_action: action,
-      p_metadata: metadata ?? {},
+  const functionName = functionMap[action];
+  if (functionName) {
+    const { data, error } = await supabase.functions.invoke(functionName, {
+      body: { bookingId, ...(metadata ?? {}) },
     });
 
-    if (error) throw new Error(error.message);
-    return mapBookingRow(data as BookingRow);
-  } catch (err) {
-    // If Edge Function / RPC fails, fall back to local state change
-    // so the UI demo remains functional without a live backend.
-    console.warn(
-      `transitionBookingState: remote call failed, falling back to local.`,
-      err instanceof Error ? err.message : err
-    );
-    return applyLocalTransition(bookingId, action);
+    if (error) {
+      throw new Error(error.message);
+    }
+    // Edge functions respond via ok()/created(), which wrap the row as
+    // `{ data: row }`. Unwrap it; fall back to the raw body defensively.
+    const bookingRow = (data as { data?: BookingRow })?.data ?? (data as BookingRow);
+    return mapBookingRow(bookingRow);
   }
+
+  // For other transitions, call the generic state-machine RPC
+  const { data, error } = await supabase.rpc('transition_booking_state', {
+    p_booking_id: bookingId,
+    p_action: action,
+    p_metadata: metadata ?? {},
+  });
+
+  if (error) throw new Error(error.message);
+  return mapBookingRow(data as BookingRow);
 }
 
 // ─── Subscribe to real-time booking updates ──────────────────────────────────
@@ -338,45 +339,41 @@ function createMockBooking(input: CreateBookingInput): Booking {
 
 export async function createBooking(input: CreateBookingInput): Promise<Booking> {
   const hasSession = await checkSession();
+  // Offline demo only: no session → local mock booking.
   if (!hasSession) {
-    console.log('createBooking: no session, using mock');
     return createMockBooking(input);
   }
 
+  // With a live session, serviceId + coordinates are required to place a real
+  // booking. Missing them is a caller bug — surface it instead of silently
+  // fabricating a booking that doesn't exist on the server.
   if (!input.serviceId || input.lat === undefined || input.lng === undefined) {
-    console.warn('createBooking: missing serviceId or coordinates, falling back to mock');
-    return createMockBooking(input);
+    throw new Error('createBooking requires serviceId and coordinates for a live booking');
   }
 
-  console.log('createBooking: calling Edge Function with serviceId', input.serviceId);
-  try {
-    const { data, error } = await supabase.functions.invoke('create-booking', {
-      body: {
-        serviceId: input.serviceId,
-        bookingType: input.bookingType === BookingType.OnDemand ? 'ON_DEMAND' : 'SCHEDULED',
-        description: input.description,
-        addressText: input.location,
-        lat: input.lat,
-        lng: input.lng,
-        scheduledAt: input.scheduledAt ?? null,
-        notes: input.notes ?? null,
-      },
-    });
+  const { data, error } = await supabase.functions.invoke('create-booking', {
+    body: {
+      serviceId: input.serviceId,
+      bookingType: input.bookingType === BookingType.OnDemand ? 'ON_DEMAND' : 'SCHEDULED',
+      description: input.description,
+      addressText: input.location,
+      lat: input.lat,
+      lng: input.lng,
+      scheduledAt: input.scheduledAt ?? null,
+      notes: input.notes ?? null,
+    },
+  });
 
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    const bookingRow = data.data as BookingRow;
-    return {
-      ...mapBookingRow(bookingRow),
-      clientName: input.clientName,
-      handymanName: '',
-    };
-  } catch (err) {
-    console.warn('createBooking: Edge Function failed, falling back to mock', err);
-    return createMockBooking(input);
+  if (error) {
+    throw new Error(error.message);
   }
+
+  const bookingRow = data.data as BookingRow;
+  return {
+    ...mapBookingRow(bookingRow),
+    clientName: input.clientName,
+    handymanName: '',
+  };
 }
 
 // ─── Guard condition descriptions ────────────────────────────────────────────

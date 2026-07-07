@@ -55,6 +55,9 @@ function callHandler(req: Request): Promise<Response> {
 function supabaseWith(opts: {
   booking?: object | null;
   bookingError?: { message: string } | null;
+  // defaults to an eligible (online, KYC-approved) handyman; pass null to
+  // simulate the caller having no handyman row.
+  handyman?: object | null;
   updateResolved?: { data: unknown; error: { message: string } | null };
   insertResolved?: { error: unknown };
 }) {
@@ -62,6 +65,15 @@ function supabaseWith(opts: {
     single: jest.fn().mockResolvedValue({
       data: opts.booking ?? null,
       error: opts.bookingError ?? null,
+    }),
+  });
+
+  const handymanValue =
+    opts.handyman === undefined ? { is_online: true, kyc_status: 'APPROVED' } : opts.handyman;
+  const handymanChain = mockFrom('handymen', {
+    single: jest.fn().mockResolvedValue({
+      data: handymanValue,
+      error: handymanValue ? null : { message: 'not found' },
     }),
   });
 
@@ -82,6 +94,7 @@ function supabaseWith(opts: {
   return {
     from: jest.fn((table: string) => {
       if (table === 'bookings') return bookingChain;
+      if (table === 'handymen') return handymanChain;
       return eventsChain ?? mockFrom(table);
     }),
   };
@@ -152,6 +165,51 @@ describe('booking existence', () => {
 
     const res = await callHandler(makeReq({ bookingId: 'b-1' }));
     expect(res.status).toBe(404);
+  });
+});
+
+describe('handyman eligibility gating', () => {
+  it('returns 403 when the caller has no handyman row', async () => {
+    (requireHandyman as jest.Mock).mockResolvedValue({
+      user: { id: 'hm-1' },
+      supabase: supabaseWith({
+        booking: { id: 'b-1', status: 'PENDING', handyman_id: null },
+        handyman: null,
+      }),
+    });
+
+    const res = await callHandler(makeReq({ bookingId: 'b-1' }));
+    expect(res.status).toBe(403);
+  });
+
+  it('rejects when the handyman is offline', async () => {
+    (requireHandyman as jest.Mock).mockResolvedValue({
+      user: { id: 'hm-1' },
+      supabase: supabaseWith({
+        booking: { id: 'b-1', status: 'PENDING', handyman_id: null },
+        handyman: { is_online: false, kyc_status: 'APPROVED' },
+      }),
+    });
+
+    const res = await callHandler(makeReq({ bookingId: 'b-1' }));
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.details.failed_guards).toContain('Handyman must be online');
+  });
+
+  it('rejects when the handyman KYC is not approved', async () => {
+    (requireHandyman as jest.Mock).mockResolvedValue({
+      user: { id: 'hm-1' },
+      supabase: supabaseWith({
+        booking: { id: 'b-1', status: 'PENDING', handyman_id: null },
+        handyman: { is_online: true, kyc_status: 'PENDING' },
+      }),
+    });
+
+    const res = await callHandler(makeReq({ bookingId: 'b-1' }));
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.details.failed_guards).toContain('KYC must be approved');
   });
 });
 
