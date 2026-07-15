@@ -20,6 +20,24 @@ interface ServicesManagerProps {
   onRemove: (serviceId: string) => Promise<void>;
 }
 
+type PriceResult = { ok: true; value: number | null } | { ok: false; message: string };
+
+// Empty input means "use the catalog base rate" (null). Anything else must be a
+// finite, non-negative number — the DB enforces price_override >= 0, so reject
+// bad values here for immediate feedback instead of a round-trip failure.
+function parsePrice(raw: string): PriceResult {
+  const trimmed = raw.trim();
+  if (!trimmed) return { ok: true, value: null };
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) return { ok: false, message: 'Enter a valid number' };
+  if (parsed < 0) return { ok: false, message: 'Price cannot be negative' };
+  return { ok: true, value: parsed };
+}
+
+function messageFrom(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback;
+}
+
 export function ServicesManager({
   services,
   catalog,
@@ -33,6 +51,8 @@ export function ServicesManager({
   const [removingServiceId, setRemovingServiceId] = useState<string | null>(null);
   const [selectedCatalogName, setSelectedCatalogName] = useState('');
   const [priceInput, setPriceInput] = useState('');
+  const [priceError, setPriceError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const addedServiceIds = useMemo(() => new Set(services.map((s) => s.service_id)), [services]);
@@ -43,20 +63,38 @@ export function ServicesManager({
 
   const editingRow = services.find((s) => s.service_id === editingServiceId) ?? null;
 
-  const openAddModal = () => {
+  const resetForm = () => {
     setSelectedCatalogName('');
     setPriceInput('');
+    setPriceError(null);
+    setActionError(null);
+  };
+
+  const openAddModal = () => {
+    resetForm();
     setAddModalVisible(true);
+  };
+
+  const closeAddModal = () => {
+    setAddModalVisible(false);
+    resetForm();
   };
 
   const handleAdd = async () => {
     const catalogItem = availableCatalog.find((c) => c.name === selectedCatalogName);
     if (!catalogItem) return;
+    const price = parsePrice(priceInput);
+    if (!price.ok) {
+      setPriceError(price.message);
+      return;
+    }
+    setActionError(null);
     setIsSaving(true);
     try {
-      const parsed = parseFloat(priceInput);
-      await onAdd(catalogItem.id, priceInput && !isNaN(parsed) ? parsed : null);
-      setAddModalVisible(false);
+      await onAdd(catalogItem.id, price.value);
+      closeAddModal();
+    } catch (err) {
+      setActionError(messageFrom(err, 'Failed to add service. Please try again.'));
     } finally {
       setIsSaving(false);
     }
@@ -65,15 +103,31 @@ export function ServicesManager({
   const openEditModal = (row: HandymanServiceRow) => {
     setEditingServiceId(row.service_id);
     setPriceInput(row.price_override != null ? String(row.price_override) : '');
+    setPriceError(null);
+    setActionError(null);
+  };
+
+  const closeEditModal = () => {
+    setEditingServiceId(null);
+    setPriceInput('');
+    setPriceError(null);
+    setActionError(null);
   };
 
   const handleUpdatePrice = async () => {
     if (!editingServiceId) return;
+    const price = parsePrice(priceInput);
+    if (!price.ok) {
+      setPriceError(price.message);
+      return;
+    }
+    setActionError(null);
     setIsSaving(true);
     try {
-      const parsed = parseFloat(priceInput);
-      await onUpdatePrice(editingServiceId, priceInput && !isNaN(parsed) ? parsed : null);
-      setEditingServiceId(null);
+      await onUpdatePrice(editingServiceId, price.value);
+      closeEditModal();
+    } catch (err) {
+      setActionError(messageFrom(err, 'Failed to update price. Please try again.'));
     } finally {
       setIsSaving(false);
     }
@@ -81,13 +135,22 @@ export function ServicesManager({
 
   const handleRemove = async () => {
     if (!removingServiceId) return;
+    setActionError(null);
     setIsSaving(true);
     try {
       await onRemove(removingServiceId);
       setRemovingServiceId(null);
+    } catch (err) {
+      setActionError(messageFrom(err, 'Failed to remove service. Please try again.'));
+      setRemovingServiceId(null);
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const onPriceChange = (text: string) => {
+    setPriceInput(text);
+    if (priceError) setPriceError(null);
   };
 
   return (
@@ -101,6 +164,11 @@ export function ServicesManager({
           leftIcon={<Ionicons name="add" size={15} color={colors.primary['600']} />}
         />
       </View>
+
+      {/* Remove failures have no modal to land in, so surface them here. */}
+      {actionError && !addModalVisible && editingRow === null ? (
+        <Text className="mb-2 text-[13px] text-red-500">{actionError}</Text>
+      ) : null}
 
       {services.length === 0 ? (
         <Card>
@@ -142,10 +210,7 @@ export function ServicesManager({
         </View>
       )}
 
-      <Modal
-        visible={addModalVisible}
-        onClose={() => setAddModalVisible(false)}
-        title="Add a Service">
+      <Modal visible={addModalVisible} onClose={closeAddModal} title="Add a Service">
         <View className="gap-3">
           <Dropdown
             label="Service"
@@ -159,8 +224,10 @@ export function ServicesManager({
             placeholder="Leave blank to use base rate"
             keyboardType="numeric"
             value={priceInput}
-            onChangeText={setPriceInput}
+            onChangeText={onPriceChange}
+            error={priceError ?? undefined}
           />
+          {actionError ? <Text className="text-[13px] text-red-500">{actionError}</Text> : null}
           <Button
             label="Add Service"
             onPress={handleAdd}
@@ -173,7 +240,7 @@ export function ServicesManager({
 
       <Modal
         visible={editingRow !== null}
-        onClose={() => setEditingServiceId(null)}
+        onClose={closeEditModal}
         title={editingRow ? `Edit Price — ${editingRow.service.name}` : ''}>
         <View className="gap-3">
           <Input
@@ -181,8 +248,10 @@ export function ServicesManager({
             placeholder="Leave blank to use base rate"
             keyboardType="numeric"
             value={priceInput}
-            onChangeText={setPriceInput}
+            onChangeText={onPriceChange}
+            error={priceError ?? undefined}
           />
+          {actionError ? <Text className="text-[13px] text-red-500">{actionError}</Text> : null}
           <Button label="Save" onPress={handleUpdatePrice} loading={isSaving} fullWidth />
         </View>
       </Modal>
