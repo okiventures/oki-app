@@ -126,6 +126,42 @@ export async function updateHandymanProfile(
   return data as HandymanProfileRow;
 }
 
+// ─── Online/Offline Status ────────────────────────────────────────────────────
+
+export interface HandymanStatus {
+  id: string;
+  is_online: boolean;
+  last_seen_at: string | null;
+}
+
+export async function updateOnlineStatus(isOnline: boolean): Promise<HandymanStatus> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    return { id: '', is_online: isOnline, last_seen_at: null };
+  }
+
+  const { data, error } = await supabase.functions.invoke('handyman-status', {
+    body: { isOnline },
+  });
+
+  if (error) throw new Error(`Failed to update online status: ${error.message}`);
+  return (data?.data ?? data) as HandymanStatus;
+}
+
+export async function getOnlineStatus(handymanId: string): Promise<boolean | null> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) return null;
+
+  const { data, error } = await supabase
+    .from('handymen')
+    .select('is_online')
+    .eq('id', handymanId)
+    .maybeSingle();
+
+  if (error) throw new Error(`Failed to fetch online status: ${error.message}`);
+  return data ? (data.is_online as boolean) : null;
+}
+
 // ─── Avatar Upload ─────────────────────────────────────────────────────────────
 
 const AVATAR_BUCKET = 'avatars';
