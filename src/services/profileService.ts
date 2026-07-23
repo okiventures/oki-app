@@ -126,6 +126,131 @@ export async function updateHandymanProfile(
   return data as HandymanProfileRow;
 }
 
+// ─── Online/Offline Status ────────────────────────────────────────────────────
+
+export interface HandymanStatus {
+  id: string;
+  is_online: boolean;
+  last_seen_at: string | null;
+}
+
+export async function updateOnlineStatus(isOnline: boolean): Promise<HandymanStatus> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    return { id: '', is_online: isOnline, last_seen_at: null };
+  }
+
+  const { data, error } = await supabase.functions.invoke('handyman-status', {
+    body: { isOnline },
+  });
+
+  if (error) throw new Error(`Failed to update online status: ${error.message}`);
+  return (data?.data ?? data) as HandymanStatus;
+}
+
+export async function getOnlineStatus(handymanId: string): Promise<boolean | null> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) return null;
+
+  const { data, error } = await supabase
+    .from('handymen')
+    .select('is_online')
+    .eq('id', handymanId)
+    .maybeSingle();
+
+  if (error) throw new Error(`Failed to fetch online status: ${error.message}`);
+  return data ? (data.is_online as boolean) : null;
+}
+
+// ─── Handyman Services (categories & pricing) ─────────────────────────────────
+
+export interface ServiceCatalogItem {
+  id: string;
+  slug: string;
+  name: string;
+  category: string;
+  base_rate: number;
+}
+
+export interface HandymanServiceRow {
+  handyman_id: string;
+  service_id: string;
+  price_override: number | null;
+  created_at: string;
+  service: ServiceCatalogItem;
+}
+
+const HANDYMAN_SERVICE_SELECT =
+  'handyman_id, service_id, price_override, created_at, service:services(id, slug, name, category, base_rate)';
+
+export async function listServiceCatalog(): Promise<ServiceCatalogItem[]> {
+  const { data, error } = await supabase
+    .from('services')
+    .select('id, slug, name, category, base_rate')
+    .eq('is_active', true)
+    .order('category', { ascending: true });
+
+  if (error) throw new Error(`Failed to fetch service catalog: ${error.message}`);
+  return (data ?? []) as ServiceCatalogItem[];
+}
+
+export async function listHandymanServices(handymanId: string): Promise<HandymanServiceRow[]> {
+  const { data, error } = await supabase
+    .from('handyman_services')
+    .select(HANDYMAN_SERVICE_SELECT)
+    .eq('handyman_id', handymanId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw new Error(`Failed to fetch handyman services: ${error.message}`);
+  return (data ?? []) as unknown as HandymanServiceRow[];
+}
+
+export async function addHandymanService(
+  handymanId: string,
+  serviceId: string,
+  priceOverride?: number | null
+): Promise<HandymanServiceRow> {
+  const { data, error } = await supabase
+    .from('handyman_services')
+    .insert({
+      handyman_id: handymanId,
+      service_id: serviceId,
+      price_override: priceOverride ?? null,
+    })
+    .select(HANDYMAN_SERVICE_SELECT)
+    .single();
+
+  if (error) throw new Error(`Failed to add service: ${error.message}`);
+  return data as unknown as HandymanServiceRow;
+}
+
+export async function updateServicePrice(
+  handymanId: string,
+  serviceId: string,
+  priceOverride: number | null
+): Promise<HandymanServiceRow> {
+  const { data, error } = await supabase
+    .from('handyman_services')
+    .update({ price_override: priceOverride })
+    .eq('handyman_id', handymanId)
+    .eq('service_id', serviceId)
+    .select(HANDYMAN_SERVICE_SELECT)
+    .single();
+
+  if (error) throw new Error(`Failed to update service price: ${error.message}`);
+  return data as unknown as HandymanServiceRow;
+}
+
+export async function removeHandymanService(handymanId: string, serviceId: string): Promise<void> {
+  const { error } = await supabase
+    .from('handyman_services')
+    .delete()
+    .eq('handyman_id', handymanId)
+    .eq('service_id', serviceId);
+
+  if (error) throw new Error(`Failed to remove service: ${error.message}`);
+}
+
 // ─── Avatar Upload ─────────────────────────────────────────────────────────────
 
 const AVATAR_BUCKET = 'avatars';
