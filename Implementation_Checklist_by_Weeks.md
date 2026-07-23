@@ -328,21 +328,21 @@
 
 ### **Week 10 · July 9 – July 15 — Worker Management & Availability**
 
-- [ ] Online/Offline toggle (visibility in search)
-  - [ ] `PATCH /handymen/:id/status` updates `is_online` field and `last_seen_at` timestamp
-  - [ ] Offline handymen excluded from `ST_DWithin` search results immediately
-  - [ ] Toggle reflected in Handyman UI header within 1 second of API response
-- [ ] Service categories, pricing per worker
-  - [ ] `handyman_services` join table: handyman_id, service_category_id, custom_price_override
-  - [ ] Handyman can add/edit/remove service categories with pricing from their profile settings
-  - [ ] Search filter passes `category` param matched against `handyman_services`
+- [x] Online/Offline toggle (visibility in search)
+  - [x] `PATCH /handymen/:id/status` updates `is_online` field and `last_seen_at` timestamp — `handyman-status` edge function (POST, scoped to JWT id)
+  - [x] Offline handymen excluded from `ST_DWithin` search results immediately — `search_nearest_handymen` RPC filters `WHERE h.is_online = true`
+  - [x] Toggle reflected in Handyman UI header within 1 second of API response — dashboard toggle in `app/(handyman)/index.tsx` (Card, not literal header)
+- [x] Service categories, pricing per worker
+  - [x] `handyman_services` join table: handyman_id, service_category_id, custom_price_override — table exists with `service_id` + `price_override` (naming differs from spec)
+  - [x] Handyman can add/edit/remove service categories with pricing from their profile settings — `src/components/handyman/ServicesManager.tsx` + `profileService` CRUD
+  - [x] Search filter passes `category` param matched against `handyman_services` — RPC joins `handyman_services`/`services` on `s.category`; `useHandymanSearch` hook not yet wired to a screen
 - [ ] Handyman availability calendar
-  - [ ] `availability_blocks` table: handyman_id, start_time, end_time, recurrence (one-off / weekly)
-  - [ ] Booking creation validates against availability blocks to prevent scheduling conflicts
-  - [ ] Calendar UI shows booked slots, available blocks, and blocked-off time
+  - [ ] `availability_blocks` table: handyman_id, start_time, end_time, recurrence (one-off / weekly) — no dedicated table; availability derived from bookings via `get_handyman_blocked_slots`, no recurrence
+  - [ ] Booking creation validates against availability blocks to prevent scheduling conflicts — validated on accept/assign (triggers), not at client creation
+  - [x] Calendar UI shows booked slots, available blocks, and blocked-off time — `src/components/handyman/ScheduleCalendar.tsx`
 - [ ] Search ranking heuristics (distance, rating placeholder)
-  - [ ] Primary sort: distance ascending
-  - [ ] Secondary sort: `trust_score` descending (defaults to null/0 until Week 13)
+  - [x] Primary sort: distance ascending
+  - [ ] Secondary sort: `trust_score` descending (defaults to null/0 until Week 13) — no `trust_score` tiebreak in any search ORDER BY
   - [ ] Ranking logic isolated in a reusable service function for easy extension in Phase 3
 
 ### [PASS] Week 10 Success Criteria
@@ -358,22 +358,22 @@
 ### **Week 11 · July 16 – July 22 — State Machine Workflow**
 
 - [ ] [STANDUP] **Standup 5 — July 15**
-- [ ] Implement state machine: Accept → Arrived → Work Started → Complete
-  - [ ] FSM implemented as a standalone service (e.g., XState or a typed transition map)
-  - [ ] Valid transitions: `PENDING→ACCEPTED`, `ACCEPTED→IN_TRANSIT`, `IN_TRANSIT→ARRIVED`, `ARRIVED→WORK_STARTED`, `WORK_STARTED→COMPLETED`, `COMPLETED→PAID`
-  - [ ] Each transition updates `bookings.status` and inserts a row into `booking_events`
-- [ ] Guard rails: invalid transition rejection
-  - [ ] FSM service throws a typed error on invalid transition (e.g., `PENDING→COMPLETED`)
-  - [ ] API layer catches FSM error and returns `422 Unprocessable Entity` with transition details
-  - [ ] Database-level check constraint on `status` enum as a secondary safety net
+- [x] Implement state machine: Accept → Arrived → Work Started → Complete
+  - [x] FSM implemented as a standalone service (e.g., XState or a typed transition map) — `transition_booking_state` SECURITY DEFINER RPC (typed action→from/to map)
+  - [x] Valid transitions: `PENDING→ACCEPTED`, `ACCEPTED→IN_TRANSIT`, `IN_TRANSIT→ARRIVED`, `ARRIVED→WORK_STARTED`, `WORK_STARTED→COMPLETED`, `COMPLETED→PAID`
+  - [x] Each transition updates `bookings.status` and inserts a row into `booking_events`
+- [x] Guard rails: invalid transition rejection
+  - [x] FSM service throws a typed error on invalid transition (e.g., `PENDING→COMPLETED`) — RPC raises with `TRANSITION_NOT_ALLOWED`/`GUARD_NOT_SATISFIED` detail
+  - [x] API layer catches FSM error and returns `422 Unprocessable Entity` with transition details — edge functions + `BookingTransitionError`
+  - [x] Database-level check constraint on `status` enum as a secondary safety net — `booking_status` ENUM constrains values (no transition-pair check at DB level)
 - [ ] Handyman action UI (state-driven buttons)
-  - [ ] CTA button label and action derive entirely from `booking.status` (no hardcoded conditionals per screen)
-  - [ ] Transitions that require prerequisites (photo, geofence) show a pre-check prompt first
-  - [ ] Completed state shows summary card; no further CTAs visible
+  - [x] CTA button label and action derive entirely from `booking.status` (no hardcoded conditionals per screen) — `HANDYMAN_WORKFLOW` map in `BookingsContext`
+  - [ ] Transitions that require prerequisites (photo, geofence) show a pre-check prompt first — photo guarded at API, no UI pre-check prompt confirmed
+  - [ ] Completed state shows summary card; no further CTAs visible — `COMPLETED` still surfaces a "Mark Paid" CTA
 - [ ] Audit log for state transitions
-  - [ ] `booking_events` table: `booking_id`, `actor_id`, `actor_role`, `from_state`, `to_state`, `created_at`
-  - [ ] Audit log queryable by `booking_id` in Admin dispute view
-  - [ ] Log entries are immutable (no UPDATE/DELETE RLS on `booking_events`)
+  - [ ] `booking_events` table: `booking_id`, `actor_id`, `actor_role`, `from_state`, `to_state`, `created_at` — table exists but no `actor_role` column; columns named `from_status`/`to_status`
+  - [ ] Audit log queryable by `booking_id` in Admin dispute view — participant/admin SELECT policy exists; not confirmed wired into dispute UI
+  - [x] Log entries are immutable (no UPDATE/DELETE RLS on `booking_events`) — insert-only via RPC; no UPDATE/DELETE policies
 
 ### [PASS] Week 11 Success Criteria
 
