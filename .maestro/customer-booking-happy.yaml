@@ -1,0 +1,59 @@
+# Customer booking — happy path (Maestro, Layer B / true e2e).
+#
+# NOT wired into CI yet. Runs against an EAS dev build hitting the real dev
+# Supabase. See docs/testing/README-e2e.md for how to run it locally and the
+# CI job to add.
+#
+# Selectors below use the visible copy from app/new-booking.tsx. For stable
+# runs, add testID props to the wizard controls and switch these to `id:`
+# selectors (tracked in README-e2e.md, "UI hooks to add").
+appId: ${MAESTRO_APP_ID}
+---
+- launchApp:
+    clearState: true
+
+# Precondition: signed in as the seeded dev test client (CB-16). If the app
+# opens on the auth screen, log in.
+- runFlow:
+    when:
+      visible: 'Log in'
+    commands:
+      - tapOn: 'Email'
+      - inputText: ${MAESTRO_CLIENT_EMAIL}
+      - tapOn: 'Password'
+      - inputText: ${MAESTRO_CLIENT_PASSWORD}
+      - tapOn: 'Log in'
+
+# From the client home, start a "Book Now" booking (CB-01, CB-03 on-demand).
+- tapOn: 'Book Now'
+
+# Step 1 — category + sub-service.
+- tapOn: 'Cleaning'
+- tapOn:
+    text: 'General Cleaning'
+    optional: true
+- tapOn: 'Continue'
+
+# Step 2 — details.
+- tapOn:
+    text: 'Address'
+    optional: true
+- inputText: '123 Mango Ave, Cebu City'
+- tapOn:
+    text: 'Describe'
+    optional: true
+- inputText: 'Two-bedroom unit, general clean'
+- tapOn: 'Continue'
+
+# Step 3 — schedule (default "now").
+- tapOn: 'Continue'
+
+# Step 4 — review + submit (CB-01).
+- assertVisible: 'Confirm Booking'
+- tapOn: 'Confirm Booking'
+
+# Post-create: searching / booking detail is shown (CB-08). Assert we left the
+# wizard and landed on a booking screen.
+- assertVisible:
+    text: 'Finding a handyman|Searching|Booking'
+    optional: false
