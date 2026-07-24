@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { Booking, BookingEvent, BookingStatus, BookingType, ServiceCategory } from '../types';
 import { generateId } from '../utils';
+import { transition as fsmTransition, FsmError, BookingAction } from './bookingFsm';
+import { MOCK_BOOKINGS } from '../mocks';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,14 +38,7 @@ export interface BookingEventRow {
   created_at: string;
 }
 
-type StateTransitionAction =
-  | 'ACCEPT'
-  | 'REJECT'
-  | 'CANCEL'
-  | 'START_TRANSIT'
-  | 'MARK_ARRIVED'
-  | 'START_WORK'
-  | 'COMPLETE';
+export type StateTransitionAction = BookingAction;
 
 export class BookingTransitionError extends Error {
   status?: number;
@@ -173,7 +168,10 @@ export async function fetchBookings(): Promise<Booking[]> {
 
 export async function fetchBookingEvents(bookingId: string): Promise<BookingEvent[]> {
   if (USE_MOCK) {
-    // Return synthetic events from mock booking details
+    const local = localEvents.get(bookingId);
+    if (local && local.length > 0) return [...local];
+
+    // Fall back to synthetic events from mock booking details
     const { MOCK_BOOKING_DETAILS } = await import('../mocks/bookingDetails');
     const detail = MOCK_BOOKING_DETAILS.find((b) => b.id === bookingId);
     if (!detail) return [];
@@ -200,34 +198,31 @@ export async function fetchBookingEvents(bookingId: string): Promise<BookingEven
   return (data ?? []).map(mapEventRow);
 }
 
-// ─── Local state transition (mock fallback) ──────────────────────────────────
+// ─── Local event store (mock fallback) ──────────────────────────────────────
 
-const ACTION_TO_STATUS: Record<string, BookingStatus> = {
-  ACCEPT: 'Accepted' as BookingStatus,
-  REJECT: 'Rejected' as BookingStatus,
-  CANCEL: 'Cancelled' as BookingStatus,
-  START_TRANSIT: 'InTransit' as BookingStatus,
-  MARK_ARRIVED: 'Arrived' as BookingStatus,
-  START_WORK: 'WorkStarted' as BookingStatus,
-  COMPLETE: 'Completed' as BookingStatus,
-};
+const localEvents = new Map<string, BookingEvent[]>();
+
+function addLocalEvent(event: BookingEvent) {
+  const events = localEvents.get(event.bookingId) ?? [];
+  events.push(event);
+  localEvents.set(event.bookingId, events);
+}
+
+// ─── Local state transition (mock fallback) ──────────────────────────────────
 
 async function applyLocalTransition(
   bookingId: string,
   action: StateTransitionAction
 ): Promise<Booking> {
-  const { MOCK_BOOKINGS } = await import('../mocks');
   const booking = MOCK_BOOKINGS.find((b) => b.id === bookingId);
   if (!booking) throw new Error('Booking not found');
 
-  const newStatus = ACTION_TO_STATUS[action];
-  if (!newStatus) throw new Error(`Unknown action: ${action}`);
+  const result = fsmTransition(booking, action, { actorId: 'local' });
 
-  return {
-    ...booking,
-    status: newStatus,
-    updatedAt: new Date().toISOString(),
-  };
+  Object.assign(booking, result.booking);
+  addLocalEvent(result.event);
+
+  return result.booking;
 }
 
 // ─── Transition booking state via Edge Function ──────────────────────────────
@@ -239,7 +234,24 @@ export async function transitionBookingState(
 ): Promise<Booking> {
   const hasSession = await checkSession();
   if (!hasSession || metadata?.simulated) {
-    return applyLocalTransition(bookingId, action);
+    try {
+      return await applyLocalTransition(bookingId, action);
+    } catch (err) {
+      if (err instanceof FsmError) {
+        throw new BookingTransitionError(err.message, {
+          status: 422,
+          body: {
+            error: err.error,
+            from_status: err.fromStatus,
+            to_status: err.toStatus,
+            action: err.action,
+            reason_code: err.reasonCode,
+            details: err.details,
+          },
+        });
+      }
+      throw err;
+    }
   }
 
   try {
@@ -435,15 +447,4 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
 
 // ─── Guard condition descriptions ────────────────────────────────────────────
 
-export const GUARD_DESCRIPTIONS: Record<string, string> = {
-  ACCEPT: 'Booking is PENDING · Handyman is online · KYC approved · Not already assigned',
-  REJECT: 'Booking is PENDING',
-  CANCEL: 'Booking is PENDING · Caller is the client',
-  START_TRANSIT:
-    'Caller is assigned handyman · Booking is ACCEPTED · Scheduled window (if applicable)',
-  MARK_ARRIVED:
-    'Caller is assigned handyman · Booking is IN_TRANSIT · Within 200m geofence (recommended)',
-  START_WORK: 'Caller is assigned handyman · Booking is ARRIVED · before_photo_url IS NOT NULL',
-  COMPLETE: 'Caller is assigned handyman · Booking is WORK_STARTED · after_photo_url IS NOT NULL',
-  CAPTURE_PAYMENT: 'Booking is COMPLETED · payments.status is CAPTURED · Platform fee deducted',
-};
+export { GUARD_DESCRIPTIONS } from './bookingFsm';

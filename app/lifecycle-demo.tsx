@@ -9,6 +9,7 @@ import { Button } from '../src/components/ui/Button';
 import { Badge } from '../src/components/ui/Badge';
 import { BookingStatus, BookingEvent } from '../src/types';
 import { transitionBookingState, GUARD_DESCRIPTIONS } from '../src/services/bookingService';
+import type { BookingAction } from '../src/services/bookingFsm';
 import { MOCK_BOOKINGS } from '../src/mocks';
 import { formatDateTime } from '../src/utils';
 import { BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS } from '../src/constants/theme';
@@ -267,7 +268,7 @@ export default function LifecycleDemoScreen() {
   }, []);
 
   const guardText = nextAction
-    ? (GUARD_DESCRIPTIONS[nextAction] ?? 'No guard conditions documented')
+    ? (GUARD_DESCRIPTIONS[nextAction as BookingAction] ?? 'No guard conditions documented')
     : null;
 
   return (
