@@ -5,7 +5,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../src/context/ThemeContext';
 import { useBookings } from '../src/context/BookingsContext';
-import { BookingType, ServiceCategory } from '../src/types';
 import { useHandymanAvailability } from '../src/hooks/useHandymanAvailability';
 import { Button } from '../src/components/ui/Button';
 
@@ -18,40 +17,17 @@ import { NewBookingDetailsStep } from '../src/components/bookings/NewBookingDeta
 import { NewBookingScheduleStep } from '../src/components/bookings/NewBookingScheduleStep';
 import { NewBookingReviewStep } from '../src/components/bookings/NewBookingReviewStep';
 import { NewBookingStepDots } from '../src/components/bookings/NewBookingStepDots';
+import {
+  DEFAULT_LAT,
+  DEFAULT_LNG,
+  bookingTypeFor,
+  buildScheduledAt,
+  canAdvance as canAdvanceStep,
+  resolveServiceCategory,
+  resolveServiceSlug,
+} from '../src/components/bookings/newBookingLogic';
 
 import { supabase } from '../src/lib/supabase';
-
-const CATEGORY_TO_SERVICE: Record<string, ServiceCategory> = {
-  massage: ServiceCategory.General,
-  cleaning: ServiceCategory.Cleaning,
-  painting: ServiceCategory.Painting,
-  general: ServiceCategory.General,
-};
-
-const SUB_SERVICE_TO_SLUG: Record<string, string> = {
-  // Cleaning
-  'cleaning-general': 'cleaning-general',
-  'cleaning-deep': 'cleaning-general',
-  'cleaning-aircon': 'cleaning-general',
-  'cleaning-laundry': 'cleaning-general',
-  // Painting
-  'painting-interior': 'painting-interior',
-  'painting-exterior': 'painting-interior',
-  'painting-touch': 'painting-interior',
-  // Massage → no DB match, use general
-  'massage-swedish': 'general-handyman',
-  'massage-deep': 'general-handyman',
-  'massage-shiatsu': 'general-handyman',
-  'massage-foot': 'general-handyman',
-  // General
-  'general-furniture': 'general-handyman',
-  'general-mounting': 'general-handyman',
-  'general-repair': 'general-handyman',
-  'general-other': 'general-handyman',
-};
-
-const DEFAULT_LAT = 10.3157;
-const DEFAULT_LNG = 123.8854;
 
 export default function NewBookingScreen() {
   const { mode } = useLocalSearchParams<{ mode?: 'now' | 'later' }>();
@@ -87,12 +63,16 @@ export default function NewBookingScreen() {
     return isTimeSlotBlocked(selectedHour);
   }, [bookingMode, selectedHour, isTimeSlotBlocked]);
 
-  const canAdvance = (): boolean => {
-    if (stepIndex === 0) return categoryId !== null && !!subServiceId;
-    if (stepIndex === 1) return address.trim().length > 0 && description.trim().length > 0;
-    if (stepIndex === 2 && bookingMode === 'later') return !isSelectedSlotBlocked;
-    return true;
-  };
+  const canAdvance = (): boolean =>
+    canAdvanceStep({
+      stepIndex,
+      categoryId,
+      subServiceId,
+      address,
+      description,
+      bookingMode,
+      isSelectedSlotBlocked,
+    });
 
   const findAmount = useCallback((): number => {
     if (!categoryId || !subServiceId) return 0;
@@ -112,14 +92,11 @@ export default function NewBookingScreen() {
 
     setIsSubmitting(true);
     try {
-      const serviceCategory = CATEGORY_TO_SERVICE[categoryId] ?? ServiceCategory.General;
-      const scheduledAt =
-        bookingMode === 'later'
-          ? `${selectedDate}T${String(selectedHour).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}:00`
-          : undefined;
+      const serviceCategory = resolveServiceCategory(categoryId);
+      const scheduledAt = buildScheduledAt(bookingMode, selectedDate, selectedHour, selectedMinute);
 
       // Look up service ID from slug
-      const slug = SUB_SERVICE_TO_SLUG[subServiceId] ?? 'general-handyman';
+      const slug = resolveServiceSlug(subServiceId);
       let serviceId: string | undefined;
       const { data: svc } = await supabase
         .from('services')
@@ -135,7 +112,7 @@ export default function NewBookingScreen() {
         clientId: 'c1',
         clientName: 'Ishah Bautista',
         serviceCategory,
-        bookingType: bookingMode === 'now' ? BookingType.OnDemand : BookingType.Scheduled,
+        bookingType: bookingTypeFor(bookingMode),
         description,
         location: address,
         amount: findAmount(),

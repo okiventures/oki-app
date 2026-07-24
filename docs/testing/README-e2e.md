@@ -19,23 +19,35 @@ Files:
 - `__tests__/flows/customer-booking-context.test.tsx` — BookingsContext: create
   appends (CB-01), realtime wiring + status apply (CB-08/CB-09), cancel guard
   (CB-11/CB-12).
+- `__tests__/flows/customer-booking-wizard.test.ts` — new-booking wizard
+  decision logic extracted to `src/components/bookings/newBookingLogic.ts`:
+  step gates (CB-02), now-vs-later + scheduledAt (CB-03), category/slug mapping
+  (CB-05).
 
 These use only `jest` + `react-test-renderer` (already installed) and run in the
 existing `.github/workflows/ci.yml` `test:ci` job with no changes.
 
-### Not yet done in Layer A (needs a dependency)
+### Not yet done in Layer A (needs a React Native test environment)
 
-Full-screen wizard render tests (CB-02 step gates, CB-04 blocked slot, CB-06/07
-submit error surfacing at the UI) need `@testing-library/react-native`, which
-must be added with pnpm so the lockfile stays in sync (CI runs
-`pnpm install --frozen-lockfile`):
+The wizard's *logic* is covered above, but its *rendered UI* is not — CB-04
+(blocked slot is non-selectable), CB-06/07 (submit error keeps the user on
+review), and CB-02 at the touch level. Rendering `app/new-booking.tsx` needs a
+real RN test environment.
+
+This repo's jest config is deliberately preset-less (see the comment in
+`jest.config.js` and `__tests__/jest-setup.cjs`) because `@react-native/jest-preset`
+had ESM/Flow issues under pnpm's strict CJS resolution. As a result RN primitives
+do **not** render — `Platform.OS` is undefined. Adding
+`@testing-library/react-native` alone is not enough; it needs a dedicated
+jest project using the `jest-expo` preset, isolated from the existing suite via
+jest `projects` so the 200+ current tests keep their config. Treat this as a
+deliberate follow-up, not a drop-in:
 
 ```bash
-pnpm add -D @testing-library/react-native @testing-library/jest-native
+pnpm add -D @testing-library/react-native
+# then add a second jest project (preset: 'jest-expo') scoped to *.rtl.test.tsx,
+# and mock expo-router useRouter/useLocalSearchParams + wrap in the providers.
 ```
-
-Then render `app/new-booking.tsx` wrapped in `ThemeProvider` + `BookingsProvider`,
-mock `expo-router`'s `useRouter`/`useLocalSearchParams`, and drive the steps.
 
 ## Layer B — Maestro true e2e (scaffolded, not in CI)
 
