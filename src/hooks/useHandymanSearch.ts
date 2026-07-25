@@ -5,6 +5,19 @@ import { rankHandymen } from '../services/searchService';
 import { isMockEnv } from '../services/bookingService';
 import { MOCK_HANDYMEN } from '../mocks';
 
+const CATEGORY_SKILL_MATCH: Record<ServiceCategory, string[]> = {
+  [ServiceCategory.Plumbing]: ['Plumbing'],
+  [ServiceCategory.Electrical]: ['Electrical'],
+  [ServiceCategory.Carpentry]: ['Carpentry'],
+  [ServiceCategory.Cleaning]: ['Cleaning'],
+  [ServiceCategory.Painting]: ['Painting'],
+  [ServiceCategory.HVAC]: ['HVAC'],
+  [ServiceCategory.Roofing]: ['Roofing'],
+  [ServiceCategory.Landscaping]: ['Landscaping'],
+  [ServiceCategory.Appliance]: ['Appliance Repair', 'General Handyman'],
+  [ServiceCategory.General]: [],
+};
+
 export interface HandymanSearchResult {
   handyman_id: string;
   user_name: string;
@@ -65,23 +78,19 @@ const MOCK_HANDYMAN_RESULTS: HandymanSearchResult[] = [
 ];
 
 function getMockResults(category: ServiceCategory | null): HandymanSearchResult[] {
-  let results = MOCK_HANDYMAN_RESULTS;
+  if (!category) return MOCK_HANDYMAN_RESULTS;
 
-  if (category) {
-    results = results.filter((r) => {
-      const profile = MOCK_HANDYMEN.find((h) => h.id === r.handyman_id);
-      if (!profile) return true;
-      return profile.skills.some(
-        (s) =>
-          s
-            .toLowerCase()
-            .includes(category.replace(' Repair', '').replace(' Handyman', '').toLowerCase()) ||
-          category === ServiceCategory.General
-      );
-    });
+  const matchSkills = CATEGORY_SKILL_MATCH[category];
+
+  if (category === ServiceCategory.General || matchSkills.length === 0) {
+    return MOCK_HANDYMAN_RESULTS;
   }
 
-  return results;
+  return MOCK_HANDYMAN_RESULTS.filter((r) => {
+    const profile = MOCK_HANDYMEN.find((h) => h.id === r.handyman_id);
+    if (!profile) return false;
+    return profile.skills.some((s) => matchSkills.includes(s));
+  });
 }
 
 export function useHandymanSearch({

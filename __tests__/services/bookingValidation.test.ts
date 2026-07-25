@@ -7,7 +7,7 @@ import {
 } from '../../src/services/searchService';
 import { getAvailabilityForHandyman, resetAvailabilityStore } from '../../src/mocks/availability';
 import { getFreshMockBookings } from '../../src/mocks/bookings';
-import { Booking, ServiceCategory, BookingStatus } from '../../src/types';
+import { Booking, BookingStatus } from '../../src/types';
 import { HandymanSearchResult } from '../../src/hooks/useHandymanSearch';
 
 beforeEach(() => {

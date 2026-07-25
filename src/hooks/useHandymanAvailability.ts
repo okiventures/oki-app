@@ -72,7 +72,7 @@ export function useHandymanAvailability({
     };
 
     fetchSlots();
-  }, [handymanId, dateKey]);
+  }, [handymanId, dateKey, refreshKey]);
 
   const isTimeSlotBlocked = useCallback(
     (hour: number): boolean => {

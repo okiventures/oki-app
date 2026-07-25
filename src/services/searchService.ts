@@ -69,6 +69,21 @@ export function validateBookingSlot(
   return { valid: true };
 }
 
+function bookingEnd(booking: Booking): Date | null {
+  if (!booking.scheduledAt) return null;
+  const end = new Date(booking.scheduledAt);
+  end.setMinutes(end.getMinutes() + (booking.durationMinutes ?? 90));
+  return end;
+}
+
+function isSameDay(left: Date, right: Date): boolean {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
 export function getBookingsOnDate(bookings: Booking[], handymanId: string, date: Date): Booking[] {
   return bookings.filter(
     (b) =>
@@ -76,9 +91,7 @@ export function getBookingsOnDate(bookings: Booking[], handymanId: string, date:
       b.scheduledAt &&
       b.status !== BookingStatus.Cancelled &&
       b.status !== BookingStatus.Rejected &&
-      new Date(b.scheduledAt).getFullYear() === date.getFullYear() &&
-      new Date(b.scheduledAt).getMonth() === date.getMonth() &&
-      new Date(b.scheduledAt).getDate() === date.getDate()
+      isSameDay(new Date(b.scheduledAt), date)
   );
 }
 
@@ -88,10 +101,9 @@ export function isSlotOverlapping(
   slotEnd: Date
 ): { overlaps: boolean; conflicting?: Booking } {
   for (const b of existing) {
-    if (!b.scheduledAt) continue;
-    const bStart = new Date(b.scheduledAt);
-    const bEnd = new Date(bStart);
-    bEnd.setMinutes(bEnd.getMinutes() + (b.durationMinutes ?? 90));
+    const bEnd = bookingEnd(b);
+    if (!bEnd) continue;
+    const bStart = new Date(b.scheduledAt as string);
     if (slotStart < bEnd && slotEnd > bStart) {
       return { overlaps: true, conflicting: b };
     }
@@ -106,10 +118,9 @@ export function hasMinimumGap(
   gapMinutes: number = 30
 ): { hasGap: boolean; conflicting?: Booking } {
   for (const b of existing) {
-    if (!b.scheduledAt) continue;
-    const bStart = new Date(b.scheduledAt);
-    const bEnd = new Date(bStart);
-    bEnd.setMinutes(bEnd.getMinutes() + (b.durationMinutes ?? 90));
+    const bEnd = bookingEnd(b);
+    if (!bEnd) continue;
+    const bStart = new Date(b.scheduledAt as string);
     const bufferedStart = new Date(bStart);
     bufferedStart.setMinutes(bufferedStart.getMinutes() - gapMinutes);
     const bufferedEnd = new Date(bEnd);

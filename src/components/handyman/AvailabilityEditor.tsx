@@ -32,9 +32,7 @@ function parseDays(handymanId: string): DayConfig[] {
   return DAY_LABELS.map((_, dayIdx) => {
     const block = blocks.find((b) => b.id === `${handymanId}-d${dayIdx}`);
     if (!block) return { enabled: false, startHour: 8, endHour: 17 };
-    const startHour = new Date(block.startTime).getHours();
-    const endHour = new Date(block.endTime).getHours();
-    return { enabled: true, startHour, endHour };
+    return { enabled: true, startHour: block.startHour, endHour: block.endHour };
   });
 }
 
