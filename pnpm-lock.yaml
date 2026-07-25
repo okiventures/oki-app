@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  lightningcss: 1.30.1
+
 patchedDependencies:
   '@react-native/jest-preset@0.85.3': 7b495e14a6f6b83175391b19bb9814aadaf3479e557851104723ccda5bfe27fc
 
