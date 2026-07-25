@@ -142,6 +142,7 @@ export interface Booking {
   netAmount: number;
   scheduledAt?: string;
   requestExpiresAt?: string;
+  durationMinutes?: number;
   createdAt: string;
   updatedAt: string;
   photos?: string[];
@@ -314,6 +315,18 @@ export interface JobCardData {
   location: string;
   scheduledAt?: string;
   photos?: string[];
+}
+
+export type AvailabilityRecurrence = 'one_off' | 'weekly';
+
+export interface AvailabilityBlock {
+  id: string;
+  handymanId: string;
+  startTime: string;
+  endTime: string;
+  startHour: number;
+  endHour: number;
+  recurrence: AvailabilityRecurrence;
 }
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
