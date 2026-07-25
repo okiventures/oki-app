@@ -12,13 +12,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { MOCK_HANDYMAN, MOCK_HANDYMAN_WALLET } from '../../src/mocks';
 import { Link, useRouter } from 'expo-router';
 import { WalletSection } from '../../src/components/handyman/WalletSection';
+import { ServicesManager } from '../../src/components/handyman/ServicesManager';
 import { Modal } from '../../src/components/ui/Modal';
 import { Button } from '../../src/components/ui/Button';
 
 export default function HandymanProfile() {
   const { colors } = useTheme();
   const { logout } = useAuth();
-  const { profile } = useProfile();
+  const { profile, services, serviceCatalog, addService, updateServicePrice, removeService } =
+    useProfile();
   const router = useRouter();
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -28,7 +30,10 @@ export default function HandymanProfile() {
   const displayPhoto = profile?.user?.photo_url ?? MOCK_HANDYMAN.photoUrl;
   const displayRating = profile?.handyman?.trust_score ?? MOCK_HANDYMAN.rating;
   const displayReviewCount = profile?.handyman?.review_count ?? MOCK_HANDYMAN.reviewCount;
-  const displaySkills = MOCK_HANDYMAN.skills; // TODO: fetch from handyman_services join
+  const displaySkills =
+    services.length > 0
+      ? Array.from(new Set(services.map((s) => s.service.category)))
+      : MOCK_HANDYMAN.skills;
   const displayBio = profile?.handyman?.bio ?? MOCK_HANDYMAN.bio;
   const displayHourlyRate = profile?.handyman?.hourly_rate ?? MOCK_HANDYMAN.hourlyRate;
   const displayLocation = MOCK_HANDYMAN.location; // PostGIS location not parseable on client; use mock
@@ -119,6 +124,16 @@ export default function HandymanProfile() {
 
           <View className="mt-6">
             <WalletSection wallet={MOCK_HANDYMAN_WALLET} />
+          </View>
+
+          <View className="mt-6">
+            <ServicesManager
+              services={services}
+              catalog={serviceCatalog}
+              onAdd={addService}
+              onUpdatePrice={updateServicePrice}
+              onRemove={removeService}
+            />
           </View>
 
           <Card className="mt-4 overflow-hidden p-0">

@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Switch, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
+import { useAuth } from '../../src/context/AuthContext';
+import { getOnlineStatus, updateOnlineStatus } from '../../src/services/profileService';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { Card } from '../../src/components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,8 +33,38 @@ const PRESET_RANGES: Record<string, () => { start: Date; end: Date }> = {
 export default function HandymanDashboard() {
   const { colors } = useTheme();
   const router = useRouter();
+  const { session } = useAuth();
   const [isActive, setIsActive] = useState(MOCK_HANDYMAN.isOnline);
+  const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const { bookings } = useBookings();
+
+  const handymanId = session?.user.id;
+
+  useEffect(() => {
+    if (!handymanId) return;
+    let cancelled = false;
+    getOnlineStatus(handymanId)
+      .then((online) => {
+        if (!cancelled && online !== null) setIsActive(online);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [handymanId]);
+
+  const handleToggleStatus = async (next: boolean) => {
+    const previous = isActive;
+    setIsActive(next);
+    setIsTogglingStatus(true);
+    try {
+      await updateOnlineStatus(next);
+    } catch {
+      setIsActive(previous);
+    } finally {
+      setIsTogglingStatus(false);
+    }
+  };
 
   const [selectedPreset, setSelectedPreset] = useState<Preset>('This Week');
   const [customStart, setCustomStart] = useState(() => {
@@ -110,7 +142,8 @@ export default function HandymanDashboard() {
             </View>
             <Switch
               value={isActive}
-              onValueChange={setIsActive}
+              onValueChange={handleToggleStatus}
+              disabled={isTogglingStatus}
               trackColor={{ true: colors.primary['600'] }}
             />
           </Card>
