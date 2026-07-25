@@ -7,15 +7,18 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { MOCK_BOOKINGS } from '../mocks';
 import { Booking, BookingStatus } from '../types';
 import {
   transitionBookingState,
   subscribeToBooking,
   createBooking as createBookingService,
   BookingTransitionError,
+  isMockEnv,
 } from '../services/bookingService';
 import type { CreateBookingInput } from '../services/bookingService';
+import { getFreshMockBookings } from '../mocks/bookings';
+
+const MOCK_BOOKINGS = getFreshMockBookings();
 
 const STORAGE_KEY = 'oki_bookings_state_v2';
 
@@ -116,14 +119,15 @@ function mergeTransition(existing: Booking, updated: Booking): Booking {
 }
 
 export function BookingsProvider({ children }: { children: React.ReactNode }) {
-  const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
+  const [bookings, setBookings] = useState<Booking[]>(() => getFreshMockBookings());
   const subsRef = useRef<Map<string, () => void>>(new Map());
 
   useEffect(() => {
-    setBookings(MOCK_BOOKINGS);
-  }, []);
+    if (isMockEnv()) {
+      window?.localStorage?.removeItem(STORAGE_KEY);
+      return;
+    }
 
-  useEffect(() => {
     try {
       if (typeof window !== 'undefined') {
         const saved = window.localStorage.getItem(STORAGE_KEY);
@@ -132,11 +136,13 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch {
-      setBookings(MOCK_BOOKINGS);
+      setBookings(getFreshMockBookings());
     }
   }, []);
 
   useEffect(() => {
+    if (isMockEnv()) return;
+
     try {
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
