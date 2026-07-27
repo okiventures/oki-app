@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { Alert } from 'react-native';
 import { MOCK_BOOKINGS } from '../mocks';
 import { Booking, BookingStatus } from '../types';
 import {
@@ -196,7 +197,15 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
           )
         );
         return;
-      } catch {}
+      } catch (err) {
+        if (err instanceof BookingTransitionError && err.status === 422) {
+          const details = err.body?.details as Record<string, unknown> | undefined;
+          const message =
+            typeof details?.guard_failure === 'string' ? details.guard_failure : err.message;
+          Alert.alert('Cannot advance booking', message);
+          return;
+        }
+      }
 
       setBookings((current) =>
         current.map((booking) => {
