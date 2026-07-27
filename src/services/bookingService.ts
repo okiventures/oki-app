@@ -198,9 +198,22 @@ export async function fetchBookingEvents(bookingId: string): Promise<BookingEven
   return (data ?? []).map(mapEventRow);
 }
 
-// ─── Local event store (mock fallback) ──────────────────────────────────────
+// ─── Local event + override stores (mock fallback) ───────────────────────────
 
 const localEvents = new Map<string, BookingEvent[]>();
+const localOverrides = new Map<string, Partial<Booking>>();
+
+function getLocalBooking(bookingId: string): Booking | undefined {
+  const base = MOCK_BOOKINGS.find((b) => b.id === bookingId);
+  if (!base) return undefined;
+  const override = localOverrides.get(bookingId);
+  return override ? { ...base, ...override } : base;
+}
+
+function setLocalOverride(bookingId: string, patch: Partial<Booking>) {
+  const existing = localOverrides.get(bookingId) ?? {};
+  localOverrides.set(bookingId, { ...existing, ...patch });
+}
 
 function addLocalEvent(event: BookingEvent) {
   const events = localEvents.get(event.bookingId) ?? [];
@@ -214,15 +227,17 @@ async function applyLocalTransition(
   bookingId: string,
   action: StateTransitionAction
 ): Promise<Booking> {
-  const booking = MOCK_BOOKINGS.find((b) => b.id === bookingId);
+  const booking = getLocalBooking(bookingId);
   if (!booking) throw new Error('Booking not found');
 
   const result = fsmTransition(booking, action, { actorId: 'local' });
 
-  Object.assign(booking, result.booking);
+  setLocalOverride(bookingId, result.booking);
   addLocalEvent(result.event);
 
-  return result.booking;
+  const updated = getLocalBooking(bookingId);
+  if (!updated) throw new Error('Booking not found after transition');
+  return updated;
 }
 
 // ─── Transition booking state via Edge Function ──────────────────────────────
