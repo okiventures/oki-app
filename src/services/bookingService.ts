@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { Booking, BookingEvent, BookingStatus, BookingType, ServiceCategory } from '../types';
 import { generateId } from '../utils';
-import { transition as fsmTransition, FsmError, BookingAction } from './bookingFsm';
+import { transition as fsmTransition, canTransition, FsmError, BookingAction } from './bookingFsm';
 import { MOCK_BOOKINGS } from '../mocks';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -245,8 +245,27 @@ async function applyLocalTransition(
 export async function transitionBookingState(
   bookingId: string,
   action: StateTransitionAction,
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
+  currentStatus?: BookingStatus
 ): Promise<Booking> {
+  // Fail-fast: reject invalid transitions before any round trip
+  if (currentStatus) {
+    const fsmError = canTransition(currentStatus, action);
+    if (fsmError) {
+      throw new BookingTransitionError(fsmError.message, {
+        status: 422,
+        body: {
+          error: fsmError.error,
+          from_status: fsmError.fromStatus,
+          to_status: fsmError.toStatus,
+          action: fsmError.action,
+          reason_code: fsmError.reasonCode,
+          details: fsmError.details,
+        },
+      });
+    }
+  }
+
   const hasSession = await checkSession();
   if (!hasSession || metadata?.simulated) {
     try {

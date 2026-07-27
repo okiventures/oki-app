@@ -156,14 +156,18 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
     return booking;
   }, []);
 
-  const acceptBooking = useCallback(async (bookingId: string) => {
-    const updated = await transitionBookingState(bookingId, 'ACCEPT');
-    setBookings((current) =>
-      current.map((booking) =>
-        booking.id === bookingId ? mergeTransition(booking, updated) : booking
-      )
-    );
-  }, []);
+  const acceptBooking = useCallback(
+    async (bookingId: string) => {
+      const booking = bookings.find((b) => b.id === bookingId);
+      const updated = await transitionBookingState(bookingId, 'ACCEPT', undefined, booking?.status);
+      setBookings((current) =>
+        current.map((booking) =>
+          booking.id === bookingId ? mergeTransition(booking, updated) : booking
+        )
+      );
+    },
+    [bookings]
+  );
 
   const declineBooking = useCallback(
     async (bookingId: string) => {
@@ -172,7 +176,7 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
       setBookings((current) => current.filter((b) => b.id !== bookingId));
 
       try {
-        await transitionBookingState(bookingId, 'REJECT');
+        await transitionBookingState(bookingId, 'REJECT', undefined, removedBooking?.status);
       } catch (err) {
         if (removedBooking) setBookings((current) => [...current, removedBooking]);
         throw err;
@@ -190,7 +194,12 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
       if (!nextAction) return;
 
       try {
-        const updated = await transitionBookingState(bookingId, nextAction.action as any);
+        const updated = await transitionBookingState(
+          bookingId,
+          nextAction.action as any,
+          undefined,
+          booking.status
+        );
         setBookings((current) =>
           current.map((b) =>
             b.id === bookingId ? { ...b, ...updated, updatedAt: new Date().toISOString() } : b
@@ -227,7 +236,12 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const updated = await transitionBookingState(bookingId, 'CANCEL');
+        const updated = await transitionBookingState(
+          bookingId,
+          'CANCEL',
+          undefined,
+          booking.status
+        );
         setBookings((current) =>
           current.map((b) =>
             b.id === bookingId ? { ...b, ...updated, updatedAt: new Date().toISOString() } : b
