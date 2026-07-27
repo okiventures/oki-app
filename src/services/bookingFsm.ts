@@ -132,11 +132,6 @@ const WORKFLOW_ACTIONS: Partial<Record<BookingStatus, WorkflowAction>> = {
     action: 'COMPLETE',
     nextStatus: BookingStatus.Completed,
   },
-  [BookingStatus.Completed]: {
-    label: 'Mark Paid',
-    action: 'CAPTURE_PAYMENT',
-    nextStatus: BookingStatus.Paid,
-  },
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

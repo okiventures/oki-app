@@ -336,7 +336,6 @@ describe('getWorkflowAction / getNextAction', () => {
       [BookingStatus.InTransit, 'Mark Arrived', 'MARK_ARRIVED', BookingStatus.Arrived],
       [BookingStatus.Arrived, 'Start Work', 'START_WORK', BookingStatus.WorkStarted],
       [BookingStatus.WorkStarted, 'Complete Job', 'COMPLETE', BookingStatus.Completed],
-      [BookingStatus.Completed, 'Mark Paid', 'CAPTURE_PAYMENT', BookingStatus.Paid],
     ];
 
     for (const [status, expectedLabel, expectedAction, expectedNext] of cases) {
@@ -355,9 +354,10 @@ describe('getWorkflowAction / getNextAction', () => {
     expect(getWorkflowAction(BookingStatus.Pending)).toBeNull();
   });
 
-  it('returns null for terminal statuses', () => {
+  it('returns null for terminal statuses and Completed (system-handled)', () => {
     expect(getWorkflowAction(BookingStatus.Paid)).toBeNull();
     expect(getWorkflowAction(BookingStatus.Cancelled)).toBeNull();
+    expect(getWorkflowAction(BookingStatus.Completed)).toBeNull();
   });
 });
 
