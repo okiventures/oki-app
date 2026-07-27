@@ -360,8 +360,8 @@ BEGIN
       IF v_from_status != 'PENDING'::booking_status THEN
         RAISE EXCEPTION 'Can only reject PENDING bookings (current: %)', v_from_status USING DETAIL = 'TRANSITION_NOT_ALLOWED';
       END IF;
-      v_to_status := 'REJECTED'::booking_status;
-      UPDATE bookings SET status = v_to_status, handyman_id = v_actor_id, updated_at = now() WHERE id = p_booking_id;
+      -- REJECT logs the event but keeps the booking PENDING (re-broadcast to other handymen).
+      v_to_status := v_from_status;
 
     WHEN 'CANCEL' THEN
       IF v_actor_type != 'client' THEN

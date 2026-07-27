@@ -164,34 +164,21 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const declineBooking = useCallback(async (bookingId: string) => {
-    // Optimistically reflect the rejection so the inbox updates immediately.
-    setBookings((current) =>
-      current.map((booking) =>
-        booking.id === bookingId && booking.status === BookingStatus.Pending
-          ? updateBooking(booking, BookingStatus.Rejected)
-          : booking
-      )
-    );
+  const declineBooking = useCallback(
+    async (bookingId: string) => {
+      const removedBooking = bookings.find((b) => b.id === bookingId);
 
-    try {
-      const updated = await transitionBookingState(bookingId, 'REJECT');
-      setBookings((current) =>
-        current.map((booking) =>
-          booking.id === bookingId ? mergeTransition(booking, updated) : booking
-        )
-      );
-    } catch (err) {
-      setBookings((current) =>
-        current.map((booking) =>
-          booking.id === bookingId && booking.status === BookingStatus.Rejected
-            ? updateBooking(booking, BookingStatus.Pending)
-            : booking
-        )
-      );
-      throw err;
-    }
-  }, []);
+      setBookings((current) => current.filter((b) => b.id !== bookingId));
+
+      try {
+        await transitionBookingState(bookingId, 'REJECT');
+      } catch (err) {
+        if (removedBooking) setBookings((current) => [...current, removedBooking]);
+        throw err;
+      }
+    },
+    [bookings]
+  );
 
   const advanceBooking = useCallback(
     async (bookingId: string) => {

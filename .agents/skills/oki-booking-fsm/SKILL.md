@@ -13,7 +13,7 @@ metadata:
 ```
 PENDING → ACCEPTED → IN_TRANSIT → ARRIVED → WORK_STARTED → COMPLETED → PAID
                                                                           ↑
-                                                            PENDING → CANCELLED
+                                                             PENDING → CANCELLED
 ```
 
 | Enum (`BookingStatus`) | DB (`booking_status`) | Terminal | Meaning |
