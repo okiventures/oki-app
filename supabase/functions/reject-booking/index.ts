@@ -62,44 +62,11 @@ serve(async (req: Request) => {
     );
   }
 
-  // REJECTED is not PENDING, and the bookings CHECK constraint requires a
-  // non-null handyman_id for any non-PENDING status, so we record the
-  // rejecting handyman on the row. The action=REJECT audit event disambiguates
-  // this from an assignment.
-  const { data: updatedBooking, error: updateError } = await supabase
-    .from('bookings')
-    .update({ status: 'REJECTED', handyman_id: user.id, updated_at: new Date().toISOString() })
-    .eq('id', bookingId)
-    .eq('status', 'PENDING')
-    .select()
-    .maybeSingle();
-
-  if (updateError) {
-    return new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: updateError.message }), {
-      status: 500,
-    });
-  }
-
-  if (!updatedBooking) {
-    return new Response(
-      JSON.stringify({
-        error: 'INVALID_STATE_TRANSITION',
-        message: 'Booking is no longer PENDING',
-        from_status: 'PENDING',
-        to_status: 'REJECTED',
-        action: 'REJECT',
-        reason_code: 'GUARD_NOT_SATISFIED',
-        details: { failed_guards: ['Booking no longer PENDING or already assigned'] },
-      }),
-      { status: 409 }
-    );
-  }
-
   const { error: eventError } = await supabase.from('booking_events').insert({
     booking_id: bookingId,
     actor_id: user.id,
     from_status: 'PENDING',
-    to_status: 'REJECTED',
+    to_status: 'PENDING',
     metadata: { action: 'REJECT', ...(reason ? { reason } : {}) },
   });
 
@@ -110,5 +77,13 @@ serve(async (req: Request) => {
     );
   }
 
-  return ok(updatedBooking);
+  const { data: currentBooking, error: refetchError } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq('id', bookingId)
+    .single();
+
+  if (refetchError) return notFound('Booking not found');
+
+  return ok(currentBooking);
 });
