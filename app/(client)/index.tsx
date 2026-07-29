@@ -19,13 +19,20 @@ import { QuickBookCards } from '../../src/components/home/QuickBookCards';
 import { PromoCard } from '../../src/components/home/PromoCard';
 import { RecentActivity } from '../../src/components/home/RecentActivity';
 
-import {
-  MOCK_CLIENT,
-  MOCK_DASHBOARD_CATEGORIES,
-  MOCK_QUICK_BOOK_MODES,
-  MOCK_PROMO,
-  MOCK_RECENT_ACTIVITY_ROWS,
-} from '../../src/mocks';
+import { useServiceCategories } from '../../src/hooks/useServiceCategories';
+import type { RecentActivityRow } from '../../src/mocks/dashboard';
+import { formatDate } from '../../src/utils';
+
+// MOCK_QUICK_BOOK_MODES and MOCK_PROMO are static marketing copy with no table
+// behind them yet, so they stay as app content rather than mock user data.
+import { MOCK_CLIENT, MOCK_QUICK_BOOK_MODES, MOCK_PROMO } from '../../src/mocks';
+
+const ACTIVITY_STATUS: Partial<Record<BookingStatus, RecentActivityRow['status']>> = {
+  [BookingStatus.Completed]: 'Completed',
+  [BookingStatus.Paid]: 'Completed',
+  [BookingStatus.Cancelled]: 'Cancelled',
+  [BookingStatus.Rejected]: 'Cancelled',
+};
 
 export default function ClientHome() {
   const { colors } = useTheme();
@@ -43,11 +50,15 @@ export default function ClientHome() {
   const displayName = profile?.user?.full_name ?? (isMockEnv() ? MOCK_CLIENT.name : '');
   const displayPhoto = profile?.user?.photo_url ?? (isMockEnv() ? MOCK_CLIENT.photoUrl : undefined);
 
-  const filteredCategories = searchText
-    ? MOCK_DASHBOARD_CATEGORIES.filter((c) =>
-        c.name.toLowerCase().includes(searchText.toLowerCase())
-      )
-    : MOCK_DASHBOARD_CATEGORIES;
+  const { categories } = useServiceCategories();
+
+  const filteredCategories = useMemo(
+    () =>
+      searchText
+        ? categories.filter((c) => c.name.toLowerCase().includes(searchText.toLowerCase()))
+        : categories,
+    [categories, searchText]
+  );
 
   const myBookings = useMemo(
     () =>
@@ -56,6 +67,35 @@ export default function ClientHome() {
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
     [bookings, clientId]
   );
+
+  // No city is stored on the user record, so the header shows the city from the
+  // client's most recent booking address rather than a hardcoded one.
+  const city = useMemo(() => {
+    if (isMockEnv()) return MOCK_CLIENT.location;
+    const address = myBookings[0]?.location;
+    if (!address) return '';
+    const parts = address.split(',').map((part) => part.trim());
+    return parts[parts.length - 1] || address;
+  }, [myBookings]);
+
+  const recentActivity = useMemo<RecentActivityRow[]>(
+    () =>
+      myBookings.slice(0, 2).map((booking) => ({
+        id: booking.id,
+        categoryId: booking.serviceCategory.toLowerCase(),
+        serviceName: booking.description || booking.serviceCategory,
+        dateLabel: formatDate(booking.updatedAt),
+        workerName: booking.handymanName,
+        price: booking.amount,
+        status: ACTIVITY_STATUS[booking.status] ?? 'In Progress',
+        rating: booking.ratingGiven,
+      })),
+    [myBookings]
+  );
+
+  // The badge was hardcoded to 3. There is no notifications table yet, so live
+  // mode shows nothing rather than inventing unread items.
+  const unreadCount = isMockEnv() ? 3 : 0;
 
   const latestPending = myBookings.find((b) => b.status === BookingStatus.Pending);
 
@@ -73,10 +113,10 @@ export default function ClientHome() {
       edges={['top', 'left', 'right']}
       style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
       <DashboardHeader
-        city={MOCK_CLIENT.location}
+        city={city}
         userName={displayName}
         userPhotoUrl={displayPhoto}
-        unreadCount={3}
+        unreadCount={unreadCount}
         onNotificationPress={() => router.push('/notifications')}
         onProfilePress={() => router.push('/profile')}
       />
@@ -146,7 +186,7 @@ export default function ClientHome() {
           ) : null}
 
           <RecentActivity
-            rows={MOCK_RECENT_ACTIVITY_ROWS.slice(0, 2)}
+            rows={recentActivity}
             onViewHistory={() => router.push('/bookings')}
             onReport={(id) => router.push(`/report/${id}`)}
             onReview={(id) => router.push(`/review/${id}`)}

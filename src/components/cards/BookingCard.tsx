@@ -74,9 +74,9 @@ export function BookingCard({
     // is only the offline-demo source.
     rating = std.ratingGiven ?? (isMockEnv() ? getRatingForBooking(std.id) : 0);
 
-    const categoryName = std.serviceCategory;
-    const iconBase = SERVICE_CATEGORY_ICONS[categoryName] || 'construct';
-    categoryIcon = `${iconBase}-outline`;
+    // SERVICE_CATEGORY_ICONS values already end in -outline; appending another
+    // suffix produced names like "water-outline-outline", so no icon rendered.
+    categoryIcon = SERVICE_CATEGORY_ICONS[std.serviceCategory] ?? 'construct-outline';
   }
 
   let statusColor = '#6B7280';

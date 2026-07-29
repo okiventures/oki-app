@@ -4,12 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useAuth } from '../../src/context/AuthContext';
 import { useProfile } from '../../src/hooks/useProfile';
+import { useEarnings } from '../../src/hooks/useEarnings';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
 import { Ionicons } from '@expo/vector-icons';
-import { MOCK_HANDYMAN, MOCK_HANDYMAN_WALLET } from '../../src/mocks';
+import { MOCK_HANDYMAN } from '../../src/mocks';
 import { isMockEnv } from '../../src/services/bookingService';
 import { Link, useRouter } from 'expo-router';
 import { WalletSection } from '../../src/components/handyman/WalletSection';
@@ -22,6 +23,7 @@ export default function HandymanProfile() {
   const { logout } = useAuth();
   const { profile, services, serviceCatalog, addService, updateServicePrice, removeService } =
     useProfile();
+  const { wallet } = useEarnings();
   const router = useRouter();
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -44,7 +46,11 @@ export default function HandymanProfile() {
         : [];
   const displayBio = profile?.handyman?.bio ?? (mock ? MOCK_HANDYMAN.bio : '');
   const displayHourlyRate = profile?.handyman?.hourly_rate ?? (mock ? MOCK_HANDYMAN.hourlyRate : 0);
-  const displayLocation = MOCK_HANDYMAN.location; // PostGIS location not parseable on client; use mock
+  // handymen.location is a PostGIS geography column, which PostgREST returns as
+  // WKB hex — there is no city text anywhere on the record. Rather than label
+  // every handyman with the demo handyman's city, the row is omitted until the
+  // schema carries a real one. The line below renders conditionally.
+  const displayLocation = mock ? MOCK_HANDYMAN.location : '';
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -131,7 +137,7 @@ export default function HandymanProfile() {
           </View>
 
           <View className="mt-6">
-            <WalletSection wallet={MOCK_HANDYMAN_WALLET} />
+            <WalletSection wallet={wallet} />
           </View>
 
           <View className="mt-6">

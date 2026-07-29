@@ -9,9 +9,9 @@ import { isMockEnv } from '../../src/services/bookingService';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { Card } from '../../src/components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
+import { useEarnings } from '../../src/hooks/useEarnings';
 import {
   MOCK_HANDYMAN,
-  MOCK_EARNINGS,
   filterEarningsByRange,
   getTodayRange,
   getThisWeekRange,
@@ -40,6 +40,7 @@ export default function HandymanDashboard() {
   const [isActive, setIsActive] = useState(isMockEnv() ? MOCK_HANDYMAN.isOnline : false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const { bookings } = useBookings();
+  const { earnings } = useEarnings();
 
   const handymanId = session?.user.id;
 
@@ -92,11 +93,11 @@ export default function HandymanDashboard() {
 
   const filteredTotal = useMemo(
     () =>
-      filterEarningsByRange(MOCK_EARNINGS, range.start, range.end).reduce(
+      filterEarningsByRange(earnings, range.start, range.end).reduce(
         (sum: number, e: { netEarnings: number }) => sum + e.netEarnings,
         0
       ),
-    [range.start, range.end]
+    [earnings, range.start, range.end]
   );
 
   const rangeLabel = useMemo(
