@@ -419,30 +419,164 @@ ON CONFLICT DO NOTHING;
 -- ---------------------------------------------------------------------------
 -- Payments (escrow record per booking, created at booking time)
 -- ---------------------------------------------------------------------------
+-- payment_method is the label the payment tab renders, so it is set here rather
+-- than left NULL — the UI maps GCash/Maya/Credit Card/Cash to distinct icons.
 INSERT INTO public.payments (
   booking_id, client_id, status, amount_authorized, amount_captured, currency,
-  provider, provider_payment_id, authorized_at, captured_at, created_at
+  provider, payment_method, provider_payment_id, authorized_at, captured_at, created_at
 ) VALUES
-  ('b0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'AUTHORIZED', 800.00, NULL, 'PHP', 'paymongo', NULL, now() - interval '40 minutes', NULL, now() - interval '40 minutes'),
-  ('b0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000003', 'AUTHORIZED', 300.00, NULL, 'PHP', 'paymongo', NULL, now() - interval '2 hours',    NULL, now() - interval '2 hours'),
-  ('b0000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'AUTHORIZED', 600.00, NULL, 'PHP', 'paymongo', NULL, now() - interval '3 hours',    NULL, now() - interval '3 hours'),
-  ('b0000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000003', 'AUTHORIZED', 600.00, NULL, 'PHP', 'paymongo', NULL, now() - interval '1 day',      NULL, now() - interval '1 day'),
-  ('b0000000-0000-0000-0000-000000000007', 'a0000000-0000-0000-0000-000000000001', 'CAPTURED',   500.00, 500.00, 'PHP', 'paymongo', 'pi_seed_0007',
+  ('b0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'AUTHORIZED', 800.00, NULL, 'PHP', 'paymongo', 'GCash', NULL, now() - interval '40 minutes', NULL, now() - interval '40 minutes'),
+  ('b0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000003', 'AUTHORIZED', 300.00, NULL, 'PHP', 'paymongo', 'Maya', NULL, now() - interval '2 hours',    NULL, now() - interval '2 hours'),
+  ('b0000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'AUTHORIZED', 600.00, NULL, 'PHP', 'paymongo', 'GCash', NULL, now() - interval '3 hours',    NULL, now() - interval '3 hours'),
+  ('b0000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000003', 'AUTHORIZED', 600.00, NULL, 'PHP', 'paymongo', 'Credit Card', NULL, now() - interval '1 day',      NULL, now() - interval '1 day'),
+  ('b0000000-0000-0000-0000-000000000007', 'a0000000-0000-0000-0000-000000000001', 'CAPTURED',   500.00, 500.00, 'PHP', 'paymongo', 'GCash', 'pi_seed_0007',
      now() - interval '5 days', now() - interval '5 days' + interval '3 hours', now() - interval '5 days'),
-  ('b0000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000001', 'AUTHORIZED', 500.00, NULL, 'PHP', 'paymongo', NULL, now() - interval '6 hours',    NULL, now() - interval '6 hours')
+  ('b0000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000001', 'AUTHORIZED', 500.00, NULL, 'PHP', 'paymongo', 'Cash', NULL, now() - interval '6 hours',    NULL, now() - interval '6 hours')
 ON CONFLICT (booking_id) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
--- Wallet ledger — mirrors the one captured payment.
--- balance_after must reconcile with handymen.wallet_balance (3200.00 for Cef).
+-- Historical closed work
+--
+-- The earnings screen plots a trend, a day-of-week average and a category mix.
+-- Nine bookings cannot fill that, so 60 PAID jobs are generated across the
+-- last ~120 days for the two approved handymen. Ids are derived from the series
+-- index (c0000000-…-NNNNNNNNNNNN) rather than gen_random_uuid() so a re-seed is
+-- idempotent.
+--
+-- Services are chosen to match what each handyman actually offers, otherwise
+-- the category breakdown would show Kyle doing plumbing.
+-- ---------------------------------------------------------------------------
+WITH gen AS (
+  SELECT
+    n,
+    ('c0000000-0000-0000-0000-' || lpad(n::text, 12, '0'))::uuid AS booking_id,
+    CASE WHEN n % 2 = 0
+      THEN 'a0000000-0000-0000-0000-000000000002'::uuid   -- Kyle, electrical
+      ELSE 'a0000000-0000-0000-0000-000000000004'::uuid   -- Cef, plumbing/general
+    END AS handyman_id,
+    CASE WHEN n % 3 = 0
+      THEN 'a0000000-0000-0000-0000-000000000001'::uuid   -- Princess
+      ELSE 'a0000000-0000-0000-0000-000000000003'::uuid   -- Mara
+    END AS client_id,
+    CASE
+      WHEN n % 2 = 0 AND n % 4 = 0 THEN 'electrical-wiring'
+      WHEN n % 2 = 0               THEN 'electrical-lighting'
+      WHEN n % 3 = 0               THEN 'general-handyman'
+      ELSE                              'plumbing-general'
+    END AS slug,
+    -- Two jobs every ~4 days, at a plausible hour of the morning.
+    now()
+      - make_interval(days => (n * 2) % 118 + 1)
+      + make_interval(hours => (n * 7) % 9 + 8) AS started_at,
+    -- Deterministic spread so the chart is not a flat line.
+    (250 + ((n * 137) % 9) * 150)::numeric(12, 2) AS amount
+  FROM generate_series(1, 60) AS n
+),
+rows AS (
+  SELECT g.*, s.id AS service_id
+  FROM gen g
+  JOIN public.services s ON s.slug = g.slug
+)
+INSERT INTO public.bookings (
+  id, client_id, handyman_id, service_id, booking_type, status, description,
+  address_text, location, amount, platform_fee, created_at, updated_at,
+  before_photo_url, after_photo_url
+)
+SELECT
+  r.booking_id, r.client_id, r.handyman_id, r.service_id, 'ON_DEMAND', 'PAID',
+  'Closed job #' || r.n || ' — ' || (SELECT name FROM public.services WHERE id = r.service_id),
+  'Cebu City',
+  ST_SetSRID(ST_MakePoint(123.8854 + (r.n % 7) * 0.004, 10.3157 + (r.n % 5) * 0.004), 4326)::GEOGRAPHY(POINT, 4326),
+  r.amount,
+  round(r.amount * 0.10, 2),
+  r.started_at,
+  r.started_at + interval '3 hours',
+  'http://127.0.0.1:54321/storage/v1/object/public/job-photos/seed-before.png',
+  'http://127.0.0.1:54321/storage/v1/object/public/job-photos/seed-after.png'
+FROM rows r
+ON CONFLICT (id) DO NOTHING;
+
+-- Full FSM trail for each generated booking, so opening one shows a complete
+-- timeline rather than a PAID booking with no history.
+INSERT INTO public.booking_events (booking_id, actor_id, from_status, to_status, metadata, created_at)
+SELECT
+  b.id,
+  CASE WHEN step.to_status = 'PENDING' THEN b.client_id ELSE b.handyman_id END,
+  step.from_status::booking_status,
+  step.to_status::booking_status,
+  jsonb_build_object('action', step.action),
+  b.created_at + step.offset_min * interval '1 minute'
+FROM public.bookings b
+CROSS JOIN (VALUES
+  (NULL,           'PENDING',      'CREATE',          0),
+  ('PENDING',      'ACCEPTED',     'ACCEPT',          4),
+  ('ACCEPTED',     'IN_TRANSIT',   'START_TRANSIT',  15),
+  ('IN_TRANSIT',   'ARRIVED',      'MARK_ARRIVED',   38),
+  ('ARRIVED',      'WORK_STARTED', 'START_WORK',     42),
+  ('WORK_STARTED', 'COMPLETED',    'COMPLETE',      160),
+  ('COMPLETED',    'PAID',         'CAPTURE_PAYMENT', 180)
+) AS step(from_status, to_status, action, offset_min)
+WHERE b.id::text LIKE 'c0000000-%'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.payments (
+  booking_id, client_id, status, amount_authorized, amount_captured, currency,
+  provider, payment_method, provider_payment_id, authorized_at, captured_at, created_at
+)
+SELECT
+  b.id, b.client_id, 'CAPTURED', b.amount, b.amount, 'PHP', 'paymongo',
+  (ARRAY['GCash', 'Maya', 'Credit Card', 'Cash'])[1 + (('x' || substr(md5(b.id::text), 1, 8))::bit(32)::int & 3)],
+  'pi_seed_' || substr(b.id::text, 25, 12),
+  b.created_at, b.updated_at, b.created_at
+FROM public.bookings b
+WHERE b.id::text LIKE 'c0000000-%'
+ON CONFLICT (booking_id) DO NOTHING;
+
+-- ---------------------------------------------------------------------------
+-- Wallet ledger
+--
+-- Derived from every captured payment rather than hand-written, with
+-- balance_after as a running total per handyman. handymen.wallet_balance and
+-- jobs_completed are then reconciled to it below — the earnings screen reads
+-- wallet_balance as the authoritative available balance, so a hand-picked
+-- number there would contradict the ledger it renders underneath.
 -- ---------------------------------------------------------------------------
 INSERT INTO public.wallet_transactions (
-  handyman_id, booking_id, tx_type, amount, balance_after, description, created_at
-) VALUES
-  ('a0000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000007',
-   'CREDIT', 450.00, 3200.00, 'Payment for booking b0000000-0000-0000-0000-000000000007',
-   now() - interval '5 days' + interval '3 hours')
-ON CONFLICT DO NOTHING;
+  handyman_id, booking_id, payment_id, tx_type, amount, balance_after, description, created_at
+)
+SELECT
+  b.handyman_id,
+  b.id,
+  p.id,
+  'CREDIT',
+  b.net_amount,
+  SUM(b.net_amount) OVER (
+    PARTITION BY b.handyman_id ORDER BY p.captured_at, b.id
+  ),
+  'Payout for ' || s.name,
+  p.captured_at
+FROM public.bookings b
+JOIN public.payments p ON p.booking_id = b.id
+JOIN public.services s ON s.id = b.service_id
+WHERE p.status = 'CAPTURED'
+  AND b.handyman_id IS NOT NULL
+  -- wallet_transactions has no unique constraint to conflict on, so re-running
+  -- the seed would otherwise double every payout and inflate the balances.
+  AND NOT EXISTS (
+    SELECT 1 FROM public.wallet_transactions wt WHERE wt.booking_id = b.id
+  );
+
+UPDATE public.handymen h
+SET wallet_balance = COALESCE(ledger.balance, 0),
+    jobs_completed = COALESCE(ledger.jobs, 0),
+    updated_at     = now()
+FROM (
+  SELECT handyman_id, SUM(amount) AS balance, COUNT(*) AS jobs
+  FROM public.wallet_transactions
+  WHERE tx_type = 'CREDIT'
+  GROUP BY handyman_id
+) AS ledger
+WHERE ledger.handyman_id = h.id;
 
 -- ---------------------------------------------------------------------------
 -- Reviews (two-way, on the closed booking)
@@ -466,7 +600,9 @@ INSERT INTO public.disputes (booking_id, reporter_id, issue_type, description, s
 VALUES
   ('b0000000-0000-0000-0000-000000000006',
    'a0000000-0000-0000-0000-000000000003',
-   'QUALITY',
+   -- issue_type is free text and the app writes ReportReason values into it, so
+   -- seeding a DB-style token here would render as "QUALITY" in the reports list.
+   'Poor Work Quality',
    'One of the LED strips flickers and the handyman left before I could check it.',
    'OPEN',
    now() - interval '20 hours')

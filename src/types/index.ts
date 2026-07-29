@@ -132,6 +132,9 @@ export interface Booking {
   handymanName: string;
   clientRating?: number;
   distanceKm?: number;
+  // The rating the signed-in user left on this booking, if any. Drives the
+  // stars on a finished booking card.
+  ratingGiven?: number;
   serviceCategory: ServiceCategory;
   bookingType: BookingType;
   status: BookingStatus;
@@ -158,6 +161,58 @@ export interface BookingEvent {
   toStatus: BookingStatus;
   metadata?: Record<string, unknown>;
   createdAt: string;
+}
+
+// A step in the booking progress stepper. `timestamp: null` means the step has
+// not happened yet and renders greyed out.
+export interface TimelineEvent {
+  id: string;
+  status: BookingStatus;
+  label: string;
+  description: string;
+  timestamp: string | null;
+}
+
+export interface OrderDetail {
+  label: string;
+  value: string;
+}
+
+// The booking detail screen needs more than a Booking row: the address, the
+// counterparty's profile stats, the payment record and the event trail. Built
+// from get_booking_detail() (migration 017) in live mode.
+export interface BookingDetail {
+  id: string;
+  reference: string;
+  clientId: string;
+  clientName: string;
+  handymanId: string;
+  handymanName: string;
+  handymanPhotoUrl?: string;
+  handymanRating: number;
+  handymanJobsCompleted: number;
+  serviceCategory: ServiceCategory;
+  bookingType: BookingType;
+  status: BookingStatus;
+  description: string;
+  location: string;
+  fullAddress: string;
+  latitude: number;
+  longitude: number;
+  amount: number;
+  platformFee: number;
+  netAmount: number;
+  scheduledAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  photos?: string[];
+  paymentMethod: 'GCash' | 'Credit Card' | 'Cash' | 'Maya';
+  paymentStatus: 'Paid' | 'Pending' | 'Refunded' | 'Failed';
+  paymentRef?: string;
+  paidAt?: string;
+  notes?: string;
+  orderDetails: OrderDetail[];
+  timeline: TimelineEvent[];
 }
 
 export interface Review {
