@@ -142,7 +142,39 @@ function mapEventRow(row: BookingEventRow): BookingEvent {
 
 // ─── Fetch bookings ───────────────────────────────────────────────────────────
 
-export async function fetchBookings(): Promise<Booking[]> {
+// A row from list_available_bookings(): the same booking columns, flattened,
+// plus the joined fields the RPC resolves on the server (it runs as owner, so
+// it can read the client's name for a booking the handyman isn't part of yet).
+type AvailableBookingRow = BookingRow & {
+  service_category: string;
+  client_name: string;
+  distance_meters: number | null;
+};
+
+function mapAvailableRow(row: AvailableBookingRow): Booking {
+  return {
+    ...mapBookingRow({ ...row, services: { category: row.service_category } }),
+    clientName: row.client_name ?? '',
+    distanceKm:
+      row.distance_meters === null || row.distance_meters === undefined
+        ? undefined
+        : Math.round((row.distance_meters / 1000) * 10) / 10,
+  };
+}
+
+/**
+ * Every booking the signed-in user should see.
+ *
+ * Clients and the assigned handyman are covered by RLS on `bookings`. A PENDING
+ * booking has no handyman yet, so it is invisible to RLS — handymen get that
+ * pool from list_available_bookings(), which filters by the categories they
+ * offer and their reported location. The two sets are merged and de-duplicated
+ * by id (a booking cannot be in both, but the RPC is not transactional with the
+ * select, so guard anyway).
+ */
+export async function fetchBookings(
+  userType?: 'client' | 'handyman' | 'admin'
+): Promise<Booking[]> {
   if (USE_MOCK) {
     const { MOCK_BOOKINGS } = await import('../mocks');
     return MOCK_BOOKINGS;
@@ -157,11 +189,29 @@ export async function fetchBookings(): Promise<Booking[]> {
 
   if (error) throw new Error(`Failed to fetch bookings: ${error.message}`);
 
-  return (data ?? []).map((row: any) => ({
+  const own: Booking[] = (data ?? []).map((row: any) => ({
     ...mapBookingRow(row),
     clientName: row.clients?.full_name ?? '',
     handymanName: row.handymen?.full_name ?? '',
   }));
+
+  if (userType !== 'handyman') return own;
+
+  const { data: available, error: availableError } = await supabase.rpc('list_available_bookings');
+
+  // The inbox is additive: a failure here should not blank out the jobs the
+  // handyman already has. Surface it in the log and return what we do have.
+  if (availableError) {
+    console.warn('fetchBookings: list_available_bookings failed:', availableError.message);
+    return own;
+  }
+
+  const seen = new Set(own.map((booking) => booking.id));
+  const pool = ((available ?? []) as AvailableBookingRow[])
+    .filter((row) => !seen.has(row.id))
+    .map(mapAvailableRow);
+
+  return [...pool, ...own];
 }
 
 // ─── Fetch booking events (audit trail) ───────────────────────────────────────
@@ -373,6 +423,32 @@ export function subscribeToBooking(
       (payload) => {
         onStateChange(mapEventRow(payload.new as BookingEventRow));
       }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
+/**
+ * Fires whenever any booking the signed-in user can see changes.
+ *
+ * Realtime applies RLS per subscriber, so each side only receives rows it is
+ * already allowed to read: the client sees their handyman's transitions, the
+ * handyman sees their assigned jobs. Unassigned PENDING bookings match nobody's
+ * policy, which is why the request inbox also polls (see BookingsContext).
+ */
+export function subscribeToBookingChanges(onChange: () => void): () => void {
+  if (USE_MOCK) return () => {};
+
+  const channel = supabase
+    .channel('bookings:all')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, onChange)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'booking_events' },
+      onChange
     )
     .subscribe();
 

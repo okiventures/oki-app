@@ -35,6 +35,7 @@ interface AdminContextValue {
   users: User[];
   disputes: AdminDispute[];
   kycRequests: AdminKycRequest[];
+  refresh: () => Promise<void>;
   suspendUser: (userId: string) => void;
   approveKyc: (requestId: string) => Promise<void>;
   rejectKyc: (requestId: string, reason?: string) => Promise<void>;
@@ -56,6 +57,7 @@ const AdminContext = createContext<AdminContextValue>({
   users: [],
   disputes: [],
   kycRequests: [],
+  refresh: async () => {},
   suspendUser: () => {},
   approveKyc: async () => {},
   rejectKyc: async () => {},
@@ -110,23 +112,114 @@ async function fetchKycRequests(token: string, status = 'PENDING'): Promise<Admi
   }));
 }
 
+// The admin console reads through the same PostgREST endpoints as everyone
+// else — users_admin_all / disputes_select_participant widen the row set once
+// is_admin() is true, so no service-role key ever reaches the client.
+const DB_USER_STATUS_TO_UI: Record<string, UserStatus> = {
+  ACTIVE: UserStatus.Active,
+  SUSPENDED: UserStatus.Suspended,
+  BANNED: UserStatus.Banned,
+};
+
+const DB_DISPUTE_STATUS_TO_UI: Record<string, DisputeStatus> = {
+  OPEN: DisputeStatus.Open,
+  IN_REVIEW: DisputeStatus.InReview,
+  RESOLVED: DisputeStatus.Resolved,
+  CLOSED: DisputeStatus.Closed,
+};
+
+function mapUserRow(row: Record<string, any>): User {
+  return {
+    id: row.id,
+    name: row.full_name ?? '',
+    email: row.email ?? '',
+    phone: row.phone ?? '',
+    photoUrl: row.photo_url ?? undefined,
+    userType: row.user_type,
+    status: DB_USER_STATUS_TO_UI[row.user_status] ?? UserStatus.Active,
+    createdAt: row.created_at,
+    lastActive: row.last_active_at ?? undefined,
+  };
+}
+
+function mapDisputeRow(row: Record<string, any>): AdminDispute {
+  return {
+    id: row.id,
+    bookingId: row.booking_id,
+    clientName: row.bookings?.client?.full_name ?? '',
+    handymanName: row.bookings?.handyman?.full_name ?? '',
+    reason: row.description ?? row.issue_type ?? '',
+    status: DB_DISPUTE_STATUS_TO_UI[row.status] ?? DisputeStatus.Open,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at ?? row.created_at,
+  };
+}
+
+// Offline demo only — with no backend configured the console still renders.
+const USE_MOCK =
+  !process.env.EXPO_PUBLIC_SUPABASE_URL ||
+  process.env.EXPO_PUBLIC_SUPABASE_URL.includes('your-project');
+
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
-  const [users, setUsers] = useState<User[]>(MOCK_ADMIN_USERS as User[]);
+  const isAdmin = session?.user?.userType === 'admin';
+
+  const [users, setUsers] = useState<User[]>(USE_MOCK ? (MOCK_ADMIN_USERS as User[]) : []);
   const [disputes, setDisputes] = useState<AdminDispute[]>(
-    MOCK_DISPUTES.map((dispute) => ({
-      ...dispute,
-      status: dispute.status as DisputeStatus,
-      updatedAt: dispute.createdAt,
-    }))
+    USE_MOCK
+      ? MOCK_DISPUTES.map((dispute) => ({
+          ...dispute,
+          status: dispute.status as DisputeStatus,
+          updatedAt: dispute.createdAt,
+        }))
+      : []
   );
   const [kycRequests, setKycRequests] = useState<AdminKycRequest[]>([]);
   const [kycStatus, setKycStatus] = useState('PENDING');
   const [loadingKyc, setLoadingKyc] = useState(true);
 
-  useEffect(() => {
-    const isAdmin = session?.user?.userType === 'admin';
+  const refresh = useCallback(async () => {
+    if (USE_MOCK) return;
     if (!isAdmin) {
+      setUsers([]);
+      setDisputes([]);
+      return;
+    }
+
+    const [usersResult, disputesResult] = await Promise.all([
+      supabase
+        .from('users')
+        .select(
+          'id, full_name, email, phone, photo_url, user_type, user_status, created_at, last_active_at'
+        )
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('disputes')
+        .select(
+          'id, booking_id, issue_type, description, status, created_at, updated_at, bookings!booking_id(client:users!client_id(full_name), handyman:users!handyman_id(full_name))'
+        )
+        .order('created_at', { ascending: false }),
+    ]);
+
+    if (usersResult.error) {
+      console.warn('[Admin] users fetch failed:', usersResult.error.message);
+    } else {
+      setUsers((usersResult.data ?? []).map(mapUserRow));
+    }
+
+    if (disputesResult.error) {
+      console.warn('[Admin] disputes fetch failed:', disputesResult.error.message);
+    } else {
+      setDisputes((disputesResult.data ?? []).map(mapDisputeRow));
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    if (!isAdmin || !session) {
       setKycRequests([]);
       setLoadingKyc(false);
       return;
@@ -136,13 +229,29 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       .then(setKycRequests)
       .catch((err) => console.error('[Admin] KYC fetch error:', err))
       .finally(() => setLoadingKyc(false));
-  }, [session, kycStatus]);
+  }, [isAdmin, session, kycStatus]);
 
-  const suspendUser = (userId: string) => {
-    setUsers((prev) =>
-      prev.map((user) => (user.id === userId ? { ...user, status: UserStatus.Suspended } : user))
-    );
-  };
+  const suspendUser = useCallback(
+    async (userId: string) => {
+      const previous = users;
+      setUsers((prev) =>
+        prev.map((user) => (user.id === userId ? { ...user, status: UserStatus.Suspended } : user))
+      );
+
+      if (USE_MOCK) return;
+
+      const { error } = await supabase
+        .from('users')
+        .update({ user_status: 'SUSPENDED' })
+        .eq('id', userId);
+
+      if (error) {
+        console.warn('[Admin] suspend failed:', error.message);
+        setUsers(previous);
+      }
+    },
+    [users]
+  );
 
   const approveKyc = useCallback(async (docId: string) => {
     try {
@@ -234,15 +343,31 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const resolveDispute = (disputeId: string) => {
-    setDisputes((prev) =>
-      prev.map((dispute) =>
-        dispute.id === disputeId
-          ? { ...dispute, status: DisputeStatus.Resolved, updatedAt: new Date().toISOString() }
-          : dispute
-      )
-    );
-  };
+  const resolveDispute = useCallback(
+    async (disputeId: string) => {
+      const previous = disputes;
+      setDisputes((prev) =>
+        prev.map((dispute) =>
+          dispute.id === disputeId
+            ? { ...dispute, status: DisputeStatus.Resolved, updatedAt: new Date().toISOString() }
+            : dispute
+        )
+      );
+
+      if (USE_MOCK) return;
+
+      const { error } = await supabase
+        .from('disputes')
+        .update({ status: 'RESOLVED', resolved_at: new Date().toISOString() })
+        .eq('id', disputeId);
+
+      if (error) {
+        console.warn('[Admin] resolve dispute failed:', error.message);
+        setDisputes(previous);
+      }
+    },
+    [disputes]
+  );
 
   const pendingKycCount = kycRequests.length;
   const activeDisputesCount = disputes.filter(
@@ -256,6 +381,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       users,
       disputes,
       kycRequests,
+      refresh,
       suspendUser,
       approveKyc,
       rejectKyc,
@@ -276,6 +402,9 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       users,
       disputes,
       kycRequests,
+      refresh,
+      suspendUser,
+      resolveDispute,
       approveKyc,
       rejectKyc,
       approveHandyman,

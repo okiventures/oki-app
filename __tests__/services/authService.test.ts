@@ -362,7 +362,11 @@ describe('ensureUserProfile', () => {
     );
   });
 
-  it('updates user_type when type mismatch', async () => {
+  // handle_new_user() collapses any self-asserted role other than 'handyman'
+  // to 'client'. Reconciling the row back to the requested type from the client
+  // would hand out admin to anyone who posts user_type: 'admin', so the mismatch
+  // must be left alone.
+  it('never rewrites user_type on an existing row', async () => {
     const maybeSingle = jest
       .fn()
       .mockResolvedValue({ data: { id: 'u1', user_type: 'client' }, error: null });
@@ -374,9 +378,24 @@ describe('ensureUserProfile', () => {
       maybeSingle,
     });
 
-    await ensureUserProfile({ ...params, userType: 'handyman' });
+    await ensureUserProfile({ ...params, userType: 'admin' });
 
-    expect(update).toHaveBeenCalledWith({ user_type: 'handyman' });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('never inserts an admin row on a fresh signup', async () => {
+    const maybeSingle = jest.fn().mockResolvedValue({ data: null, error: null });
+    const insert = jest.fn().mockReturnValue({ error: null });
+    (supabase.from as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      insert,
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle,
+    });
+
+    await ensureUserProfile({ ...params, userType: 'admin' });
+
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ user_type: 'client' }));
   });
 
   it('skips when profile already correct', async () => {

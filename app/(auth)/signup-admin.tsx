@@ -16,6 +16,11 @@ import { Input } from '../../src/components/forms/Input';
 import { Button } from '../../src/components/ui/Button';
 import { Toast } from '../../src/components/ui/Toast';
 
+// NOTE: this screen cannot actually create an admin. handle_new_user() honours
+// only 'handyman' from signup metadata and collapses everything else (including
+// 'admin') to 'client' — admin is a service-role-only grant. companyCode is
+// collected but nothing validates it. Until an invite-code flow exists, signing
+// up here produces a normal client account. Seeded admin: admin@oki.app.
 export default function AdminSignupScreen() {
   const router = useRouter();
   const { signup, isSigningUp, error, clearError } = useAuth();

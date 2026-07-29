@@ -10,6 +10,7 @@ import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
 import { Ionicons } from '@expo/vector-icons';
 import { MOCK_HANDYMAN, MOCK_HANDYMAN_WALLET } from '../../src/mocks';
+import { isMockEnv } from '../../src/services/bookingService';
 import { Link, useRouter } from 'expo-router';
 import { WalletSection } from '../../src/components/handyman/WalletSection';
 import { ServicesManager } from '../../src/components/handyman/ServicesManager';
@@ -26,16 +27,23 @@ export default function HandymanProfile() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Use real profile data when available, fall back to mock for dev/testing
-  const displayName = profile?.user?.full_name ?? MOCK_HANDYMAN.name;
-  const displayPhoto = profile?.user?.photo_url ?? MOCK_HANDYMAN.photoUrl;
-  const displayRating = profile?.handyman?.trust_score ?? MOCK_HANDYMAN.rating;
-  const displayReviewCount = profile?.handyman?.review_count ?? MOCK_HANDYMAN.reviewCount;
+  // As on the client side: fall back to the demo handyman only when there is no
+  // backend. A live session with a slow profile fetch must not borrow another
+  // handyman's name, rating, or review count.
+  const mock = isMockEnv();
+  const displayName = profile?.user?.full_name ?? (mock ? MOCK_HANDYMAN.name : '');
+  const displayPhoto = profile?.user?.photo_url ?? (mock ? MOCK_HANDYMAN.photoUrl : undefined);
+  const displayRating = profile?.handyman?.trust_score ?? (mock ? MOCK_HANDYMAN.rating : 0);
+  const displayReviewCount =
+    profile?.handyman?.review_count ?? (mock ? MOCK_HANDYMAN.reviewCount : 0);
   const displaySkills =
     services.length > 0
       ? Array.from(new Set(services.map((s) => s.service.category)))
-      : MOCK_HANDYMAN.skills;
-  const displayBio = profile?.handyman?.bio ?? MOCK_HANDYMAN.bio;
-  const displayHourlyRate = profile?.handyman?.hourly_rate ?? MOCK_HANDYMAN.hourlyRate;
+      : mock
+        ? MOCK_HANDYMAN.skills
+        : [];
+  const displayBio = profile?.handyman?.bio ?? (mock ? MOCK_HANDYMAN.bio : '');
+  const displayHourlyRate = profile?.handyman?.hourly_rate ?? (mock ? MOCK_HANDYMAN.hourlyRate : 0);
   const displayLocation = MOCK_HANDYMAN.location; // PostGIS location not parseable on client; use mock
 
   const handleLogout = async () => {

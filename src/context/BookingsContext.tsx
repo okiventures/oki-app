@@ -1,30 +1,32 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 import { MOCK_BOOKINGS } from '../mocks';
 import { Booking, BookingStatus } from '../types';
 import {
   transitionBookingState,
-  subscribeToBooking,
+  subscribeToBookingChanges,
   createBooking as createBookingService,
+  fetchBookings,
+  isMockEnv,
   BookingTransitionError,
 } from '../services/bookingService';
 import { getWorkflowAction, canTransition, WorkflowAction } from '../services/bookingFsm';
 import type { CreateBookingInput } from '../services/bookingService';
+import { useAuth } from './AuthContext';
 
 const STORAGE_KEY = 'oki_bookings_state_v2';
+
+// Unassigned PENDING bookings match no RLS policy, so realtime can't push a new
+// request to a handyman who isn't on it yet. The inbox polls to close that gap.
+const HANDYMAN_INBOX_POLL_MS = 20_000;
 
 export type CancelBookingResult = { ok: true } | { ok: false; message: string };
 
 interface BookingsContextValue {
   bookings: Booking[];
+  isLoading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
   createBooking: (input: CreateBookingInput) => Promise<Booking>;
   acceptBooking: (bookingId: string) => void;
   declineBooking: (bookingId: string) => void;
@@ -35,7 +37,10 @@ interface BookingsContextValue {
 }
 
 const BookingsContext = createContext<BookingsContextValue>({
-  bookings: MOCK_BOOKINGS,
+  bookings: [],
+  isLoading: false,
+  error: null,
+  refresh: async () => {},
   createBooking: async () => MOCK_BOOKINGS[0],
   acceptBooking: () => {},
   declineBooking: () => {},
@@ -68,27 +73,60 @@ function mergeTransition(existing: Booking, updated: Booking): Booking {
 }
 
 export function BookingsProvider({ children }: { children: React.ReactNode }) {
-  const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
-  const subsRef = useRef<Map<string, () => void>>(new Map());
+  const { session, isLoading: isAuthLoading } = useAuth();
+  const mockMode = isMockEnv();
+  const userId = session?.user?.id;
+  const userType = session?.user?.userType;
 
-  useEffect(() => {
-    setBookings(MOCK_BOOKINGS);
-  }, []);
+  const [bookings, setBookings] = useState<Booking[]>(mockMode ? MOCK_BOOKINGS : []);
+  const [isLoading, setIsLoading] = useState(!mockMode);
+  const [error, setError] = useState<string | null>(null);
 
+  const refresh = useCallback(async () => {
+    if (mockMode) return;
+
+    // Signed out against a live backend: RLS would return nothing anyway, and
+    // showing the previous account's bookings after a logout would be wrong.
+    if (!userId) {
+      setBookings([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setError(null);
+    try {
+      setBookings(await fetchBookings(userType));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to load bookings';
+      setError(message);
+      console.warn('BookingsContext: refresh failed:', message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [mockMode, userId, userType]);
+
+  // Load once auth has settled, and again whenever the signed-in user changes.
   useEffect(() => {
+    if (isAuthLoading) return;
+    refresh();
+  }, [isAuthLoading, refresh]);
+
+  // Offline demo only: restore the locally-mutated mock set. Persisting live
+  // rows to localStorage would leak one account's bookings into the next.
+  useEffect(() => {
+    if (!mockMode) return;
     try {
       if (typeof window !== 'undefined') {
         const saved = window.localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          setBookings(JSON.parse(saved) as Booking[]);
-        }
+        if (saved) setBookings(JSON.parse(saved) as Booking[]);
       }
     } catch {
       setBookings(MOCK_BOOKINGS);
     }
-  }, []);
+  }, [mockMode]);
 
   useEffect(() => {
+    if (!mockMode) return;
     try {
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
@@ -96,59 +134,24 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // noop
     }
-  }, [bookings]);
+  }, [mockMode, bookings]);
 
-  // Subscribe to real-time updates for ALL active bookings (a user can have
-  // several in flight at once). Join the ids into a stable key so the effect
-  // only re-runs when the active set actually changes.
-  const activeBookingIds = useMemo(
-    () =>
-      bookings
-        .filter((b) => !['Completed', 'Paid', 'Cancelled', 'Rejected'].includes(b.status))
-        .map((b) => b.id),
-    [bookings]
-  );
-  const activeIdsKey = useMemo(() => [...activeBookingIds].sort().join(','), [activeBookingIds]);
-
+  // Refetch when anything the user can see changes: this is what makes the
+  // client's screen move when the handyman accepts, and vice versa.
   useEffect(() => {
-    const active = new Set(activeIdsKey ? activeIdsKey.split(',') : []);
-    const subs = subsRef.current;
+    if (mockMode || !userId) return;
+    return subscribeToBookingChanges(() => {
+      refresh();
+    });
+  }, [mockMode, userId, refresh]);
 
-    // Drop subscriptions for bookings that are no longer active
-    for (const [id, unsub] of subs) {
-      if (!active.has(id)) {
-        unsub();
-        subs.delete(id);
-      }
-    }
-
-    // Add subscriptions for newly-active bookings
-    for (const id of active) {
-      if (!subs.has(id)) {
-        subs.set(
-          id,
-          subscribeToBooking(id, (event) => {
-            setBookings((current) =>
-              current.map((b) =>
-                b.id === event.bookingId
-                  ? { ...b, status: event.toStatus, updatedAt: new Date().toISOString() }
-                  : b
-              )
-            );
-          })
-        );
-      }
-    }
-  }, [activeIdsKey]);
-
-  // Tear down every channel on unmount
+  // Realtime can't deliver unassigned PENDING bookings (no RLS match), so the
+  // handyman inbox polls for new requests on top of the subscription.
   useEffect(() => {
-    const subs = subsRef.current;
-    return () => {
-      for (const unsub of subs.values()) unsub();
-      subs.clear();
-    };
-  }, []);
+    if (mockMode || !userId || userType !== 'handyman') return;
+    const timer = setInterval(refresh, HANDYMAN_INBOX_POLL_MS);
+    return () => clearInterval(timer);
+  }, [mockMode, userId, userType, refresh]);
 
   const createBooking = useCallback(async (input: CreateBookingInput) => {
     const booking = await createBookingService(input);
@@ -264,6 +267,9 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(
     () => ({
       bookings,
+      isLoading,
+      error,
+      refresh,
       createBooking,
       acceptBooking,
       declineBooking,
@@ -272,7 +278,17 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
       getBookingById: (bookingId: string) => bookings.find((booking) => booking.id === bookingId),
       getNextHandymanAction: (status: BookingStatus) => getWorkflowAction(status),
     }),
-    [bookings, createBooking, acceptBooking, declineBooking, advanceBooking, cancelBooking]
+    [
+      bookings,
+      isLoading,
+      error,
+      refresh,
+      createBooking,
+      acceptBooking,
+      declineBooking,
+      advanceBooking,
+      cancelBooking,
+    ]
   );
 
   return <BookingsContext.Provider value={value}>{children}</BookingsContext.Provider>;

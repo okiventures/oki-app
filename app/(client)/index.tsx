@@ -6,6 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useBookings } from '../../src/context/BookingsContext';
 import { useAuth } from '../../src/context/AuthContext';
+import { useProfile } from '../../src/hooks/useProfile';
+import { isMockEnv } from '../../src/services/bookingService';
 import { BookingStatus } from '../../src/types';
 
 import { DashboardHeader } from '../../src/components/home/DashboardHeader';
@@ -31,7 +33,15 @@ export default function ClientHome() {
   const { session } = useAuth();
   const [searchText, setSearchText] = useState('');
 
-  const clientId = session?.user?.id ?? MOCK_CLIENT.id;
+  const { profile } = useProfile();
+
+  const clientId = session?.user?.id ?? (isMockEnv() ? MOCK_CLIENT.id : '');
+
+  // Header identity comes from the signed-in profile; the mock is the offline
+  // demo fallback only. Rendering MOCK_CLIENT unconditionally meant the
+  // dashboard greeted every account by the same hardcoded name.
+  const displayName = profile?.user?.full_name ?? (isMockEnv() ? MOCK_CLIENT.name : '');
+  const displayPhoto = profile?.user?.photo_url ?? (isMockEnv() ? MOCK_CLIENT.photoUrl : undefined);
 
   const filteredCategories = searchText
     ? MOCK_DASHBOARD_CATEGORIES.filter((c) =>
@@ -42,7 +52,7 @@ export default function ClientHome() {
   const myBookings = useMemo(
     () =>
       bookings
-        .filter((b) => b.clientId === clientId || b.clientId === MOCK_CLIENT.id)
+        .filter((b) => b.clientId === clientId)
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
     [bookings, clientId]
   );
@@ -64,8 +74,8 @@ export default function ClientHome() {
       style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
       <DashboardHeader
         city={MOCK_CLIENT.location}
-        userName={MOCK_CLIENT.name}
-        userPhotoUrl={MOCK_CLIENT.photoUrl}
+        userName={displayName}
+        userPhotoUrl={displayPhoto}
         unreadCount={3}
         onNotificationPress={() => router.push('/notifications')}
         onProfilePress={() => router.push('/profile')}
@@ -80,7 +90,7 @@ export default function ClientHome() {
           showsVerticalScrollIndicator={false}
           style={{ backgroundColor: colors.ui.background }}>
           <GreetingBlock
-            userName={MOCK_CLIENT.name}
+            userName={displayName}
             searchValue={searchText}
             onSearchChange={setSearchText}
           />

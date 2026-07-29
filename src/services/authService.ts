@@ -197,31 +197,28 @@ export async function ensureUserProfile(params: {
       .maybeSingle();
 
     if (!existing) {
-      // No user row yet — create it (trigger may also do this, but we ensure it)
+      // No user row yet — create it. handle_new_user() normally does this; the
+      // insert is a backstop. 'admin' is never self-assignable, so a requested
+      // admin signup lands as a client here exactly as the trigger would do it.
       const { error: insertError } = await supabase.from('users').insert({
         id: params.userId,
         email: params.email || params.phone || `${params.userId}@oki.app`,
         phone: params.phone || null,
         full_name: params.fullName,
-        user_type: params.userType,
+        user_type: params.userType === 'handyman' ? 'handyman' : 'client',
       });
 
       if (insertError) {
         console.error('Failed to create user profile:', insertError.message);
         return;
       }
-    } else if (existing.user_type !== params.userType) {
-      // User exists but with wrong type (e.g., trigger defaulted to 'client')
-      // Update to the correct type
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ user_type: params.userType })
-        .eq('id', params.userId);
-
-      if (updateError) {
-        console.error('Failed to update user_type:', updateError.message);
-      }
     }
+
+    // NOTE: no user_type reconciliation here. handle_new_user() deliberately
+    // collapses any self-asserted role other than 'handyman' down to 'client';
+    // patching the row back to the requested type from the client would undo
+    // that and hand out admin to anyone who posts user_type: 'admin'. Admins are
+    // provisioned out-of-band with the service role.
 
     // Ensure handyman profile row exists for handyman users
     if (params.userType === 'handyman') {

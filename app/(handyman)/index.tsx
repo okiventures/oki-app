@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useAuth } from '../../src/context/AuthContext';
 import { getOnlineStatus, updateOnlineStatus } from '../../src/services/profileService';
+import { isMockEnv } from '../../src/services/bookingService';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { Card } from '../../src/components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,7 +35,9 @@ export default function HandymanDashboard() {
   const { colors } = useTheme();
   const router = useRouter();
   const { session } = useAuth();
-  const [isActive, setIsActive] = useState(MOCK_HANDYMAN.isOnline);
+  // Assume offline until getOnlineStatus reports otherwise — showing "online"
+  // optimistically misrepresents whether the accept guard will let jobs through.
+  const [isActive, setIsActive] = useState(isMockEnv() ? MOCK_HANDYMAN.isOnline : false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const { bookings } = useBookings();
 
@@ -101,7 +104,11 @@ export default function HandymanDashboard() {
     [selectedPreset, range]
   );
 
-  const myBookings = bookings.filter((booking) => booking.handymanId === MOCK_HANDYMAN.id);
+  // Offline demo only: MOCK_BOOKINGS are keyed to the demo handyman. With a
+  // session this must filter on the signed-in id, or the dashboard shows an
+  // empty active job no matter how many jobs the handyman actually has.
+  const activeHandymanId = handymanId ?? (isMockEnv() ? MOCK_HANDYMAN.id : '');
+  const myBookings = bookings.filter((booking) => booking.handymanId === activeHandymanId);
   const activeJob = myBookings.filter((booking) =>
     ACTIVE_HANDYMAN_BOOKING_STATUSES.includes(booking.status)
   )[0];

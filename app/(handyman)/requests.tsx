@@ -11,9 +11,12 @@ import { RequestInboxCard } from '../../src/components/handyman/RequestInboxCard
 import { ConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 import { EmptyState } from '../../src/components/ui/EmptyState';
 import { useAuth } from '../../src/context/AuthContext';
+import { isMockEnv } from '../../src/services/bookingService';
 
-// Falls back to the seeded demo handyman when running without a live session
-// (mock mode), so the prototype inbox still populates from MOCK_BOOKINGS.
+// Offline demo only: MOCK_BOOKINGS are keyed to this handyman, so the inbox
+// still populates with no session. Against a live backend there is no fallback
+// identity — bookings come from RLS + list_available_bookings() and an
+// unauthenticated user must see nothing.
 const DEMO_HANDYMAN_ID = 'h1';
 
 type PendingAction = {
@@ -28,7 +31,7 @@ export default function HandymanRequests() {
   const { bookings, acceptBooking, declineBooking, advanceBooking } = useBookings();
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
-  const handymanId = session?.user?.id ?? DEMO_HANDYMAN_ID;
+  const handymanId = session?.user?.id ?? (isMockEnv() ? DEMO_HANDYMAN_ID : '');
 
   const myBookings = useMemo(
     () =>

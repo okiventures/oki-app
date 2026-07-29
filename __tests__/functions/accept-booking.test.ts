@@ -1,4 +1,4 @@
-import { requireHandyman } from '../../supabase/functions/_shared/rbac';
+import { requireHandyman, serviceClient } from '../../supabase/functions/_shared/rbac';
 import { __getHandler } from '../__mocks__/deno-serve';
 import '../../supabase/functions/accept-booking/index';
 
@@ -8,6 +8,7 @@ jest.mock('../../supabase/functions/_shared/rbac', () => {
 
   return {
     requireHandyman: jest.fn(),
+    serviceClient: jest.fn(),
     methodNotAllowed: jest.fn(() => resp(405, { error: 'METHOD_NOT_ALLOWED' })),
     badRequest: jest.fn((m: string) => resp(400, { error: 'BAD_REQUEST', message: m })),
     notFound: jest.fn((m: string) => resp(404, { error: 'NOT_FOUND', message: m })),
@@ -94,17 +95,25 @@ function supabaseWith(opts: {
     });
   }
 
-  return {
+  const client = {
     from: jest.fn((table: string) => {
       if (table === 'bookings') return bookingChain;
       if (table === 'handymen') return handymanChain;
       return eventsChain ?? mockFrom(table);
     }),
   };
+
+  // The lifecycle functions read and write through serviceClient(): an unassigned
+  // PENDING booking is invisible to the caller under RLS, and booking_events grants
+  // the authenticated role no INSERT. Point it at the same mock the auth helper
+  // hands back so the existing chain assertions cover both paths.
+  (serviceClient as jest.Mock).mockReturnValue(client);
+  return client;
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (serviceClient as jest.Mock).mockReturnValue({ from: jest.fn(() => mockFrom('any')) });
 });
 
 describe('module loading', () => {

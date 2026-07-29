@@ -1,5 +1,12 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
-import { requireHandyman, methodNotAllowed, badRequest, notFound, ok } from '../_shared/rbac.ts';
+import {
+  requireHandyman,
+  serviceClient,
+  methodNotAllowed,
+  badRequest,
+  notFound,
+  ok,
+} from '../_shared/rbac.ts';
 
 interface RejectBookingRequest {
   bookingId: string;
@@ -13,10 +20,14 @@ serve(async (req: Request) => {
   if ('error' in auth) return auth.error;
   const { user, supabase } = auth;
 
+  // Same as accept: an unassigned PENDING booking is invisible to this caller
+  // under RLS, and booking_events grants the authenticated role no INSERT.
+  const db = serviceClient();
+
   const { bookingId, reason }: RejectBookingRequest = await req.json();
   if (!bookingId) return badRequest('bookingId required');
 
-  const { data: booking, error: fetchError } = await supabase
+  const { data: booking, error: fetchError } = await db
     .from('bookings')
     .select('*')
     .eq('id', bookingId)
@@ -62,7 +73,7 @@ serve(async (req: Request) => {
     );
   }
 
-  const { error: eventError } = await supabase.from('booking_events').insert({
+  const { error: eventError } = await db.from('booking_events').insert({
     booking_id: bookingId,
     actor_id: user.id,
     from_status: 'PENDING',
@@ -77,7 +88,7 @@ serve(async (req: Request) => {
     );
   }
 
-  const { data: currentBooking, error: refetchError } = await supabase
+  const { data: currentBooking, error: refetchError } = await db
     .from('bookings')
     .select('*')
     .eq('id', bookingId)

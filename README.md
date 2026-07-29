@@ -68,10 +68,51 @@ Here are useful commands for working with the local Supabase instance:
 
 - **Syncing Local Database (When pulling from `dev`):**
   When other developers add new migrations and you pull changes, run:
+
   ```bash
   npx supabase db reset
   ```
+
   This command drops the local database, recreates it from scratch, applies all migrations in the correct order, and re-seeds it. This ensures your local database is completely in sync with the repository.
+
+- **Serving Edge Functions:**
+
+  ```bash
+  npx supabase functions serve
+  ```
+
+  `supabase start` does not keep the Edge Functions runtime up. Accept, reject,
+  cancel, complete, and create-booking all go through Edge Functions, so this
+  needs to be running in its own terminal or those actions fail.
+
+---
+
+### Seeded test accounts
+
+`supabase/seed.sql` provisions a full multi-account scenario so cross-account
+flows can be exercised without registering anything. Every account uses the
+password **`password123`**.
+
+| Email                  | Role     | Notes                                        |
+| ---------------------- | -------- | -------------------------------------------- |
+| `princess@example.com` | client   | Has bookings across most lifecycle states    |
+| `mara@example.com`     | client   | Second client, for isolation checks          |
+| `kyle@example.com`     | handyman | Online, KYC approved, **Electrical**         |
+| `cef@example.com`      | handyman | Online, KYC approved, **Plumbing / General** |
+| `rico@example.com`     | handyman | Offline, KYC pending — accept guards fail    |
+| `admin@oki.app`        | admin    | Admin console                                |
+
+Everything is anchored on Cebu City (10.3157, 123.8854) to match the app's
+default booking coordinates, so proximity dispatch matches.
+
+Handymen only see requests in a category they offer, so a plumbing request
+reaches Cef and not Kyle. To watch a booking move between two accounts, sign in
+as a client on one device and the matching handyman on another: the request
+appears in the handyman's inbox, and accepting it updates the client's screen.
+
+Admins cannot be created through the signup screen — `handle_new_user()`
+collapses any self-asserted role other than `handyman` to `client`. Use the
+seeded admin, or promote a user with the service role.
 
 ---
 
