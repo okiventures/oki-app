@@ -243,7 +243,7 @@
   - [x] `POST /kyc/upload` endpoint: validate file type (JPEG/PNG/PDF), max 5 MB, reject all others — zero-import edge function at `supabase/functions/kyc-upload/index.ts`
   - [x] Store documents in private Supabase Storage bucket (`kyc-documents` bucket with per-user folder)
   - [x] Generate short-lived signed URLs for Admin document review (not publicly accessible) — configurable 3600s expiry via `ALLOWED_ORIGIN` env var for admin functions
-  - [x] KYC status field on `handymen` table: `PENDING / APPROVED / REJECTED` — migration at `backend/migrations/003_kyc_documents.sql`
+  - [x] KYC status field on `handymen` table: `PENDING / APPROVED / REJECTED` — migration at `supabase/migrations/003_kyc_documents.sql`
 - [x] Role-based access control middleware
   - [x] Shared RBAC middleware at `supabase/functions/_shared/rbac.ts`: `getAuthUser`, `requireRole`, `requireAdmin`, `requireHandyman` — reads role from JWT, attaches user + supabase client to request context, returns discriminated `AuthSuccess | AuthFailure` union
   - [x] Frontend RBAC guards at `src/services/rbac.ts`: `assertRole`, `canAccess`, `GUARDS` (client/handyman/admin/staff/authenticated), `RoleAccessError` typed error class
