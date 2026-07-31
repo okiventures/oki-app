@@ -3,7 +3,13 @@
 -- start_hour/end_hour store the template hours, start_time/end_time anchor the block
 -- (for ONE_OFF these are the concrete times).
 
-CREATE TYPE availability_recurrence AS ENUM ('ONE_OFF', 'WEEKLY');
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'availability_recurrence') THEN
+    CREATE TYPE availability_recurrence AS ENUM ('ONE_OFF', 'WEEKLY');
+  END IF;
+END;
+$$;
 
 CREATE TABLE IF NOT EXISTS availability_blocks (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -26,11 +32,21 @@ CREATE INDEX IF NOT EXISTS idx_availability_blocks_timerange
 
 ALTER TABLE availability_blocks ENABLE ROW LEVEL SECURITY;
 
--- Clients need to read availability to pick a booking slot.
-CREATE POLICY availability_blocks_select_all
+-- Clients need to read availability to pick a booking slot, but only from
+-- approved, online handymen (mirrors handyman_locations_select_searchable).
+CREATE POLICY availability_blocks_select_visible
   ON availability_blocks FOR SELECT
   TO authenticated
-  USING (true);
+  USING (
+    (SELECT is_admin())
+    OR handyman_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM public.handymen h
+      WHERE h.id = availability_blocks.handyman_id
+        AND h.is_online = true
+        AND h.kyc_status = 'APPROVED'
+    )
+  );
 
 CREATE POLICY availability_blocks_insert_own
   ON availability_blocks FOR INSERT
@@ -74,12 +90,13 @@ DECLARE
   cur_end      TIMESTAMPTZ;
 BEGIN
   FOR rec IN
-    SELECT id, day_of_week, start_hour, end_hour, start_time, end_time, recurrence::TEXT
-    FROM availability_blocks
-    WHERE handyman_id = p_handyman_id
+    SELECT ab.id, ab.day_of_week, ab.start_hour, ab.end_hour, ab.start_time, ab.end_time,
+           ab.recurrence::TEXT
+    FROM availability_blocks ab
+    WHERE ab.handyman_id = p_handyman_id
       AND (
-        recurrence = 'WEEKLY'
-        OR (start_time < p_end_date AND end_time > p_start_date)
+        ab.recurrence = 'WEEKLY'
+        OR (ab.start_time < p_end_date AND ab.end_time > p_start_date)
       )
   LOOP
     IF rec.recurrence = 'ONE_OFF' THEN
@@ -97,16 +114,14 @@ BEGIN
           * INTERVAL '7 days';
       cur_end := cur_start + (rec.end_time - rec.start_time);
       WHILE cur_start < p_end_date LOOP
-        IF cur_end > p_start_date THEN
-          block_id := rec.id;
-          day_of_week := rec.day_of_week;
-          start_hour := rec.start_hour;
-          end_hour := rec.end_hour;
-          start_time := GREATEST(cur_start, p_start_date);
-          end_time := LEAST(cur_end, p_end_date);
-          recurrence := rec.recurrence;
-          RETURN NEXT;
-        END IF;
+        block_id := rec.id;
+        day_of_week := rec.day_of_week;
+        start_hour := rec.start_hour;
+        end_hour := rec.end_hour;
+        start_time := GREATEST(cur_start, p_start_date);
+        end_time := LEAST(cur_end, p_end_date);
+        recurrence := rec.recurrence;
+        RETURN NEXT;
         cur_start := cur_start + INTERVAL '7 days';
         cur_end := cur_end + INTERVAL '7 days';
       END LOOP;
@@ -115,5 +130,5 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION get_handyman_availability_blocks(UUID, TIMESTAMPTZ, TIMESTAMPTZ) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION get_handyman_availability_blocks(UUID, TIMESTAMPTZ, TIMESTAMPTZ) FROM anon;
 GRANT EXECUTE ON FUNCTION get_handyman_availability_blocks(UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;

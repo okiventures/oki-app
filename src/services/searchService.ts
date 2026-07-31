@@ -18,8 +18,6 @@ export function isWeeklyBlock(block: AvailabilityBlock): boolean {
 
 export function getBlockDayOfWeek(block: AvailabilityBlock): number {
   if (block.dayOfWeek !== undefined) return block.dayOfWeek;
-  const storeDayMatch = block.id.match(/-d(\d)$/);
-  if (storeDayMatch) return (parseInt(storeDayMatch[1], 10) + 1) % 7;
   return new Date(block.startTime).getDay();
 }
 

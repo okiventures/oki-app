@@ -42,6 +42,8 @@ export function useHandymanAvailability({
 
       setIsLoading(true);
       setError(null);
+      setBlockedRanges([]);
+      setAvailableWindows([]);
 
       const startOfDay = new Date(targetDate);
       startOfDay.setHours(0, 0, 0, 0);

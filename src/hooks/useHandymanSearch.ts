@@ -104,7 +104,7 @@ export function useHandymanSearch({
   const [error, setError] = useState<string | null>(null);
 
   const fetchNearbyHandymen = useCallback(async () => {
-    if (!latitude || !longitude) return;
+    if (latitude == null || longitude == null) return;
 
     setIsLoading(true);
     setError(null);

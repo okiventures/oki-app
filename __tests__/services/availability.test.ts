@@ -150,7 +150,7 @@ describe('isWeeklyBlock / getBlockDayOfWeek', () => {
     expect(getBlockDayOfWeek(dbBlock)).toBe(1);
   });
 
-  it('derives day of week from the id for legacy blocks without dayOfWeek', () => {
+  it('derives day of week from startTime when dayOfWeek is absent', () => {
     const legacyBlock: AvailabilityBlock = {
       id: 'h1-d0',
       handymanId: 'h1',

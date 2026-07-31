@@ -48,9 +48,12 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.search_nearest_handymen(
+REVOKE EXECUTE ON FUNCTION public.search_nearest_handymen(
   double precision, double precision, float, service_category
 ) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.search_nearest_handymen(
   double precision, double precision, float, service_category
 ) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.search_nearest_handymen(
+  double precision, double precision, float, service_category
+) TO service_role;

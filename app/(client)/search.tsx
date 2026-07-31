@@ -40,6 +40,7 @@ export default function SearchResults() {
   const router = useRouter();
   const { category: categoryParam } = useLocalSearchParams<{ category: string }>();
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationReady, setLocationReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,14 +48,17 @@ export default function SearchResults() {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') return;
-        const position = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
+        const position = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000)),
+        ]);
         if (!cancelled) {
           setCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
         }
       } catch {
         // fall back to default coords
+      } finally {
+        if (!cancelled) setLocationReady(true);
       }
     })();
     return () => {
@@ -64,9 +68,9 @@ export default function SearchResults() {
 
   const category = CATEGORY_PARAM_MAP[categoryParam ?? ''] ?? null;
 
-  const { handymen, isLoading } = useHandymanSearch({
-    latitude: coords?.latitude ?? DEFAULT_LAT,
-    longitude: coords?.longitude ?? DEFAULT_LNG,
+  const { handymen, isLoading, error, refetch } = useHandymanSearch({
+    latitude: locationReady ? (coords?.latitude ?? DEFAULT_LAT) : null,
+    longitude: locationReady ? (coords?.longitude ?? DEFAULT_LNG) : null,
     radiusMeters: 10000,
     category,
   });
@@ -107,6 +111,16 @@ export default function SearchResults() {
           <View className="flex-1 items-center justify-center">
             <LoadingSpinner />
           </View>
+        ) : error ? (
+          <View className="flex-1 items-center justify-center px-8">
+            <EmptyState icon="cloud-offline-outline" title="Search failed" message={error} />
+            <Pressable
+              onPress={refetch}
+              android_ripple={{ color: 'rgba(0,0,0,0.05)' }}
+              className="bg-primary-600 mt-4 rounded-xl px-6 py-3">
+              <Text className="text-[14px] font-semibold text-white">Try again</Text>
+            </Pressable>
+          </View>
         ) : handymen.length === 0 ? (
           <EmptyState
             icon="search-outline"
@@ -122,6 +136,11 @@ export default function SearchResults() {
               {handymen.length} handyman{handymen.length === 1 ? '' : 'men'} available — sorted by
               distance
             </Text>
+            {locationReady && !coords && (
+              <Text className="-mt-2 mb-3 text-[12px] text-gray-400">
+                Location unavailable — showing results near Cebu City.
+              </Text>
+            )}
 
             {handymen.map((hm) => {
               const profile = HANDYMAN_PROFILE_MAP?.get(hm.handyman_id) ?? null;

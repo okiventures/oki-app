@@ -88,33 +88,33 @@ export interface AvailabilityRun {
 
 export function setDayAvailability(
   handymanId: string,
-  dayOfWeek: number,
+  storeDay: number,
   runs: AvailabilityRun[]
 ): void {
-  if (dayOfWeek < 0 || dayOfWeek > 6) return;
+  if (storeDay < 0 || storeDay > 6) return;
   availabilityStore = availabilityStore.filter(
-    (b) => !(b.handymanId === handymanId && b.dayOfWeek === (dayOfWeek + 1) % 7)
+    (b) => !(b.handymanId === handymanId && b.dayOfWeek === (storeDay + 1) % 7)
   );
 
   for (const run of runs) {
     const block: AvailabilityBlock = {
-      id: `${handymanId}-d${dayOfWeek}-${run.startHour}`,
+      id: `${handymanId}-d${storeDay}-${run.startHour}`,
       handymanId,
-      startTime: time(run.startHour, dayOfWeek),
-      endTime: time(run.endHour, dayOfWeek),
+      startTime: time(run.startHour, storeDay),
+      endTime: time(run.endHour, storeDay),
       startHour: run.startHour,
       endHour: run.endHour,
-      dayOfWeek: (dayOfWeek + 1) % 7,
+      dayOfWeek: (storeDay + 1) % 7,
       recurrence: 'weekly',
     };
     availabilityStore.push(block);
   }
 }
 
-export function removeDayAvailability(handymanId: string, dayOfWeek: number): void {
-  if (dayOfWeek < 0 || dayOfWeek > 6) return;
+export function removeDayAvailability(handymanId: string, storeDay: number): void {
+  if (storeDay < 0 || storeDay > 6) return;
   availabilityStore = availabilityStore.filter(
-    (b) => !(b.handymanId === handymanId && b.dayOfWeek === (dayOfWeek + 1) % 7)
+    (b) => !(b.handymanId === handymanId && b.dayOfWeek === (storeDay + 1) % 7)
   );
 }
 

@@ -38,11 +38,10 @@ function isSameDay(left: Date, right: Date): boolean {
   );
 }
 
-function getWeekDays(): Date[] {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const sunday = new Date(today);
-  sunday.setDate(today.getDate() - dayOfWeek);
+function getWeekDays(anchor: Date): Date[] {
+  const dayOfWeek = anchor.getDay();
+  const sunday = new Date(anchor);
+  sunday.setDate(anchor.getDate() - dayOfWeek);
   const start = startOfDay(sunday);
   return Array.from({ length: 7 }, (_, index) => new Date(start.getTime() + index * 86400000));
 }
@@ -242,7 +241,7 @@ export function ScheduleCalendar({
     );
   }, [selectedDate]);
 
-  const weekDays = useMemo(() => getWeekDays(), []);
+  const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
 
   const bookedSlots = useMemo(() => {
     const slots = new Set<number>();
@@ -256,11 +255,9 @@ export function ScheduleCalendar({
         0,
         Math.floor((start.getTime() - dayStart.getTime()) / 1000 / 60 / 60) - MIN_HOUR
       );
-      const endHourIdx = Math.min(
-        TOTAL_HOURS - 1,
-        Math.ceil((end.getTime() - dayStart.getTime()) / 1000 / 60 / 60) - MIN_HOUR
-      );
-      for (let h = startHourIdx; h <= endHourIdx; h++) {
+      const endHourIdx =
+        Math.ceil((end.getTime() - dayStart.getTime()) / 1000 / 60 / 60) - MIN_HOUR;
+      for (let h = startHourIdx; h < endHourIdx; h++) {
         slots.add(h);
       }
     }
