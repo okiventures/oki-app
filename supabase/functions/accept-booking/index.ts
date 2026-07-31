@@ -5,6 +5,7 @@ import {
   methodNotAllowed,
   badRequest,
   notFound,
+  internalError,
   ok,
 } from '../_shared/rbac.ts';
 
@@ -29,7 +30,7 @@ serve(async (req: Request) => {
 
   const { data: booking, error: fetchError } = await db
     .from('bookings')
-    .select('*')
+    .select('*, services!service_id(category)')
     .eq('id', bookingId)
     .single();
 
@@ -48,8 +49,26 @@ serve(async (req: Request) => {
     );
   }
 
+  // list_available_bookings() only *shows* a handyman the categories they serve,
+  // so the category match has never been enforced anywhere: a direct call here
+  // with an arbitrary bookingId could take a job outside them.
+  const bookingCategory = (booking.services as { category: string } | null)?.category;
+  if (!bookingCategory) return internalError('Booking has no service category');
+
+  const { data: matchingServices, error: categoryError } = await db
+    .from('handyman_services')
+    // !inner makes the category a join filter. A plain embed would still return
+    // the row with a null `services`, so every category would look like a match.
+    .select('service_id, services!inner(category)')
+    .eq('handyman_id', user.id)
+    .eq('services.category', bookingCategory);
+
+  if (categoryError) return internalError(categoryError.message);
+
   const guards: string[] = [];
   if (booking.status !== 'PENDING') guards.push('Booking must be PENDING');
+  if (!matchingServices || matchingServices.length === 0)
+    guards.push(`Handyman does not offer ${bookingCategory} services`);
   if (!handyman.is_online) guards.push('Handyman must be online');
   if (handyman.kyc_status !== 'APPROVED') guards.push('KYC must be approved');
   if (booking.handyman_id && booking.handyman_id !== user.id)

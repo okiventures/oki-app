@@ -45,6 +45,21 @@ function mockFrom(_table: string, overrides?: Partial<MockChain>): MockChain {
   return chain;
 }
 
+/**
+ * A thenable chain for list queries, which are awaited directly rather than
+ * through .single()/.maybeSingle(). mockFrom's chain returns itself from every
+ * method, so awaiting it would yield the chain instead of a {data, error}.
+ */
+function mockList(resolved: { data: unknown; error: { message: string } | null }) {
+  const chain: any = {
+    select: jest.fn(() => chain),
+    eq: jest.fn(() => chain),
+    then: (onFulfilled?: any, onRejected?: any) =>
+      Promise.resolve(resolved).then(onFulfilled, onRejected),
+  };
+  return chain;
+}
+
 function makeReq(body: unknown): Request {
   return new Request('http://localhost/accept-booking', {
     method: 'POST',
@@ -64,14 +79,23 @@ function supabaseWith(opts: {
   bookingError?: { message: string } | null;
   handyman?: object | null;
   handymanError?: { message: string } | null;
+  handymanServices?: object[] | null;
+  handymanServicesError?: { message: string } | null;
   updateResolved?: { data: unknown; error: { message: string } | null };
   insertResolved?: { error: unknown };
 }) {
   const bookingChain = mockFrom('bookings', {
     single: jest.fn().mockResolvedValue({
-      data: opts.booking ?? null,
+      // Spread last so a fixture can override the category. The default keeps
+      // the tests that predate the category guard focused on their own guard.
+      data: opts.booking ? { services: { category: 'Plumbing' }, ...opts.booking } : null,
       error: opts.bookingError ?? null,
     }),
+  });
+
+  const servicesChain = mockList({
+    data: opts.handymanServices ?? [{ service_id: 'sv-1', services: { category: 'Plumbing' } }],
+    error: opts.handymanServicesError ?? null,
   });
 
   const handymanChain = mockFrom('handymen', {
@@ -99,6 +123,7 @@ function supabaseWith(opts: {
     from: jest.fn((table: string) => {
       if (table === 'bookings') return bookingChain;
       if (table === 'handymen') return handymanChain;
+      if (table === 'handyman_services') return servicesChain;
       return eventsChain ?? mockFrom(table);
     }),
   };
@@ -293,6 +318,91 @@ describe('guard conditions', () => {
     expect(res.status).toBe(422);
     const body = await res.json();
     expect(body.details.failed_guards).toContain('Booking already assigned');
+  });
+});
+
+describe('service category guard', () => {
+  const approvalHandyman = { id: 'hm-1', is_online: true, kyc_status: 'APPROVED' };
+
+  it('rejects a booking in a category the handyman does not offer', async () => {
+    (requireHandyman as jest.Mock).mockResolvedValue({
+      user: { id: 'hm-1' },
+      supabase: supabaseWith({
+        booking: {
+          id: 'b-1',
+          status: 'PENDING',
+          handyman_id: null,
+          services: { category: 'Electrical' },
+        },
+        bookingError: null,
+        handyman: approvalHandyman,
+        handymanError: null,
+        // A plumber: the join filter on Electrical matches nothing.
+        handymanServices: [],
+        updateResolved: { data: null, error: null },
+      }),
+    });
+
+    const res = await callHandler(makeReq({ bookingId: 'b-1' }));
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.details.failed_guards).toContain('Handyman does not offer Electrical services');
+  });
+
+  it('filters handyman_services on the booking own category', async () => {
+    const client = supabaseWith({
+      booking: {
+        id: 'b-1',
+        status: 'PENDING',
+        handyman_id: null,
+        services: { category: 'Carpentry' },
+      },
+      bookingError: null,
+      handyman: approvalHandyman,
+      handymanError: null,
+      handymanServices: [{ service_id: 'sv-9', services: { category: 'Carpentry' } }],
+      updateResolved: { data: { id: 'b-1', status: 'ACCEPTED' }, error: null },
+      insertResolved: { error: null },
+    });
+    (requireHandyman as jest.Mock).mockResolvedValue({ user: { id: 'hm-1' }, supabase: client });
+
+    const res = await callHandler(makeReq({ bookingId: 'b-1' }));
+    expect(res.status).toBe(200);
+    expect(client.from('handyman_services').eq.mock.calls).toEqual(
+      expect.arrayContaining([['services.category', 'Carpentry']])
+    );
+  });
+
+  it('returns 500 when the booking carries no category', async () => {
+    (requireHandyman as jest.Mock).mockResolvedValue({
+      user: { id: 'hm-1' },
+      supabase: supabaseWith({
+        booking: { id: 'b-1', status: 'PENDING', handyman_id: null, services: null },
+        bookingError: null,
+        handyman: approvalHandyman,
+        handymanError: null,
+      }),
+    });
+
+    const res = await callHandler(makeReq({ bookingId: 'b-1' }));
+    expect(res.status).toBe(500);
+  });
+
+  it('returns 500 when the category lookup errors', async () => {
+    (requireHandyman as jest.Mock).mockResolvedValue({
+      user: { id: 'hm-1' },
+      supabase: supabaseWith({
+        booking: { id: 'b-1', status: 'PENDING', handyman_id: null },
+        bookingError: null,
+        handyman: approvalHandyman,
+        handymanError: null,
+        handymanServices: null,
+        handymanServicesError: { message: 'permission denied' },
+      }),
+    });
+
+    const res = await callHandler(makeReq({ bookingId: 'b-1' }));
+    expect(res.status).toBe(500);
   });
 });
 
