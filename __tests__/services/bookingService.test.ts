@@ -16,6 +16,62 @@ jest.mock('../../src/lib/supabase', () => ({
   },
 }));
 
+jest.mock('../../src/mocks', () => ({
+  MOCK_BOOKINGS: [
+    {
+      id: 'b1',
+      clientId: 'c1',
+      clientName: 'Test',
+      handymanId: 'h1',
+      handymanName: 'HM',
+      serviceCategory: 'Plumbing' as const,
+      bookingType: 'OnDemand' as const,
+      status: 'WorkStarted' as const,
+      description: 'Fix sink',
+      location: 'Cebu',
+      amount: 150,
+      platformFee: 15,
+      netAmount: 135,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+    {
+      id: 'b2',
+      clientId: 'c2',
+      clientName: 'Test 2',
+      handymanId: '',
+      handymanName: '',
+      serviceCategory: 'Cleaning' as const,
+      bookingType: 'OnDemand' as const,
+      status: 'Paid' as const,
+      description: 'Deep clean',
+      location: 'Cebu',
+      amount: 200,
+      platformFee: 20,
+      netAmount: 180,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+    {
+      id: 'b3',
+      clientId: 'c3',
+      clientName: 'Test 3',
+      handymanId: '',
+      handymanName: '',
+      serviceCategory: 'Electrical' as const,
+      bookingType: 'OnDemand' as const,
+      status: 'Pending' as const,
+      description: 'Wiring',
+      location: 'Cebu',
+      amount: 120,
+      platformFee: 12,
+      netAmount: 108,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ],
+}));
+
 const ORIGINAL_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 
 // USE_MOCK is computed at module load from EXPO_PUBLIC_SUPABASE_URL, so set a
@@ -157,6 +213,57 @@ describe('transitionBookingState — surfaces backend errors, never fakes succes
     await expect(transitionBookingState('b1', 'START_WORK')).rejects.toMatchObject({
       name: 'BookingTransitionError',
       message: 'BOOKING_TERMINAL',
+    });
+  });
+
+  // ─── Mock/local path: FSM error wrapping ─────────────────────────────────
+
+  it('wraps FsmError from mock path as BookingTransitionError with status 422 (skip-state)', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+
+    await expect(
+      transitionBookingState('b3', 'COMPLETE', { simulated: true })
+    ).rejects.toMatchObject({
+      name: 'BookingTransitionError',
+      status: 422,
+      body: expect.objectContaining({
+        error: 'INVALID_STATE_TRANSITION',
+        from_status: 'Pending',
+        action: 'COMPLETE',
+        reason_code: 'TRANSITION_NOT_ALLOWED',
+      }),
+    });
+  });
+
+  it('wraps FsmError from mock path as BookingTransitionError with status 422 (terminal state)', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+
+    await expect(transitionBookingState('b2', 'ACCEPT', { simulated: true })).rejects.toMatchObject(
+      {
+        name: 'BookingTransitionError',
+        status: 422,
+        body: expect.objectContaining({
+          error: 'INVALID_STATE_TRANSITION',
+          from_status: 'Paid',
+          reason_code: 'BOOKING_TERMINAL',
+        }),
+      }
+    );
+  });
+
+  it('wraps FsmError from mock path as BookingTransitionError with status 422 (guard failure — missing afterPhoto)', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+
+    await expect(
+      transitionBookingState('b1', 'COMPLETE', { simulated: true })
+    ).rejects.toMatchObject({
+      name: 'BookingTransitionError',
+      status: 422,
+      body: expect.objectContaining({
+        from_status: 'WorkStarted',
+        reason_code: 'GUARD_NOT_SATISFIED',
+        details: expect.objectContaining({ guard_failure: expect.any(String) }),
+      }),
     });
   });
 });

@@ -20,7 +20,6 @@ type MockChain = {
   select: jest.Mock;
   eq: jest.Mock;
   single: jest.Mock;
-  maybeSingle: jest.Mock;
   insert: jest.Mock;
 };
 
@@ -29,7 +28,6 @@ function mockFrom(_table: string, overrides?: Partial<MockChain>): MockChain {
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     single: jest.fn().mockResolvedValue({ data: null, error: { message: 'not found' } }),
-    maybeSingle: jest.fn().mockResolvedValue({ data: null, error: { message: 'not found' } }),
     insert: jest.fn().mockResolvedValue({ error: null }),
     ...overrides,
   };
@@ -58,7 +56,6 @@ function supabaseWith(opts: {
   // defaults to an eligible (online, KYC-approved) handyman; pass null to
   // simulate the caller having no handyman row.
   handyman?: object | null;
-  updateResolved?: { data: unknown; error: { message: string } | null };
   insertResolved?: { error: unknown };
 }) {
   const bookingChain = mockFrom('bookings', {
@@ -76,13 +73,6 @@ function supabaseWith(opts: {
       error: handymanValue ? null : { message: 'not found' },
     }),
   });
-
-  if (opts.updateResolved) {
-    const updateChain = mockFrom('bookings', {
-      maybeSingle: jest.fn().mockResolvedValue(opts.updateResolved),
-    });
-    (bookingChain as any).update = jest.fn().mockReturnValue(updateChain);
-  }
 
   let eventsChain: MockChain | null = null;
   if (opts.insertResolved) {
@@ -245,38 +235,6 @@ describe('guard conditions', () => {
   });
 });
 
-describe('optimistic lock (PENDING guard on update)', () => {
-  it('returns 409 when update matches 0 rows (race condition)', async () => {
-    (requireHandyman as jest.Mock).mockResolvedValue({
-      user: { id: 'hm-1' },
-      supabase: supabaseWith({
-        booking: { id: 'b-1', status: 'PENDING', handyman_id: null },
-        bookingError: null,
-        updateResolved: { data: null, error: null },
-      }),
-    });
-
-    const res = await callHandler(makeReq({ bookingId: 'b-1' }));
-    expect(res.status).toBe(409);
-    const body = await res.json();
-    expect(body.error).toBe('INVALID_STATE_TRANSITION');
-  });
-
-  it('returns 500 on update error', async () => {
-    (requireHandyman as jest.Mock).mockResolvedValue({
-      user: { id: 'hm-1' },
-      supabase: supabaseWith({
-        booking: { id: 'b-1', status: 'PENDING', handyman_id: null },
-        bookingError: null,
-        updateResolved: { data: null, error: { message: 'constraint violation' } },
-      }),
-    });
-
-    const res = await callHandler(makeReq({ bookingId: 'b-1' }));
-    expect(res.status).toBe(500);
-  });
-});
-
 describe('audit event logging', () => {
   let consoleSpy: jest.SpyInstance;
 
@@ -294,10 +252,6 @@ describe('audit event logging', () => {
       supabase: supabaseWith({
         booking: { id: 'b-1', status: 'PENDING', handyman_id: null },
         bookingError: null,
-        updateResolved: {
-          data: { id: 'b-1', status: 'REJECTED', handyman_id: 'hm-1' },
-          error: null,
-        },
         insertResolved: { error: { message: 'fk violation' } },
       }),
     });
@@ -312,16 +266,12 @@ describe('audit event logging', () => {
 });
 
 describe('success path', () => {
-  it('rejects a valid PENDING booking and records the actor', async () => {
+  it('rejects a valid PENDING booking and records the audit event', async () => {
     (requireHandyman as jest.Mock).mockResolvedValue({
       user: { id: 'hm-1' },
       supabase: supabaseWith({
         booking: { id: 'b-1', status: 'PENDING', handyman_id: null },
         bookingError: null,
-        updateResolved: {
-          data: { id: 'b-1', status: 'REJECTED', handyman_id: 'hm-1' },
-          error: null,
-        },
         insertResolved: { error: null },
       }),
     });
@@ -329,7 +279,6 @@ describe('success path', () => {
     const res = await callHandler(makeReq({ bookingId: 'b-1', reason: 'Too far' }));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data.status).toBe('REJECTED');
-    expect(body.data.handyman_id).toBe('hm-1');
+    expect(body.data.status).toBe('PENDING');
   });
 });

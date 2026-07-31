@@ -7,6 +7,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { Alert } from 'react-native';
+import { MOCK_BOOKINGS } from '../mocks';
 import { Booking, BookingStatus } from '../types';
 import {
   transitionBookingState,
@@ -15,62 +17,13 @@ import {
   BookingTransitionError,
   isMockEnv,
 } from '../services/bookingService';
+import { getWorkflowAction, canTransition, WorkflowAction } from '../services/bookingFsm';
 import type { CreateBookingInput } from '../services/bookingService';
 import { getFreshMockBookings } from '../mocks/bookings';
 
 const MOCK_BOOKINGS = getFreshMockBookings();
 
 const STORAGE_KEY = 'oki_bookings_state_v2';
-
-type HandymanNextAction = {
-  label: string;
-  nextStatus: BookingStatus;
-};
-
-const ACTION_STATUS_MAP: Record<string, BookingStatus> = {
-  ACCEPT: BookingStatus.Accepted,
-  START_TRANSIT: BookingStatus.InTransit,
-  MARK_ARRIVED: BookingStatus.Arrived,
-  START_WORK: BookingStatus.WorkStarted,
-  COMPLETE: BookingStatus.Completed,
-};
-
-const HANDYMAN_WORKFLOW: Partial<Record<BookingStatus, HandymanNextAction>> = {
-  [BookingStatus.Accepted]: {
-    label: 'Head to job',
-    nextStatus: BookingStatus.InTransit,
-  },
-  [BookingStatus.InTransit]: {
-    label: 'Mark Arrived',
-    nextStatus: BookingStatus.Arrived,
-  },
-  [BookingStatus.Arrived]: {
-    label: 'Start Work',
-    nextStatus: BookingStatus.WorkStarted,
-  },
-  [BookingStatus.WorkStarted]: {
-    label: 'Complete Job',
-    nextStatus: BookingStatus.Completed,
-  },
-  [BookingStatus.Completed]: {
-    label: 'Mark Paid',
-    nextStatus: BookingStatus.Paid,
-  },
-};
-
-// Client cancellation is only allowed pre-acceptance (see
-// backend/docs/booking-state-machine.md). Post-acceptance cancellations must
-// go through the Week 21 dispute / cancellation-fee flow, not this path.
-const NON_CANCELLABLE_STATUSES: BookingStatus[] = [
-  BookingStatus.Accepted,
-  BookingStatus.InTransit,
-  BookingStatus.Arrived,
-  BookingStatus.WorkStarted,
-  BookingStatus.Completed,
-  BookingStatus.Paid,
-  BookingStatus.Cancelled,
-  BookingStatus.Rejected,
-];
 
 export type CancelBookingResult = { ok: true } | { ok: false; message: string };
 
@@ -82,7 +35,7 @@ interface BookingsContextValue {
   advanceBooking: (bookingId: string) => void;
   cancelBooking: (bookingId: string) => Promise<CancelBookingResult>;
   getBookingById: (bookingId: string) => Booking | undefined;
-  getNextHandymanAction: (status: BookingStatus) => HandymanNextAction | null;
+  getNextHandymanAction: (status: BookingStatus) => WorkflowAction | null;
 }
 
 const BookingsContext = createContext<BookingsContextValue>({
@@ -210,72 +163,70 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
     return booking;
   }, []);
 
-  const acceptBooking = useCallback(async (bookingId: string) => {
-    const updated = await transitionBookingState(bookingId, 'ACCEPT');
-    setBookings((current) =>
-      current.map((booking) =>
-        booking.id === bookingId ? mergeTransition(booking, updated) : booking
-      )
-    );
-  }, []);
-
-  const declineBooking = useCallback(async (bookingId: string) => {
-    // Optimistically reflect the rejection so the inbox updates immediately.
-    setBookings((current) =>
-      current.map((booking) =>
-        booking.id === bookingId && booking.status === BookingStatus.Pending
-          ? updateBooking(booking, BookingStatus.Rejected)
-          : booking
-      )
-    );
-
-    try {
-      const updated = await transitionBookingState(bookingId, 'REJECT');
+  const acceptBooking = useCallback(
+    async (bookingId: string) => {
+      const booking = bookings.find((b) => b.id === bookingId);
+      const updated = await transitionBookingState(bookingId, 'ACCEPT', undefined, booking?.status);
       setBookings((current) =>
         current.map((booking) =>
           booking.id === bookingId ? mergeTransition(booking, updated) : booking
         )
       );
-    } catch (err) {
-      setBookings((current) =>
-        current.map((booking) =>
-          booking.id === bookingId && booking.status === BookingStatus.Rejected
-            ? updateBooking(booking, BookingStatus.Pending)
-            : booking
-        )
-      );
-      throw err;
-    }
-  }, []);
+    },
+    [bookings]
+  );
+
+  const declineBooking = useCallback(
+    async (bookingId: string) => {
+      const removedBooking = bookings.find((b) => b.id === bookingId);
+
+      setBookings((current) => current.filter((b) => b.id !== bookingId));
+
+      try {
+        await transitionBookingState(bookingId, 'REJECT', undefined, removedBooking?.status);
+      } catch (err) {
+        if (removedBooking) setBookings((current) => [...current, removedBooking]);
+        throw err;
+      }
+    },
+    [bookings]
+  );
 
   const advanceBooking = useCallback(
     async (bookingId: string) => {
       const booking = bookings.find((b) => b.id === bookingId);
       if (!booking) return;
 
-      const nextAction = HANDYMAN_WORKFLOW[booking.status];
+      const nextAction = getWorkflowAction(booking.status);
       if (!nextAction) return;
 
-      const actionKey = Object.entries(ACTION_STATUS_MAP).find(
-        ([, s]) => s === nextAction.nextStatus
-      )?.[0];
-
-      if (actionKey) {
-        try {
-          const updated = await transitionBookingState(bookingId, actionKey as any);
-          setBookings((current) =>
-            current.map((b) =>
-              b.id === bookingId ? { ...b, ...updated, updatedAt: new Date().toISOString() } : b
-            )
-          );
+      try {
+        const updated = await transitionBookingState(
+          bookingId,
+          nextAction.action as any,
+          undefined,
+          booking.status
+        );
+        setBookings((current) =>
+          current.map((b) =>
+            b.id === bookingId ? { ...b, ...updated, updatedAt: new Date().toISOString() } : b
+          )
+        );
+        return;
+      } catch (err) {
+        if (err instanceof BookingTransitionError && err.status === 422) {
+          const details = err.body?.details as Record<string, unknown> | undefined;
+          const message =
+            typeof details?.guard_failure === 'string' ? details.guard_failure : err.message;
+          Alert.alert('Cannot advance booking', message);
           return;
-        } catch {}
+        }
       }
 
       setBookings((current) =>
         current.map((booking) => {
           if (booking.id !== bookingId) return booking;
-          const action = HANDYMAN_WORKFLOW[booking.status];
+          const action = getWorkflowAction(booking.status);
           if (!action) return booking;
           return updateBooking(booking, action.nextStatus);
         })
@@ -287,12 +238,17 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
   const cancelBooking = useCallback(
     async (bookingId: string): Promise<CancelBookingResult> => {
       const booking = bookings.find((b) => b.id === bookingId);
-      if (!booking || NON_CANCELLABLE_STATUSES.includes(booking.status)) {
+      if (!booking || canTransition(booking.status, 'CANCEL') !== null) {
         return { ok: false, message: 'This booking cannot be cancelled.' };
       }
 
       try {
-        const updated = await transitionBookingState(bookingId, 'CANCEL');
+        const updated = await transitionBookingState(
+          bookingId,
+          'CANCEL',
+          undefined,
+          booking.status
+        );
         setBookings((current) =>
           current.map((b) =>
             b.id === bookingId ? { ...b, ...updated, updatedAt: new Date().toISOString() } : b
@@ -321,7 +277,7 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
       advanceBooking,
       cancelBooking,
       getBookingById: (bookingId: string) => bookings.find((booking) => booking.id === bookingId),
-      getNextHandymanAction: (status: BookingStatus) => HANDYMAN_WORKFLOW[status] ?? null,
+      getNextHandymanAction: (status: BookingStatus) => getWorkflowAction(status),
     }),
     [bookings, createBooking, acceptBooking, declineBooking, advanceBooking, cancelBooking]
   );
@@ -333,13 +289,8 @@ export function useBookings(): BookingsContextValue {
   return useContext(BookingsContext);
 }
 
-export function getNextHandymanAction(status: BookingStatus): HandymanNextAction | null {
-  return HANDYMAN_WORKFLOW[status] ?? null;
+export function getNextHandymanAction(status: BookingStatus): WorkflowAction | null {
+  return getWorkflowAction(status);
 }
 
-export const ACTIVE_HANDYMAN_BOOKING_STATUSES: BookingStatus[] = [
-  BookingStatus.Accepted,
-  BookingStatus.InTransit,
-  BookingStatus.Arrived,
-  BookingStatus.WorkStarted,
-];
+export { ACTIVE_HANDYMAN_BOOKING_STATUSES } from '../services/bookingFsm';
