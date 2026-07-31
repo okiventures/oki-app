@@ -110,7 +110,7 @@ export function useHandymanSearch({
     setError(null);
 
     try {
-      const useMock = isMockEnv() || !category;
+      const useMock = isMockEnv();
       if (useMock) {
         setHandymen(rankHandymen(getMockResults(category)));
         return;
@@ -127,8 +127,12 @@ export function useHandymanSearch({
 
       setHandymen(rankHandymen(data as HandymanSearchResult[]));
     } catch (err) {
-      console.warn('useHandymanSearch: RPC failed, using mock', err);
-      setHandymen(rankHandymen(getMockResults(category)));
+      console.warn('useHandymanSearch: RPC failed', err);
+      if (isMockEnv()) {
+        setHandymen(rankHandymen(getMockResults(category)));
+      } else {
+        setError('Failed to load nearby handymen. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

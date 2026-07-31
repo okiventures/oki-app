@@ -30,6 +30,7 @@ export const MOCK_AVAILABILITY_BLOCKS: AvailabilityBlock[] = [
     endTime: time(H1_HOURS[1], d),
     startHour: H1_HOURS[0],
     endHour: H1_HOURS[1],
+    dayOfWeek: (d + 1) % 7,
     recurrence: 'weekly' as const,
   })),
   ...[1, 2, 3, 4, 5].flatMap((d) => ({
@@ -39,6 +40,7 @@ export const MOCK_AVAILABILITY_BLOCKS: AvailabilityBlock[] = [
     endTime: time(H2_HOURS[1], d),
     startHour: H2_HOURS[0],
     endHour: H2_HOURS[1],
+    dayOfWeek: (d + 1) % 7,
     recurrence: 'weekly' as const,
   })),
   ...[0, 2, 4].flatMap((d) => ({
@@ -48,6 +50,7 @@ export const MOCK_AVAILABILITY_BLOCKS: AvailabilityBlock[] = [
     endTime: time(H3_HOURS[1], d),
     startHour: H3_HOURS[0],
     endHour: H3_HOURS[1],
+    dayOfWeek: (d + 1) % 7,
     recurrence: 'weekly' as const,
   })),
   ...[0, 1, 2, 3, 4].flatMap((d) => ({
@@ -57,6 +60,7 @@ export const MOCK_AVAILABILITY_BLOCKS: AvailabilityBlock[] = [
     endTime: time(H4_HOURS[1], d),
     startHour: H4_HOURS[0],
     endHour: H4_HOURS[1],
+    dayOfWeek: (d + 1) % 7,
     recurrence: 'weekly' as const,
   })),
   ...[5, 6].flatMap((d) => ({
@@ -66,6 +70,7 @@ export const MOCK_AVAILABILITY_BLOCKS: AvailabilityBlock[] = [
     endTime: time(H5_HOURS[1], d),
     startHour: H5_HOURS[0],
     endHour: H5_HOURS[1],
+    dayOfWeek: (d + 1) % 7,
     recurrence: 'weekly' as const,
   })),
 ];
@@ -76,38 +81,40 @@ export function getAvailabilityForHandyman(handymanId: string): AvailabilityBloc
   return availabilityStore.filter((b) => b.handymanId === handymanId);
 }
 
+export interface AvailabilityRun {
+  startHour: number;
+  endHour: number;
+}
+
 export function setDayAvailability(
   handymanId: string,
   dayOfWeek: number,
-  startHour: number,
-  endHour: number
+  runs: AvailabilityRun[]
 ): void {
-  const blockId = `${handymanId}-d${dayOfWeek}`;
-  const existing = availabilityStore.findIndex(
-    (b) => b.id === blockId && b.handymanId === handymanId
+  if (dayOfWeek < 0 || dayOfWeek > 6) return;
+  availabilityStore = availabilityStore.filter(
+    (b) => !(b.handymanId === handymanId && b.dayOfWeek === (dayOfWeek + 1) % 7)
   );
 
-  const block: AvailabilityBlock = {
-    id: blockId,
-    handymanId,
-    startTime: time(startHour, dayOfWeek),
-    endTime: time(endHour, dayOfWeek),
-    startHour,
-    endHour,
-    recurrence: 'weekly',
-  };
-
-  if (existing >= 0) {
-    availabilityStore[existing] = block;
-  } else {
+  for (const run of runs) {
+    const block: AvailabilityBlock = {
+      id: `${handymanId}-d${dayOfWeek}-${run.startHour}`,
+      handymanId,
+      startTime: time(run.startHour, dayOfWeek),
+      endTime: time(run.endHour, dayOfWeek),
+      startHour: run.startHour,
+      endHour: run.endHour,
+      dayOfWeek: (dayOfWeek + 1) % 7,
+      recurrence: 'weekly',
+    };
     availabilityStore.push(block);
   }
 }
 
 export function removeDayAvailability(handymanId: string, dayOfWeek: number): void {
-  const blockId = `${handymanId}-d${dayOfWeek}`;
+  if (dayOfWeek < 0 || dayOfWeek > 6) return;
   availabilityStore = availabilityStore.filter(
-    (b) => !(b.id === blockId && b.handymanId === handymanId)
+    (b) => !(b.handymanId === handymanId && b.dayOfWeek === (dayOfWeek + 1) % 7)
   );
 }
 

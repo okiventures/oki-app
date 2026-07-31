@@ -30,7 +30,7 @@ interface DayConfig {
 function parseDays(handymanId: string): DayConfig[] {
   const blocks = getAvailabilityForHandyman(handymanId);
   return DAY_LABELS.map((_, dayIdx) => {
-    const block = blocks.find((b) => b.id === `${handymanId}-d${dayIdx}`);
+    const block = blocks.find((b) => b.dayOfWeek === (dayIdx + 1) % 7);
     if (!block) return { enabled: false, startHour: 8, endHour: 17 };
     return { enabled: true, startHour: block.startHour, endHour: block.endHour };
   });
@@ -84,7 +84,7 @@ export function AvailabilityEditor({
   function handleSave() {
     days.forEach((day, idx) => {
       if (day.enabled) {
-        setDayAvailability(handymanId, idx, day.startHour, day.endHour);
+        setDayAvailability(handymanId, idx, [{ startHour: day.startHour, endHour: day.endHour }]);
       } else {
         removeDayAvailability(handymanId, idx);
       }

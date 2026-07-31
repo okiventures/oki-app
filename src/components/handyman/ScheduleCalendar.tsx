@@ -5,6 +5,7 @@ import { BOOKING_STATUS_COLORS } from '../../constants/theme';
 import { hexToRgba } from '../../utils';
 import { Card } from '../ui/Card';
 import { useHandymanAvailability } from '../../hooks/useHandymanAvailability';
+import { DEFAULT_SLOT_DURATION_MINUTES } from '../../services/searchService';
 
 interface ScheduleCalendarProps {
   bookings: Booking[];
@@ -49,7 +50,7 @@ function getWeekDays(): Date[] {
 function bookingEnd(booking: Booking): Date | null {
   if (!booking.scheduledAt) return null;
   const end = new Date(booking.scheduledAt);
-  end.setMinutes(end.getMinutes() + (booking.durationMinutes ?? 90));
+  end.setMinutes(end.getMinutes() + (booking.durationMinutes ?? DEFAULT_SLOT_DURATION_MINUTES));
   return end;
 }
 
@@ -248,7 +249,9 @@ export function ScheduleCalendar({
     const dayStart = startOfDay(selectedDate);
     for (const b of selectedDayBookings) {
       const start = new Date(b.scheduledAt as string);
-      const end = new Date(start.getTime() + (b.durationMinutes ?? 90) * 60 * 1000);
+      const end = new Date(
+        start.getTime() + (b.durationMinutes ?? DEFAULT_SLOT_DURATION_MINUTES) * 60 * 1000
+      );
       const startHourIdx = Math.max(
         0,
         Math.floor((start.getTime() - dayStart.getTime()) / 1000 / 60 / 60) - MIN_HOUR

@@ -5,7 +5,13 @@ import {
   resetAvailabilityStore,
   MOCK_AVAILABILITY_BLOCKS,
 } from '../../src/mocks/availability';
-import { getAvailabilityForDay, validateBookingSlot } from '../../src/services/searchService';
+import {
+  getAvailabilityForDay,
+  validateBookingSlot,
+  isWeeklyBlock,
+  getBlockDayOfWeek,
+} from '../../src/services/searchService';
+import { AvailabilityBlock } from '../../src/types';
 
 beforeEach(() => {
   resetAvailabilityStore();
@@ -34,26 +40,37 @@ describe('getAvailabilityForHandyman', () => {
 
 describe('setDayAvailability', () => {
   it('adds a new block for a new handyman', () => {
-    setDayAvailability('h-new', 0, 9, 17);
+    setDayAvailability('h-new', 0, [{ startHour: 9, endHour: 17 }]);
     const blocks = getAvailabilityForHandyman('h-new');
     expect(blocks).toHaveLength(1);
     expect(blocks[0].startHour).toBe(9);
     expect(blocks[0].endHour).toBe(17);
-    expect(blocks[0].id).toBe('h-new-d0');
     expect(blocks[0].recurrence).toBe('weekly');
   });
 
   it('replaces existing block for same handyman and day', () => {
     const before = getAvailabilityForHandyman('h1');
-    const monBlock = before.find((b) => b.id === 'h1-d0')!;
+    const monBlock = before.find((b) => b.dayOfWeek === 1)!;
     expect(monBlock.startHour).toBe(6);
     expect(monBlock.endHour).toBe(21);
 
-    setDayAvailability('h1', 0, 10, 16);
+    setDayAvailability('h1', 0, [{ startHour: 10, endHour: 16 }]);
     const after = getAvailabilityForHandyman('h1');
-    const updated = after.find((b) => b.id === 'h1-d0')!;
+    expect(after).toHaveLength(7);
+    const updated = after.find((b) => b.dayOfWeek === 1)!;
     expect(updated.startHour).toBe(10);
     expect(updated.endHour).toBe(16);
+  });
+
+  it('keeps one block per contiguous run when gaps exist', () => {
+    setDayAvailability('h-gap', 0, [
+      { startHour: 8, endHour: 10 },
+      { startHour: 14, endHour: 16 },
+    ]);
+    const blocks = getAvailabilityForHandyman('h-gap');
+    expect(blocks).toHaveLength(2);
+    expect(blocks.map((b) => b.startHour)).toEqual([8, 14]);
+    expect(blocks.map((b) => b.endHour)).toEqual([10, 16]);
   });
 });
 
@@ -114,5 +131,43 @@ describe('validateBookingSlot', () => {
 describe('MOCK_AVAILABILITY_BLOCKS snapshot', () => {
   it('has 22 total blocks', () => {
     expect(MOCK_AVAILABILITY_BLOCKS).toHaveLength(22);
+  });
+});
+
+describe('isWeeklyBlock / getBlockDayOfWeek', () => {
+  it('uses the dayOfWeek field when present (DB column path)', () => {
+    const dbBlock: AvailabilityBlock = {
+      id: 'c0a80101-0000-0000-0000-000000000001',
+      handymanId: 'h1',
+      startTime: '2026-07-20T00:00:00.000Z',
+      endTime: '2026-07-20T00:00:00.000Z',
+      startHour: 6,
+      endHour: 21,
+      dayOfWeek: 1,
+      recurrence: 'weekly',
+    };
+    expect(isWeeklyBlock(dbBlock)).toBe(true);
+    expect(getBlockDayOfWeek(dbBlock)).toBe(1);
+  });
+
+  it('derives day of week from the id for legacy blocks without dayOfWeek', () => {
+    const legacyBlock: AvailabilityBlock = {
+      id: 'h1-d0',
+      handymanId: 'h1',
+      startTime: '2026-07-20T00:00:00.000Z',
+      endTime: '2026-07-20T00:00:00.000Z',
+      startHour: 6,
+      endHour: 21,
+      recurrence: 'weekly',
+    };
+    expect(getBlockDayOfWeek(legacyBlock)).toBe(1);
+  });
+
+  it('matches weekly windows on the mapped day', () => {
+    const blocks = getAvailabilityForHandyman('h1');
+    const monday = new Date(2026, 6, 27);
+    const sunday = new Date(2026, 6, 26);
+    expect(getAvailabilityForDay(blocks, monday).length).toBeGreaterThan(0);
+    expect(getAvailabilityForDay(blocks, sunday).length).toBeGreaterThan(0);
   });
 });

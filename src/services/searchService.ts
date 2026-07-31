@@ -10,6 +10,19 @@ export function rankHandymen(handymen: HandymanSearchResult[]): HandymanSearchRe
   });
 }
 
+export const DEFAULT_SLOT_DURATION_MINUTES = 120;
+
+export function isWeeklyBlock(block: AvailabilityBlock): boolean {
+  return block.recurrence.toLowerCase() === 'weekly';
+}
+
+export function getBlockDayOfWeek(block: AvailabilityBlock): number {
+  if (block.dayOfWeek !== undefined) return block.dayOfWeek;
+  const storeDayMatch = block.id.match(/-d(\d)$/);
+  if (storeDayMatch) return (parseInt(storeDayMatch[1], 10) + 1) % 7;
+  return new Date(block.startTime).getDay();
+}
+
 export function getAvailabilityForDay(
   blocks: AvailabilityBlock[],
   date: Date
@@ -20,12 +33,8 @@ export function getAvailabilityForDay(
   dayEnd.setDate(dayEnd.getDate() + 1);
 
   return blocks.reduce<{ start: Date; end: Date }[]>((windows, block) => {
-    if (block.recurrence === 'weekly') {
-      const storeDayMatch = block.id.match(/-d(\d)$/);
-      if (!storeDayMatch) return windows;
-      const storeDay = parseInt(storeDayMatch[1], 10);
-      const jsDay = (storeDay + 1) % 7;
-      if (jsDay !== date.getDay()) return windows;
+    if (isWeeklyBlock(block)) {
+      if (getBlockDayOfWeek(block) !== date.getDay()) return windows;
 
       const slotStart = new Date(date);
       slotStart.setHours(block.startHour, 0, 0, 0);
@@ -72,7 +81,7 @@ export function validateBookingSlot(
 function bookingEnd(booking: Booking): Date | null {
   if (!booking.scheduledAt) return null;
   const end = new Date(booking.scheduledAt);
-  end.setMinutes(end.getMinutes() + (booking.durationMinutes ?? 90));
+  end.setMinutes(end.getMinutes() + (booking.durationMinutes ?? DEFAULT_SLOT_DURATION_MINUTES));
   return end;
 }
 

@@ -8,7 +8,6 @@ import React, {
   useState,
 } from 'react';
 import { Alert } from 'react-native';
-import { MOCK_BOOKINGS } from '../mocks';
 import { Booking, BookingStatus } from '../types';
 import {
   transitionBookingState,
@@ -77,7 +76,9 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isMockEnv()) {
-      window?.localStorage?.removeItem(STORAGE_KEY);
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(STORAGE_KEY);
+      }
       return;
     }
 

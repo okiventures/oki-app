@@ -326,6 +326,7 @@ export interface AvailabilityBlock {
   endTime: string;
   startHour: number;
   endHour: number;
+  dayOfWeek?: number;
   recurrence: AvailabilityRecurrence;
 }
 

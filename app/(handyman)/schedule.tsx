@@ -6,16 +6,17 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { useBookings } from '../../src/context/BookingsContext';
+import { useAuth } from '../../src/context/AuthContext';
 import { ScheduleCalendar } from '../../src/components/handyman/ScheduleCalendar';
-import { getFreshMockBookings } from '../../src/mocks/bookings';
-import { Booking } from '../../src/types';
 import {
   getAvailabilityForHandyman,
   setDayAvailability,
   removeDayAvailability,
 } from '../../src/mocks/availability';
+import { isWeeklyBlock, getBlockDayOfWeek } from '../../src/services/searchService';
+import { isMockEnv } from '../../src/services/bookingService';
 
-const HANDYMAN_ID = 'h1';
+const DEMO_HANDYMAN_ID = 'h1';
 const TOTAL_HOURS = 19;
 const MIN_HOUR = 5;
 
@@ -23,15 +24,12 @@ function jsDayToStoreDay(jsDay: number): number {
   return (jsDay + 6) % 7;
 }
 
-function buildGrid(): boolean[][] {
+function buildGrid(handymanId: string): boolean[][] {
   const grid = Array.from({ length: 7 }, () => Array(TOTAL_HOURS).fill(false));
-  const blocks = getAvailabilityForHandyman(HANDYMAN_ID);
+  const blocks = getAvailabilityForHandyman(handymanId);
   for (const block of blocks) {
-    if (block.recurrence !== 'weekly') continue;
-    const storeDayMatch = block.id.match(/-d(\d)$/);
-    if (!storeDayMatch) continue;
-    const storeDay = parseInt(storeDayMatch[1], 10);
-    const jsDay = (storeDay + 1) % 7;
+    if (!isWeeklyBlock(block)) continue;
+    const jsDay = getBlockDayOfWeek(block);
     const startHour = block.startHour;
     const endHour = block.endHour;
     for (let h = startHour; h < endHour; h++) {
@@ -44,31 +42,44 @@ function buildGrid(): boolean[][] {
   return grid;
 }
 
-function getSelectedDayIndex(selectedDate: Date): number {
-  return selectedDate.getDay();
+function buildRuns(dayHours: boolean[]): { startHour: number; endHour: number }[] {
+  const runs: { startHour: number; endHour: number }[] = [];
+  let runStart: number | null = null;
+  for (let h = 0; h < dayHours.length; h++) {
+    if (dayHours[h]) {
+      if (runStart === null) runStart = h;
+    } else if (runStart !== null) {
+      runs.push({ startHour: runStart + MIN_HOUR, endHour: h + MIN_HOUR });
+      runStart = null;
+    }
+  }
+  if (runStart !== null) {
+    runs.push({ startHour: runStart + MIN_HOUR, endHour: dayHours.length + MIN_HOUR });
+  }
+  return runs;
 }
 
 export default function HandymanSchedule() {
   const { colors } = useTheme();
   const router = useRouter();
+  const { session } = useAuth();
   const { bookings: contextBookings } = useBookings();
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [availRefreshKey, setAvailRefreshKey] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [draftGrid, setDraftGrid] = useState<boolean[][] | null>(null);
 
-  const scheduledBookings = useMemo(() => {
-    const fresh = getFreshMockBookings();
-    const merged = new Map<string, Booking>();
-    for (const b of fresh) merged.set(b.id, b);
-    for (const b of contextBookings) merged.set(b.id, b);
-    return [...merged.values()].filter((b) => b.handymanId === HANDYMAN_ID && b.scheduledAt);
-  }, [contextBookings]);
+  const handymanId = session?.user?.id ?? DEMO_HANDYMAN_ID;
+  const mockEnv = isMockEnv();
 
-  const selectedDayIndex = getSelectedDayIndex(selectedDate);
+  const scheduledBookings = useMemo(() => {
+    return contextBookings.filter((b) => b.handymanId === handymanId && b.scheduledAt);
+  }, [contextBookings, handymanId]);
+
+  const selectedDayIndex = selectedDate.getDay();
 
   function handleStartEditing() {
-    setDraftGrid(buildGrid());
+    setDraftGrid(buildGrid(handymanId));
     setIsEditing(true);
   }
 
@@ -89,15 +100,12 @@ export default function HandymanSchedule() {
   function handleSave() {
     if (!draftGrid) return;
     for (let jsDay = 0; jsDay < 7; jsDay++) {
-      const storeDay = jsDayToStoreDay(jsDay);
       const dayHours = draftGrid[jsDay];
-      const enabled = dayHours.some(Boolean);
-      if (enabled) {
-        const startIdx = dayHours.findIndex(Boolean);
-        const endIdx = dayHours.length - 1 - [...dayHours].reverse().findIndex(Boolean);
-        setDayAvailability(HANDYMAN_ID, storeDay, startIdx + MIN_HOUR, endIdx + MIN_HOUR + 1);
+      const runs = buildRuns(dayHours);
+      if (runs.length > 0) {
+        setDayAvailability(handymanId, jsDayToStoreDay(jsDay), runs);
       } else {
-        removeDayAvailability(HANDYMAN_ID, storeDay);
+        removeDayAvailability(handymanId, jsDayToStoreDay(jsDay));
       }
     }
     setIsEditing(false);
@@ -147,7 +155,7 @@ export default function HandymanSchedule() {
                     <Text className="text-[12px] font-semibold text-white">Save</Text>
                   </Pressable>
                 </>
-              ) : (
+              ) : mockEnv ? (
                 <Pressable
                   onPress={handleStartEditing}
                   className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5"
@@ -156,7 +164,7 @@ export default function HandymanSchedule() {
                   <Ionicons name="create-outline" size={14} color="#FFF" />
                   <Text className="text-[12px] font-semibold text-white">Edit</Text>
                 </Pressable>
-              )}
+              ) : null}
             </View>
           </View>
 
@@ -164,7 +172,7 @@ export default function HandymanSchedule() {
             bookings={scheduledBookings}
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
-            handymanId={HANDYMAN_ID}
+            handymanId={handymanId}
             availabilityRefreshKey={availRefreshKey}
             editing={isEditing}
             draftGrid={draftGrid ?? undefined}

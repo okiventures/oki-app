@@ -1,8 +1,9 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useHandymanSearch } from '../../src/hooks/useHandymanSearch';
 import { ServiceCategory } from '../../src/types';
@@ -13,6 +14,7 @@ import { LoadingSpinner } from '../../src/components/ui/LoadingSpinner';
 import { EmptyState } from '../../src/components/ui/EmptyState';
 import { formatCurrency } from '../../src/utils';
 import { MOCK_HANDYMEN } from '../../src/mocks';
+import { isMockEnv } from '../../src/services/bookingService';
 
 const DEFAULT_LAT = 10.3157;
 const DEFAULT_LNG = 123.8854;
@@ -31,18 +33,40 @@ const CATEGORY_PARAM_MAP: Record<string, ServiceCategory> = {
   general: ServiceCategory.General,
 };
 
-const HANDYMAN_PROFILE_MAP = new Map(MOCK_HANDYMEN.map((h) => [h.id, h]));
+const HANDYMAN_PROFILE_MAP = isMockEnv() ? new Map(MOCK_HANDYMEN.map((h) => [h.id, h])) : null;
 
 export default function SearchResults() {
   const { colors } = useTheme();
   const router = useRouter();
   const { category: categoryParam } = useLocalSearchParams<{ category: string }>();
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        if (!cancelled) {
+          setCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+        }
+      } catch {
+        // fall back to default coords
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const category = CATEGORY_PARAM_MAP[categoryParam ?? ''] ?? null;
 
   const { handymen, isLoading } = useHandymanSearch({
-    latitude: DEFAULT_LAT,
-    longitude: DEFAULT_LNG,
+    latitude: coords?.latitude ?? DEFAULT_LAT,
+    longitude: coords?.longitude ?? DEFAULT_LNG,
     radiusMeters: 10000,
     category,
   });
@@ -95,12 +119,12 @@ export default function SearchResults() {
             contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
             showsVerticalScrollIndicator={false}>
             <Text className="mb-3 text-[13px] font-medium text-gray-500">
-              {handymen.length} handyman{handymen.length !== 1 ? 'men' : ''} available — sorted by
+              {handymen.length} handyman{handymen.length === 1 ? '' : 'men'} available — sorted by
               distance
             </Text>
 
             {handymen.map((hm) => {
-              const profile = HANDYMAN_PROFILE_MAP.get(hm.handyman_id);
+              const profile = HANDYMAN_PROFILE_MAP?.get(hm.handyman_id) ?? null;
 
               return (
                 <Pressable
