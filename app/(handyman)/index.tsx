@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Switch, ScrollView } from 'react-native';
+import { View, Text, Switch, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -23,6 +23,7 @@ import { useBookings, ACTIVE_HANDYMAN_BOOKING_STATUSES } from '../../src/context
 import { ActiveJobWorkflowCardOverview } from '../../src/components/handyman/ActiveJobWorkflowCard';
 import { EarningsSummaryCard } from '../../src/components/handyman/EarningsSummaryCard';
 import { Preset } from '../../src/components/handyman/EarningsDateRangeFilter';
+import { formatDateTime } from '../../src/utils';
 
 const PRESET_RANGES: Record<string, () => { start: Date; end: Date }> = {
   'This Day': getTodayRange,
@@ -114,6 +115,28 @@ export default function HandymanDashboard() {
     ACTIVE_HANDYMAN_BOOKING_STATUSES.includes(booking.status)
   )[0];
 
+  // The soonest scheduled job that is not the one already rendered above. This
+  // card used to be hardcoded to "Plumbing Fix / Today, 2:00 PM / 123 Main St",
+  // which every handyman saw on every load whether or not they had any work —
+  // indistinguishable from a real booking, and it would have read as live data
+  // during manual testing.
+  const nextJob = useMemo(() => {
+    const now = Date.now();
+    return myBookings
+      .filter(
+        (booking) =>
+          booking.id !== activeJob?.id &&
+          booking.scheduledAt !== undefined &&
+          new Date(booking.scheduledAt).getTime() > now &&
+          ACTIVE_HANDYMAN_BOOKING_STATUSES.includes(booking.status)
+      )
+      .sort(
+        (left, right) =>
+          new Date(left.scheduledAt as string).getTime() -
+          new Date(right.scheduledAt as string).getTime()
+      )[0];
+  }, [myBookings, activeJob?.id]);
+
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
@@ -169,11 +192,26 @@ export default function HandymanDashboard() {
           </View>
 
           {/* Upcoming Schedule Snippet */}
-          <Text className="font-heading text-base text-gray-900">Next Job</Text>
-          <Card>
-            <Text className="text-[13px] font-semibold text-gray-800">Plumbing Fix</Text>
-            <Text className="mt-1 text-[11px] text-gray-500">Today, 2:00 PM • 123 Main St</Text>
-          </Card>
+          <View>
+            <Text className="font-heading mb-4 text-base text-gray-900">Next Job</Text>
+            {nextJob ? (
+              <Pressable onPress={() => router.push(`/job/${nextJob.id}`)}>
+                <Card>
+                  <Text className="text-[13px] font-semibold text-gray-800">
+                    {nextJob.serviceCategory}
+                  </Text>
+                  <Text className="mt-1 text-[11px] text-gray-500">
+                    {formatDateTime(nextJob.scheduledAt as string)}
+                    {nextJob.location ? ` • ${nextJob.location}` : ''}
+                  </Text>
+                </Card>
+              </Pressable>
+            ) : (
+              <Text className="mt-1 text-[13px] text-gray-500">
+                You have no upcoming scheduled jobs.
+              </Text>
+            )}
+          </View>
 
           {/* Earnings Overview */}
           <EarningsSummaryCard

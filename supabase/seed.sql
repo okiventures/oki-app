@@ -540,6 +540,14 @@ ON CONFLICT (booking_id) DO NOTHING;
 -- jobs_completed are then reconciled to it below — the earnings screen reads
 -- wallet_balance as the authoritative available balance, so a hand-picked
 -- number there would contradict the ledger it renders underneath.
+--
+-- Both statements are scoped to the three seeded handymen (Kyle, Cef, Rico).
+-- They used to run over every row in the table, which is harmless on
+-- `supabase db reset` (the database is empty) but destructive anywhere else:
+-- run against a shared dev or staging project, the INSERT invented payout rows
+-- for real captured payments and the UPDATE then overwrote real handymen's
+-- wallet_balance with the sum of their lifetime credits, ignoring every debit
+-- and withdrawal.
 -- ---------------------------------------------------------------------------
 INSERT INTO public.wallet_transactions (
   handyman_id, booking_id, payment_id, tx_type, amount, balance_after, description, created_at
@@ -559,7 +567,11 @@ FROM public.bookings b
 JOIN public.payments p ON p.booking_id = b.id
 JOIN public.services s ON s.id = b.service_id
 WHERE p.status = 'CAPTURED'
-  AND b.handyman_id IS NOT NULL
+  AND b.handyman_id IN (
+    'a0000000-0000-0000-0000-000000000002',  -- Kyle
+    'a0000000-0000-0000-0000-000000000004',  -- Cef
+    'a0000000-0000-0000-0000-000000000006'   -- Rico
+  )
   -- wallet_transactions has no unique constraint to conflict on, so re-running
   -- the seed would otherwise double every payout and inflate the balances.
   AND NOT EXISTS (
@@ -567,13 +579,18 @@ WHERE p.status = 'CAPTURED'
   );
 
 UPDATE public.handymen h
-SET wallet_balance = COALESCE(ledger.balance, 0),
-    jobs_completed = COALESCE(ledger.jobs, 0),
+SET wallet_balance = ledger.balance,
+    jobs_completed = ledger.jobs,
     updated_at     = now()
 FROM (
   SELECT handyman_id, SUM(amount) AS balance, COUNT(*) AS jobs
   FROM public.wallet_transactions
   WHERE tx_type = 'CREDIT'
+    AND handyman_id IN (
+      'a0000000-0000-0000-0000-000000000002',  -- Kyle
+      'a0000000-0000-0000-0000-000000000004',  -- Cef
+      'a0000000-0000-0000-0000-000000000006'   -- Rico
+    )
   GROUP BY handyman_id
 ) AS ledger
 WHERE ledger.handyman_id = h.id;

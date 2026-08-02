@@ -28,9 +28,12 @@ interface BookingsContextValue {
   error: string | null;
   refresh: () => Promise<void>;
   createBooking: (input: CreateBookingInput) => Promise<Booking>;
-  acceptBooking: (bookingId: string) => void;
-  declineBooking: (bookingId: string) => void;
-  advanceBooking: (bookingId: string) => void;
+  // These three are async and acceptBooking/declineBooking reject on a failed
+  // transition. Typed as void, callers could not await or catch them, so a
+  // rejection surfaced as an unhandled promise and the UI carried on.
+  acceptBooking: (bookingId: string) => Promise<void>;
+  declineBooking: (bookingId: string) => Promise<void>;
+  advanceBooking: (bookingId: string) => Promise<void>;
   cancelBooking: (bookingId: string) => Promise<CancelBookingResult>;
   getBookingById: (bookingId: string) => Booking | undefined;
   getNextHandymanAction: (status: BookingStatus) => WorkflowAction | null;
@@ -42,21 +45,13 @@ const BookingsContext = createContext<BookingsContextValue>({
   error: null,
   refresh: async () => {},
   createBooking: async () => MOCK_BOOKINGS[0],
-  acceptBooking: () => {},
-  declineBooking: () => {},
-  advanceBooking: () => {},
+  acceptBooking: async () => {},
+  declineBooking: async () => {},
+  advanceBooking: async () => {},
   cancelBooking: async () => ({ ok: false, message: 'This booking cannot be cancelled.' }),
   getBookingById: () => undefined,
   getNextHandymanAction: () => null,
 });
-
-function updateBooking(booking: Booking, status: BookingStatus): Booking {
-  return {
-    ...booking,
-    status,
-    updatedAt: new Date().toISOString(),
-  };
-}
 
 // A state transition only changes status/assignment/photos. Merge just those
 // from the API response so we don't clobber richer local fields (clientName,
@@ -217,16 +212,19 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
           Alert.alert('Cannot advance booking', message);
           return;
         }
-      }
 
-      setBookings((current) =>
-        current.map((booking) => {
-          if (booking.id !== bookingId) return booking;
-          const action = getWorkflowAction(booking.status);
-          if (!action) return booking;
-          return updateBooking(booking, action.nextStatus);
-        })
-      );
+        // Anything else — network failure, 401, 500 — means the server never
+        // moved the booking. This used to fall through to an optimistic local
+        // update, so the handyman's screen advanced to ARRIVED/WORK_STARTED
+        // while the booking sat unchanged in the database and on the client's
+        // screen, and the next action failed against a status nobody could see.
+        // With no session transitionBookingState resolves against the local
+        // mock instead of throwing, so the offline demo is unaffected.
+        Alert.alert(
+          'Could not update booking',
+          err instanceof Error ? err.message : 'Please check your connection and try again.'
+        );
+      }
     },
     [bookings]
   );

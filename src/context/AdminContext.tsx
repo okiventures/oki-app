@@ -147,7 +147,9 @@ function mapDisputeRow(row: Record<string, any>): AdminDispute {
     id: row.id,
     bookingId: row.booking_id,
     clientName: row.bookings?.client?.full_name ?? '',
-    handymanName: row.bookings?.handyman?.full_name ?? '',
+    // bookings.handyman_id points at handymen, so the name is one hop further
+    // down than the client's. Unassigned bookings embed handyman as null.
+    handymanName: row.bookings?.handyman?.user?.full_name ?? '',
     reason: row.description ?? row.issue_type ?? '',
     status: DB_DISPUTE_STATUS_TO_UI[row.status] ?? DisputeStatus.Open,
     createdAt: row.created_at,
@@ -196,7 +198,15 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       supabase
         .from('disputes')
         .select(
-          'id, booking_id, issue_type, description, status, created_at, updated_at, bookings!booking_id(client:users!client_id(full_name), handyman:users!handyman_id(full_name))'
+          'id, booking_id, issue_type, description, status, created_at, updated_at, ' +
+            'bookings!booking_id(' +
+            'client:users!client_id(full_name),' +
+            // bookings.handyman_id references handymen(id), not users(id).
+            // `users!handyman_id` named a constraint that does not exist, and a
+            // bad hint fails the WHOLE request with PGRST200 — the console showed
+            // an empty disputes tab rather than an error.
+            'handyman:handymen!handyman_id(user:users!id(full_name))' +
+            ')'
         )
         .order('created_at', { ascending: false }),
     ]);
