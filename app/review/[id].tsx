@@ -9,7 +9,8 @@ import { Button } from '../../src/components/ui/Button';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { StarRatingInput } from '../../src/components/ui/StarRatingInput';
 import { MOCK_BOOKING_DETAILS } from '../../src/mocks/bookingDetails';
-import { addReview } from '../../src/mocks/reviews';
+import { MOCK_CLIENT, MOCK_HANDYMAN } from '../../src/mocks';
+import { submitReview, ReviewSubmissionError } from '../../src/services/reviewService';
 
 const MAX_COMMENT_LENGTH = 500;
 
@@ -30,6 +31,7 @@ export default function ReviewBookingScreen() {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -50,27 +52,39 @@ export default function ReviewBookingScreen() {
     }
   }, [showSuccess, scaleAnim, fadeAnim, router]);
 
-  const canSubmit = rating > 0;
+  const canSubmit = rating > 0 && !submitting;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit || !booking) return;
     setSubmitting(true);
+    setErrorMessage(null);
 
+    // Client reviews the handyman; handyman reviews the client.
+    const reviewerId = isClient
+      ? (session?.user?.id ?? MOCK_CLIENT.id)
+      : (session?.user?.id ?? MOCK_HANDYMAN.id);
     const revieweeId = isClient ? booking.handymanId : booking.clientId;
 
-    addReview({
-      bookingId: booking.id,
-      reviewerId: isClient ? booking.clientId : booking.handymanId,
-      reviewerName: isClient ? booking.clientName : booking.handymanName,
-      revieweeId,
-      rating,
-      comment,
-    });
-
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      await submitReview({
+        bookingId: booking.id,
+        reviewerId,
+        revieweeId,
+        rating,
+        comment,
+      });
       setShowSuccess(true);
-    }, 800);
+    } catch (err) {
+      if (err instanceof ReviewSubmissionError && err.status === 409) {
+        setErrorMessage('You have already reviewed this booking.');
+      } else {
+        setErrorMessage(
+          err instanceof Error ? err.message : 'Could not submit review. Please try again.'
+        );
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (showSuccess) {
@@ -96,7 +110,7 @@ export default function ReviewBookingScreen() {
             <Text
               className="text-center text-[14px] leading-5"
               style={{ color: colors.ui.textMuted }}>
-              Thank you for your feedback! We&apos;re glad you had a great experience.
+              Thank you for your feedback! We are glad you had a great experience.
             </Text>
           ) : (
             <Text
@@ -119,7 +133,7 @@ export default function ReviewBookingScreen() {
             Booking Not Found
           </Text>
           <Text className="mt-2 text-center text-[14px]" style={{ color: colors.ui.textMuted }}>
-            We couldn&apos;t find the booking you&apos;re looking for.
+            We could not find the booking you are looking for.
           </Text>
           <View className="mt-6 w-full">
             <Button label="Go Back" variant="primary" fullWidth onPress={() => router.back()} />
@@ -199,6 +213,14 @@ export default function ReviewBookingScreen() {
               <Text className="mt-1 text-right text-[11px]" style={{ color: colors.ui.textLight }}>
                 {comment.length}/{MAX_COMMENT_LENGTH}
               </Text>
+            </View>
+          )}
+
+          {errorMessage && (
+            <View
+              className="mt-6 rounded-xl border px-4 py-3"
+              style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA' }}>
+              <Text className="text-[13px] font-medium text-red-700">{errorMessage}</Text>
             </View>
           )}
         </ScrollView>

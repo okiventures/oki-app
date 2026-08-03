@@ -21,7 +21,9 @@ import {
 import { useBookings, ACTIVE_HANDYMAN_BOOKING_STATUSES } from '../../src/context/BookingsContext';
 import { ActiveJobWorkflowCardOverview } from '../../src/components/handyman/ActiveJobWorkflowCard';
 import { EarningsSummaryCard } from '../../src/components/handyman/EarningsSummaryCard';
+import { RatingPromptCard } from '../../src/components/review/RatingPromptCard';
 import { Preset } from '../../src/components/handyman/EarningsDateRangeFilter';
+import { hasReviewed, isBookingRateable } from '../../src/services/reviewService';
 
 const PRESET_RANGES: Record<string, () => { start: Date; end: Date }> = {
   'This Day': getTodayRange,
@@ -106,6 +108,22 @@ export default function HandymanDashboard() {
     ACTIVE_HANDYMAN_BOOKING_STATUSES.includes(booking.status)
   )[0];
 
+  // ── Rating prompt: show for a PAID booking not yet reviewed by this handyman ──
+  const [reviewPromptBooking, setReviewPromptBooking] = useState<any>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const rateable = myBookings.find((b) => isBookingRateable(b.status));
+      if (!rateable || !handymanId) return;
+      const reviewed = await hasReviewed(rateable.id, handymanId);
+      if (!cancelled && !reviewed) setReviewPromptBooking(rateable);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [myBookings, handymanId]);
+
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
@@ -147,6 +165,15 @@ export default function HandymanDashboard() {
               trackColor={{ true: colors.primary['600'] }}
             />
           </Card>
+
+          {reviewPromptBooking ? (
+            <RatingPromptCard
+              targetName={reviewPromptBooking.clientName || 'your client'}
+              serviceCategory={reviewPromptBooking.serviceCategory}
+              onRate={() => router.push(`/review/${reviewPromptBooking.id}`)}
+              onDismiss={() => setReviewPromptBooking(null)}
+            />
+          ) : null}
 
           {/* Active Jobs */}
           <View>

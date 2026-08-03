@@ -231,7 +231,7 @@ CREATE POLICY reviews_insert_participant ON reviews
     AND EXISTS (
       SELECT 1 FROM bookings b
       WHERE b.id = booking_id
-        AND b.status IN ('COMPLETED', 'PAID')
+        AND b.status = 'PAID'
         AND (b.client_id = auth.uid() OR b.handyman_id = auth.uid())
     )
   );

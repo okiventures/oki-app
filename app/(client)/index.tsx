@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +16,8 @@ import { CategoryGrid } from '../../src/components/home/CategoryGrid';
 import { QuickBookCards } from '../../src/components/home/QuickBookCards';
 import { PromoCard } from '../../src/components/home/PromoCard';
 import { RecentActivity } from '../../src/components/home/RecentActivity';
+import { RatingPromptCard } from '../../src/components/review/RatingPromptCard';
+import { hasReviewed, isBookingRateable } from '../../src/services/reviewService';
 
 import {
   MOCK_CLIENT,
@@ -57,6 +59,22 @@ export default function ClientHome() {
       b.status !== BookingStatus.Completed &&
       b.status !== BookingStatus.Paid
   );
+
+  // ── Rating prompt: show for a PAID booking not yet reviewed by this client ──
+  const [reviewPromptBooking, setReviewPromptBooking] = useState<any>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const rateable = myBookings.find((b) => isBookingRateable(b.status));
+      if (!rateable) return;
+      const reviewed = await hasReviewed(rateable.id, clientId);
+      if (!cancelled && !reviewed) setReviewPromptBooking(rateable);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [myBookings, clientId]);
 
   return (
     <SafeAreaView
@@ -125,8 +143,8 @@ export default function ClientHome() {
                   {latestPending.description || latestPending.location}
                 </Text>
                 <Text className="mt-1.5 text-xs text-amber-600">
-                  We&apos;re finding the best available professional for you. You&apos;ll be
-                  notified once someone accepts.
+                  We are finding the best available professional for you. You will be notified once
+                  someone accepts.
                 </Text>
               </View>
             </View>
@@ -135,6 +153,15 @@ export default function ClientHome() {
               booking={latestActive}
               onTrackPress={() => {}}
               onViewDetailsPress={() => router.push(`/booking/${latestActive.id}`)}
+            />
+          ) : null}
+
+          {reviewPromptBooking ? (
+            <RatingPromptCard
+              targetName={reviewPromptBooking.handymanName || 'your handyman'}
+              serviceCategory={reviewPromptBooking.serviceCategory}
+              onRate={() => router.push(`/review/${reviewPromptBooking.id}`)}
+              onDismiss={() => setReviewPromptBooking(null)}
             />
           ) : null}
 
