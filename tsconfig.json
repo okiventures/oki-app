@@ -5,6 +5,7 @@
     "baseUrl": ".",
     "allowImportingTsExtensions": true,
     "ignoreDeprecations": "5.0",
+    "types": ["jest"],
     "paths": {
       "@/*": ["src/*"]
     }

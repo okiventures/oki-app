@@ -1,11 +1,11 @@
 import { Review } from '../../src/types';
 
-const mockGetSession = jest.fn();
+const mockGetUser = jest.fn();
 const mockInsert = jest.fn();
 
 jest.mock('../../src/lib/supabase', () => ({
   supabase: {
-    auth: { getSession: (...args: unknown[]) => mockGetSession(...args) },
+    auth: { getUser: (...args: unknown[]) => mockGetUser(...args) },
     from: (...args: unknown[]) => {
       if (args[0] === 'reviews') {
         return mockInsert();
@@ -44,9 +44,11 @@ describe('submitReview (real backend path)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // The reviewer is taken from the session, never from the caller.
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
   });
 
-  it('inserts a review and maps the returned row', async () => {
+  it('inserts a review pinned to the session user and maps the returned row', async () => {
     const chain = {
       insert: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
@@ -54,7 +56,7 @@ describe('submitReview (real backend path)', () => {
         data: {
           id: 'rev-1',
           booking_id: 'b1',
-          reviewer_id: 'c1',
+          reviewer_id: 'u1',
           reviewee_id: 'h1',
           rating: 5,
           comment: 'Great work',
@@ -68,8 +70,6 @@ describe('submitReview (real backend path)', () => {
 
     const result = await submitReview({
       bookingId: 'b1',
-      reviewerId: 'c1',
-      reviewerName: 'Client A',
       revieweeId: 'h1',
       rating: 5,
       comment: 'Great work',
@@ -77,7 +77,7 @@ describe('submitReview (real backend path)', () => {
 
     expect(chain.insert).toHaveBeenCalledWith({
       booking_id: 'b1',
-      reviewer_id: 'c1',
+      reviewer_id: 'u1',
       reviewee_id: 'h1',
       rating: 5,
       comment: 'Great work',
@@ -85,12 +85,25 @@ describe('submitReview (real backend path)', () => {
     expect(result).toMatchObject<Partial<Review>>({
       id: 'rev-1',
       bookingId: 'b1',
-      reviewerId: 'c1',
+      reviewerId: 'u1',
       revieweeId: 'h1',
       rating: 5,
       comment: 'Great work',
       createdAt: '2026-08-04T12:00:00.000Z',
     });
+  });
+
+  it('throws when no user is signed in', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null } });
+
+    await expect(
+      submitReview({
+        bookingId: 'b1',
+        revieweeId: 'h1',
+        rating: 4,
+        comment: '',
+      })
+    ).rejects.toThrow('You must be signed in to leave a review.');
   });
 
   it('translates duplicate-review unique violation into a friendly error', async () => {
@@ -107,16 +120,14 @@ describe('submitReview (real backend path)', () => {
     await expect(
       submitReview({
         bookingId: 'b1',
-        reviewerId: 'c1',
-        reviewerName: 'Client A',
         revieweeId: 'h1',
         rating: 4,
         comment: '',
       })
-    ).rejects.toThrow('You have already submitted a review for this booking.');
+    ).rejects.toThrow('You have already reviewed this booking.');
   });
 
-  it('rethrows a generic database error with its message', async () => {
+  it('translates RLS rejection into a not-yet-reviewable error', async () => {
     const chain = {
       insert: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
@@ -130,12 +141,31 @@ describe('submitReview (real backend path)', () => {
     await expect(
       submitReview({
         bookingId: 'b1',
-        reviewerId: 'c1',
-        reviewerName: 'Client A',
         revieweeId: 'h1',
         rating: 4,
         comment: '',
       })
-    ).rejects.toThrow('row-level security: permission denied');
+    ).rejects.toThrow('This booking cannot be reviewed yet.');
+  });
+
+  it('rethrows a generic database error with its message', async () => {
+    const chain = {
+      insert: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: null,
+        error: { code: '50000', message: 'internal error' },
+      }),
+    };
+    mockInsert.mockReturnValue(chain);
+
+    await expect(
+      submitReview({
+        bookingId: 'b1',
+        revieweeId: 'h1',
+        rating: 4,
+        comment: 'A comment',
+      })
+    ).rejects.toThrow('Failed to submit review: internal error');
   });
 });
