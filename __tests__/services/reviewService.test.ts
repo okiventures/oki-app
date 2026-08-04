@@ -139,7 +139,7 @@ describe('flagReview', () => {
       data: { session: { access_token: 'token-123' } },
     });
     const fetchMock = jest.fn().mockResolvedValue({ ok: true });
-    global.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     await flagReview('r1', 'Spam');
 
@@ -158,7 +158,7 @@ describe('flagReview', () => {
     (mockedSupabase.auth.getSession as jest.Mock).mockResolvedValue({
       data: { session: { access_token: 'token-123' } },
     });
-    global.fetch = jest.fn().mockResolvedValue({
+    globalThis.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 409,
       json: async () => ({ message: 'You have already flagged this review' }),
@@ -179,7 +179,7 @@ describe('fetchFlaggedReviews', () => {
     (mockedSupabase.auth.getSession as jest.Mock).mockResolvedValue({
       data: { session: { access_token: 'token-123' } },
     });
-    global.fetch = jest.fn().mockResolvedValue({
+    globalThis.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         data: {
@@ -228,7 +228,7 @@ describe('resolveReviewFlag', () => {
       data: { session: { access_token: 'token-123' } },
     });
     const fetchMock = jest.fn().mockResolvedValue({ ok: true });
-    global.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     await resolveReviewFlag('f1', 'DISMISS');
 
@@ -246,7 +246,7 @@ describe('resolveReviewFlag', () => {
     (mockedSupabase.auth.getSession as jest.Mock).mockResolvedValue({
       data: { session: { access_token: 'token-123' } },
     });
-    global.fetch = jest.fn().mockResolvedValue({
+    globalThis.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 500,
       json: async () => ({ message: 'db down' }),
