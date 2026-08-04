@@ -4,11 +4,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useAuth } from '../../src/context/AuthContext';
 import { useProfile } from '../../src/hooks/useProfile';
+import { useReviews } from '../../src/hooks/useReviews';
 import { useEarnings } from '../../src/hooks/useEarnings';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
+import { Tabs } from '../../src/components/ui/Tabs';
+import { EmptyState } from '../../src/components/ui/EmptyState';
+import { LoadingSpinner } from '../../src/components/ui/LoadingSpinner';
+import { RatingDisplay } from '../../src/components/ui/RatingDisplay';
+import { ReviewCard } from '../../src/components/cards/ReviewCard';
+import { ReviewFlagModal } from '../../src/components/features/ReviewFlagModal';
+import { flagReview } from '../../src/services/reviewService';
+import { Review } from '../../src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { MOCK_HANDYMAN } from '../../src/mocks';
 import { isMockEnv } from '../../src/services/bookingService';
@@ -27,6 +36,25 @@ export default function HandymanProfile() {
   const router = useRouter();
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Reviews (Week 13): aggregate display + paginated, sortable list
+  // Only fall back to the mock id when running against mock data — the real
+  // backend uses UUID ids, and 'h1' would break the reviewee_id query.
+  const profileUserId = profile?.user?.id ?? (isMockEnv() ? MOCK_HANDYMAN.id : undefined);
+  const {
+    reviews: profileReviews,
+    isLoading: reviewsLoading,
+    isLoadingMore: reviewsLoadingMore,
+    error: reviewsError,
+    hasMore: reviewsHasMore,
+    sort: reviewsSort,
+    setSort: setReviewsSort,
+    loadMore: loadMoreReviews,
+  } = useReviews(profileUserId);
+  const [flagTarget, setFlagTarget] = useState<Review | null>(null);
+  const [flagSubmitting, setFlagSubmitting] = useState(false);
+  const [flagError, setFlagError] = useState<string | null>(null);
+  const [flagSuccess, setFlagSuccess] = useState(false);
 
   // Use real profile data when available, fall back to mock for dev/testing
   // As on the client side: fall back to the demo handyman only when there is no
@@ -61,6 +89,22 @@ export default function HandymanProfile() {
     } finally {
       setIsLoggingOut(false);
       setLogoutModalVisible(false);
+    }
+  };
+
+  const handleSubmitFlag = async (reason: string) => {
+    if (!flagTarget) return;
+    setFlagSubmitting(true);
+    setFlagError(null);
+    setFlagSuccess(false);
+    try {
+      await flagReview(flagTarget.id, reason);
+      setFlagSuccess(true);
+      setFlagTarget(null);
+    } catch (e) {
+      setFlagError(e instanceof Error ? e.message : 'Failed to flag review');
+    } finally {
+      setFlagSubmitting(false);
     }
   };
 
@@ -148,6 +192,74 @@ export default function HandymanProfile() {
               onUpdatePrice={updateServicePrice}
               onRemove={removeService}
             />
+          </View>
+
+          {/* Reviews (Week 13) */}
+          <View className="mt-6">
+            <View className="mb-3 flex-row items-center justify-between px-1">
+              <Text className="font-heading text-lg text-gray-900">Reviews</Text>
+              <RatingDisplay rating={displayRating} reviewCount={displayReviewCount} size="md" />
+            </View>
+
+            <Tabs<'Most Recent' | 'Top Rated'>
+              tabs={['Most Recent', 'Top Rated']}
+              activeTab={reviewsSort === 'rating' ? 'Top Rated' : 'Most Recent'}
+              onChangeTab={(label) => setReviewsSort(label === 'Top Rated' ? 'rating' : 'recent')}
+              containerStyle={{ marginBottom: 12 }}
+            />
+
+            {reviewsLoading ? (
+              <View className="py-10">
+                <LoadingSpinner label="Loading reviews…" />
+              </View>
+            ) : reviewsError ? (
+              <Card className="items-center py-6">
+                <Text className="text-[13px] text-gray-500">{reviewsError}</Text>
+              </Card>
+            ) : profileReviews.length === 0 ? (
+              <Card className="py-6">
+                <EmptyState
+                  icon="star-outline"
+                  title="No reviews yet"
+                  message="Reviews from completed jobs will appear here."
+                />
+              </Card>
+            ) : (
+              <>
+                <Card className="px-4 py-2">
+                  {profileReviews.map((review) => (
+                    <ReviewCard
+                      key={review.id}
+                      review={review}
+                      onFlag={(r) => {
+                        setFlagError(null);
+                        setFlagSuccess(false);
+                        setFlagTarget(r);
+                      }}
+                    />
+                  ))}
+                  {reviewsLoadingMore ? (
+                    <View className="py-3">
+                      <LoadingSpinner size="small" />
+                    </View>
+                  ) : null}
+                </Card>
+                {reviewsHasMore && !reviewsLoadingMore ? (
+                  <Pressable
+                    accessibilityLabel="Load more reviews"
+                    onPress={loadMoreReviews}
+                    android_ripple={{ color: 'rgba(0,0,0,0.06)' }}
+                    style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                    className="mt-3 items-center rounded-2xl border border-gray-200 bg-white py-3">
+                    <Text
+                      className="text-[13px] font-semibold"
+                      style={{ color: colors.primary['600'] }}>
+                      Load more reviews
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </>
+            )}
           </View>
 
           <Card className="mt-4 overflow-hidden p-0">
@@ -251,6 +363,26 @@ export default function HandymanProfile() {
             onPress={() => setLogoutModalVisible(false)}
           />
         </View>
+      </Modal>
+
+      <ReviewFlagModal
+        visible={flagTarget !== null}
+        review={flagTarget}
+        submitting={flagSubmitting}
+        error={flagError}
+        onClose={() => {
+          setFlagTarget(null);
+          setFlagError(null);
+        }}
+        onSubmit={handleSubmitFlag}
+      />
+
+      <Modal visible={flagSuccess} onClose={() => setFlagSuccess(false)} title="Review flagged">
+        <Text className="mb-4 text-sm" style={{ color: colors.ui.textMuted }}>
+          Thanks for keeping Oki safe. Our team will review this review shortly. It is hidden from
+          public profiles while it is under review.
+        </Text>
+        <Button label="OK" variant="tertiary" fullWidth onPress={() => setFlagSuccess(false)} />
       </Modal>
     </SafeAreaView>
   );

@@ -12,6 +12,41 @@ schema_paths = []
 enabled = true
 sql_paths = ["./seed.sql"]
 
+# ─── Auth (local dev only — real credentials go in the Supabase Dashboard) ───
+# Uncomment and fill in to test SMS/Email OTP and Google OAuth with `supabase start`.
+# See .env.example for where to find each value.
+
+# [auth]
+# site_url = "http://127.0.0.1:54321"
+# additional_redirect_urls = ["oki://login"]
+# enable_confirmations = true
+
+# [auth.email]
+# enable_signup = true
+# enable_confirmations = true
+# [auth.email.smtp]
+# host = "smtp.resend.com"
+# port = 465
+# user = "resend"
+# pass = "re_xxxxxxxx"
+# sender_name = "Oki"
+# sender_email = "onboarding@resend.dev"
+
+# [auth.sms]
+# enable_signup = true
+# enable_confirmations = false
+# [auth.sms.twilio]
+# enabled = true
+# account_sid = "ACxxxxxxxx"
+# message_service_sid = "MGxxxxxxxx"
+# auth_token = "your_auth_token"
+
+# [auth.external.google]
+# enabled = true
+# client_id = "xxxx.apps.googleusercontent.com"
+# secret = "GOCSPX-xxxx"
+# redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
+
 [functions]
 [functions.kyc-upload]
 verify_jwt = false
@@ -61,4 +96,16 @@ import_map = "./import_map.json"
 # bearer (constant-time compare); the cron job in migration 012 supplies it.
 [functions.notification-worker]
 verify_jwt = false
+import_map = "./import_map.json"
+
+[functions.flag-review]
+verify_jwt = true
+import_map = "./import_map.json"
+
+[functions.reviews-admin-queue]
+verify_jwt = true
+import_map = "./import_map.json"
+
+[functions.review-flag-action]
+verify_jwt = true
 import_map = "./import_map.json"

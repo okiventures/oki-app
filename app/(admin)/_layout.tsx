@@ -42,6 +42,13 @@ export default function AdminLayout() {
       activeIcon: 'warning',
       route: '/(admin)/disputes',
     },
+    {
+      key: 'reviews',
+      label: 'Reviews',
+      icon: 'star-outline',
+      activeIcon: 'star',
+      route: '/(admin)/reviews',
+    },
   ];
 
   return (
@@ -51,6 +58,7 @@ export default function AdminLayout() {
       <Tabs.Screen name="bookings" />
       <Tabs.Screen name="transactions" />
       <Tabs.Screen name="disputes" />
+      <Tabs.Screen name="reviews" />
     </Tabs>
   );
 }
