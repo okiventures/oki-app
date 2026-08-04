@@ -6,8 +6,14 @@ import {
   requestPasswordReset,
   confirmPasswordReset,
   ensureUserProfile,
+  sendEmailOtp,
+  sendPhoneOtp,
+  verifyOtp,
+  signInWithGoogle,
 } from '../../src/services/authService';
 import { supabase } from '../../src/lib/supabase';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 
 jest.mock('../../src/lib/supabase', () => {
   const auth = {
@@ -19,6 +25,9 @@ jest.mock('../../src/lib/supabase', () => {
     setSession: jest.fn(),
     updateUser: jest.fn(),
     getSession: jest.fn(),
+    signInWithOtp: jest.fn(),
+    signInWithOAuth: jest.fn(),
+    exchangeCodeForSession: jest.fn(),
   };
 
   const from = jest.fn().mockReturnValue({
@@ -32,6 +41,14 @@ jest.mock('../../src/lib/supabase', () => {
 
   return { supabase: { auth, from } };
 });
+
+jest.mock('expo-web-browser', () => ({
+  openAuthSessionAsync: jest.fn(),
+}));
+
+jest.mock('expo-linking', () => ({
+  createURL: jest.fn(() => 'oki://login'),
+}));
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -470,5 +487,199 @@ describe('ensureUserProfile', () => {
     await ensureUserProfile({ ...params, userType: 'handyman' });
 
     expect(supabase.from).toHaveBeenCalledWith('handymen');
+  });
+});
+
+// ─── sendEmailOtp ────────────────────────────────────────────────────────────
+
+describe('sendEmailOtp', () => {
+  it('sends email OTP with shouldCreateUser', async () => {
+    (supabase.auth.signInWithOtp as jest.Mock).mockResolvedValue({ data: {}, error: null });
+
+    await sendEmailOtp('test@oki.test');
+
+    expect(supabase.auth.signInWithOtp).toHaveBeenCalledWith({
+      email: 'test@oki.test',
+      options: { shouldCreateUser: true },
+    });
+  });
+
+  it('throws on error', async () => {
+    (supabase.auth.signInWithOtp as jest.Mock).mockResolvedValue({
+      data: {},
+      error: { message: 'Email not allowed' },
+    });
+
+    await expect(sendEmailOtp('test@oki.test')).rejects.toThrow('Email not allowed');
+  });
+});
+
+// ─── sendPhoneOtp ────────────────────────────────────────────────────────────
+
+describe('sendPhoneOtp', () => {
+  it('sends SMS OTP with phone', async () => {
+    (supabase.auth.signInWithOtp as jest.Mock).mockResolvedValue({ data: {}, error: null });
+
+    await sendPhoneOtp('09171234567');
+
+    expect(supabase.auth.signInWithOtp).toHaveBeenCalledWith({ phone: '09171234567' });
+  });
+
+  it('throws on error', async () => {
+    (supabase.auth.signInWithOtp as jest.Mock).mockResolvedValue({
+      data: {},
+      error: { message: 'Phone not allowed' },
+    });
+
+    await expect(sendPhoneOtp('09171234567')).rejects.toThrow('Phone not allowed');
+  });
+});
+
+// ─── verifyOtp ───────────────────────────────────────────────────────────────
+
+describe('verifyOtp', () => {
+  const session = {
+    access_token: 'at',
+    refresh_token: 'rt',
+    expires_in: 3600,
+    expires_at: Date.now() / 1000 + 3600,
+    user: { id: 'u1', email: 'test@oki.test', user_metadata: { user_type: 'client' } },
+  };
+
+  it('verifies email OTP and returns a formatted session', async () => {
+    (supabase.auth.verifyOtp as jest.Mock).mockResolvedValue({
+      data: { session },
+      error: null,
+    });
+
+    const result = await verifyOtp({ email: 'test@oki.test', token: '123456' });
+
+    expect(supabase.auth.verifyOtp).toHaveBeenCalledWith({
+      email: 'test@oki.test',
+      token: '123456',
+      type: 'email',
+    });
+    expect(result.accessToken).toBe('at');
+    expect(result.user.email).toBe('test@oki.test');
+  });
+
+  it('verifies SMS OTP and returns a formatted session', async () => {
+    (supabase.auth.verifyOtp as jest.Mock).mockResolvedValue({
+      data: { session: { ...session, user: { ...session.user, email: null } } },
+      error: null,
+    });
+
+    const result = await verifyOtp({ phone: '09171234567', token: '654321' });
+
+    expect(supabase.auth.verifyOtp).toHaveBeenCalledWith({
+      phone: '09171234567',
+      token: '654321',
+      type: 'sms',
+    });
+    expect(result.accessToken).toBe('at');
+  });
+
+  it('throws when neither email nor phone is provided', async () => {
+    await expect(verifyOtp({ token: '123456' })).rejects.toThrow(
+      'Either email or phone is required'
+    );
+  });
+
+  it('throws on verifyOtp error', async () => {
+    (supabase.auth.verifyOtp as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { message: 'Invalid code' },
+    });
+
+    await expect(verifyOtp({ email: 'test@oki.test', token: '000000' })).rejects.toThrow(
+      'Invalid code'
+    );
+  });
+
+  it('throws when no session is returned', async () => {
+    (supabase.auth.verifyOtp as jest.Mock).mockResolvedValue({ data: {}, error: null });
+
+    await expect(verifyOtp({ email: 'test@oki.test', token: '123456' })).rejects.toThrow(
+      'No session returned'
+    );
+  });
+});
+
+// ─── signInWithGoogle ────────────────────────────────────────────────────────
+
+describe('signInWithGoogle', () => {
+  it('opens browser and exchanges the auth code for a session', async () => {
+    (supabase.auth.signInWithOAuth as jest.Mock).mockResolvedValue({
+      data: { url: 'https://accounts.google.com/oauth/authorize?foo=bar' },
+      error: null,
+    });
+    (WebBrowser.openAuthSessionAsync as jest.Mock).mockResolvedValue({
+      type: 'success',
+      url: 'oki://login?code=auth-code-123',
+    });
+    (supabase.auth.exchangeCodeForSession as jest.Mock).mockResolvedValue({
+      data: { session: {} },
+      error: null,
+    });
+
+    await signInWithGoogle();
+
+    expect(Linking.createURL).toHaveBeenCalledWith('/login');
+    expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: 'google',
+      options: { redirectTo: 'oki://login', skipBrowserRedirect: true },
+    });
+    expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalledWith(
+      'https://accounts.google.com/oauth/authorize?foo=bar',
+      'oki://login'
+    );
+    expect(supabase.auth.exchangeCodeForSession).toHaveBeenCalledWith('auth-code-123');
+  });
+
+  it('throws on signInWithOAuth error', async () => {
+    (supabase.auth.signInWithOAuth as jest.Mock).mockResolvedValue({
+      data: {},
+      error: { message: 'Provider not enabled' },
+    });
+
+    await expect(signInWithGoogle()).rejects.toThrow('Provider not enabled');
+  });
+
+  it('throws when no OAuth URL is returned', async () => {
+    (supabase.auth.signInWithOAuth as jest.Mock).mockResolvedValue({
+      data: { url: null },
+      error: null,
+    });
+
+    await expect(signInWithGoogle()).rejects.toThrow('No OAuth URL returned');
+  });
+
+  it('throws when code exchange fails', async () => {
+    (supabase.auth.signInWithOAuth as jest.Mock).mockResolvedValue({
+      data: { url: 'https://accounts.google.com/oauth/authorize' },
+      error: null,
+    });
+    (WebBrowser.openAuthSessionAsync as jest.Mock).mockResolvedValue({
+      type: 'success',
+      url: 'oki://login?code=bad-code',
+    });
+    (supabase.auth.exchangeCodeForSession as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { message: 'Invalid code' },
+    });
+
+    await expect(signInWithGoogle()).rejects.toThrow('Invalid code');
+  });
+
+  it('does not exchange when browser flow is cancelled', async () => {
+    (supabase.auth.signInWithOAuth as jest.Mock).mockResolvedValue({
+      data: { url: 'https://accounts.google.com/oauth/authorize' },
+      error: null,
+    });
+    (WebBrowser.openAuthSessionAsync as jest.Mock).mockResolvedValue({ type: 'cancel' });
+
+    await signInWithGoogle();
+
+    expect(supabase.auth.exchangeCodeForSession).not.toHaveBeenCalled();
   });
 });

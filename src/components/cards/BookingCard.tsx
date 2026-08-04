@@ -95,6 +95,9 @@ export function BookingCard({
     statusLabel = BOOKING_STATUS_LABELS[status] ?? status;
   }
 
+  // Reviews can be left for any terminal (completed or paid) booking.
+  const isReviewable = status === 'Completed' || status === 'Paid';
+
   const isClickable = typeof onPress === 'function';
 
   return (
@@ -159,7 +162,7 @@ export function BookingCard({
           </Text>
         </View>
 
-        {status === 'Completed' && (
+        {isReviewable && (
           <Pressable
             onPress={rating > 0 ? undefined : onReview}
             disabled={!onReview || rating > 0}
@@ -175,7 +178,7 @@ export function BookingCard({
               ))}
             </View>
             <Text className="text-[11px] font-medium" style={{ color: colors.ui.textLight }}>
-              {rating > 0 ? `${rating}.0` : 'Your rating'}
+              {rating > 0 ? rating.toFixed(1) : 'Your rating'}
             </Text>
           </Pressable>
         )}

@@ -1,16 +1,18 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../ui/Avatar';
 import { RatingDisplay } from '../ui/RatingDisplay';
 import { Review } from '../../types';
-import { formatDate, truncate } from '../../utils';
+import { formatRelativeTime, truncate } from '../../utils';
 
 interface ReviewCardProps {
   review: Review;
   expanded?: boolean;
+  onFlag?: (review: Review) => void;
 }
 
-export function ReviewCard({ review, expanded = false }: ReviewCardProps) {
+export function ReviewCard({ review, expanded = false, onFlag }: ReviewCardProps) {
   const text = expanded ? review.comment : truncate(review.comment, 120);
 
   return (
@@ -19,9 +21,18 @@ export function ReviewCard({ review, expanded = false }: ReviewCardProps) {
         <Avatar name={review.reviewerName} photoUrl={review.reviewerPhotoUrl} size={38} />
         <View className="ml-2.5 flex-1">
           <Text className="text-[13px] font-semibold text-gray-900">{review.reviewerName}</Text>
-          <Text className="text-[11px] text-gray-400">{formatDate(review.createdAt)}</Text>
+          <Text className="text-[11px] text-gray-400">{formatRelativeTime(review.createdAt)}</Text>
         </View>
         <RatingDisplay rating={review.rating} showCount={false} size="sm" />
+        {onFlag && (
+          <TouchableOpacity
+            accessibilityLabel={`Flag review by ${review.reviewerName}`}
+            onPress={() => onFlag(review)}
+            className="ml-2 rounded-full p-1.5"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="flag-outline" size={15} color="#9CA3AF" />
+          </TouchableOpacity>
+        )}
       </View>
       {review.comment ? <Text className="text-[13px] leading-5 text-gray-700">{text}</Text> : null}
     </View>

@@ -1,10 +1,13 @@
 import {
-  submitReview,
-  hasReviewed,
   fetchReviewsForUser,
   fetchMyReviewForBooking,
+  submitReview,
+  hasReviewed,
   resolveReviewDirection,
   isBookingRateable,
+  flagReview,
+  fetchFlaggedReviews,
+  resolveReviewFlag,
   ReviewSubmissionError,
 } from '../../src/services/reviewService';
 import { isMockEnv } from '../../src/services/bookingService';
@@ -12,7 +15,7 @@ import { Booking, BookingStatus, Review } from '../../src/types';
 
 jest.mock('../../src/lib/supabase', () => ({
   supabase: {
-    auth: { getUser: jest.fn() },
+    auth: { getSession: jest.fn(), getUser: jest.fn() },
     functions: { invoke: jest.fn() },
     from: jest.fn(),
   },
@@ -26,6 +29,18 @@ jest.mock('../../src/services/bookingService', () => {
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { supabase: mockedSupabase } = require('../../src/lib/supabase');
 
+const USER_UUID = '00000000-0000-0000-0000-000000000001';
+
+function buildRangeChain(resolved: { data: unknown; error: { message: string } | null }) {
+  const chain = {
+    select: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    order: jest.fn().mockReturnThis(),
+    range: jest.fn().mockResolvedValue(resolved),
+  };
+  return chain;
+}
+
 /** Mirrors the FunctionsHttpError shape the supabase-js client throws. */
 function edgeError(status: number, body: string) {
   const err = new Error('Edge Function returned a non-2xx status code') as Error & {
@@ -38,6 +53,95 @@ function edgeError(status: number, body: string) {
 beforeEach(() => {
   jest.clearAllMocks();
   (isMockEnv as jest.Mock).mockReturnValue(true);
+});
+
+describe('fetchReviewsForUser (mock env)', () => {
+  it('returns reviews for the requested user, most recent first', async () => {
+    const result = await fetchReviewsForUser('h1', { sort: 'recent' });
+
+    expect(result.reviews.every((r) => r.revieweeId === 'h1')).toBe(true);
+    expect(result.reviews.length).toBe(5);
+    expect(result.reviews[0].id).toBe('r2');
+  });
+
+  it('sorts by rating descending when sort = rating', async () => {
+    const result = await fetchReviewsForUser('h2', { sort: 'rating', limit: 10 });
+
+    expect(result.reviews[0].rating).toBeGreaterThanOrEqual(
+      result.reviews[result.reviews.length - 1].rating
+    );
+  });
+
+  it('paginates with hasMore flag', async () => {
+    // h2 has 2 reviews in the mock set, so limit 1 → page 1 hasMore true, page 2 hasMore false
+    const page1 = await fetchReviewsForUser('h2', { page: 1, limit: 1 });
+    expect(page1.reviews).toHaveLength(1);
+    expect(page1.hasMore).toBe(true);
+
+    const page2 = await fetchReviewsForUser('h2', { page: 2, limit: 1 });
+    expect(page2.reviews).toHaveLength(1);
+    expect(page2.hasMore).toBe(false);
+  });
+
+  it('returns empty list for a user with no reviews', async () => {
+    const result = await fetchReviewsForUser('nobody', {});
+    expect(result.reviews).toEqual([]);
+    expect(result.hasMore).toBe(false);
+  });
+});
+
+describe('fetchReviewsForUser (real env)', () => {
+  beforeEach(() => {
+    (isMockEnv as jest.Mock).mockReturnValue(false);
+  });
+
+  it('maps DB rows and excludes hidden reviews', async () => {
+    (mockedSupabase.from as jest.Mock).mockReturnValue(
+      buildRangeChain({
+        data: [
+          {
+            id: 'db1',
+            booking_id: 'b1',
+            reviewer_id: 'c1',
+            reviewee_id: USER_UUID,
+            rating: 5,
+            comment: 'Great job',
+            created_at: '2026-07-01T00:00:00Z',
+            photos: [],
+            reviewer: { full_name: 'Ishah Bautista', photo_url: 'http://img/1' },
+          },
+        ],
+        error: null,
+      })
+    );
+
+    const result = await fetchReviewsForUser(USER_UUID, { sort: 'rating' });
+
+    expect(mockedSupabase.from).toHaveBeenCalledWith('reviews');
+    expect(result.reviews[0]).toMatchObject({
+      id: 'db1',
+      reviewerName: 'Ishah Bautista',
+      reviewerPhotoUrl: 'http://img/1',
+      rating: 5,
+      comment: 'Great job',
+    });
+    expect(result.hasMore).toBe(false);
+  });
+
+  it('throws on query error', async () => {
+    (mockedSupabase.from as jest.Mock).mockReturnValue(
+      buildRangeChain({ data: null, error: { message: 'db down' } })
+    );
+
+    await expect(fetchReviewsForUser(USER_UUID, {})).rejects.toThrow('db down');
+  });
+
+  it('returns an empty page without querying when the id is not a UUID', async () => {
+    const result = await fetchReviewsForUser('h1', {});
+
+    expect(result).toEqual({ reviews: [], hasMore: false });
+    expect(mockedSupabase.from).not.toHaveBeenCalled();
+  });
 });
 
 describe('submitReview (real env — submit-review Edge Function)', () => {
@@ -154,32 +258,70 @@ describe('submitReview (mock env)', () => {
   it('appends the review and never touches the backend', async () => {
     const result = await submitReview({
       bookingId: 'mock-booking-1',
-      revieweeId: 'h9',
+      revieweeId: 'mock-h9',
       rating: 5,
       comment: 'Nice',
-      reviewerId: 'c9',
+      reviewerId: 'mock-c9',
     });
 
-    expect(result).toMatchObject({ bookingId: 'mock-booking-1', reviewerId: 'c9', rating: 5 });
+    expect(result).toMatchObject({ bookingId: 'mock-booking-1', reviewerId: 'mock-c9', rating: 5 });
     expect(mockedSupabase.functions.invoke).not.toHaveBeenCalled();
   });
 
   it('simulates the 409 duplicate guard for the same reviewer', async () => {
     await submitReview({
       bookingId: 'mock-booking-2',
-      revieweeId: 'h9',
+      revieweeId: 'mock-h9',
       rating: 4,
-      reviewerId: 'c9',
+      reviewerId: 'mock-c9',
     });
 
     await expect(
       submitReview({
         bookingId: 'mock-booking-2',
-        revieweeId: 'h9',
+        revieweeId: 'mock-h9',
         rating: 3,
-        reviewerId: 'c9',
+        reviewerId: 'mock-c9',
       })
     ).rejects.toMatchObject({ name: 'ReviewSubmissionError', status: 409 });
+  });
+});
+
+describe('fetchMyReviewForBooking', () => {
+  it('returns null without querying when nobody is signed in', async () => {
+    (isMockEnv as jest.Mock).mockReturnValue(false);
+    (mockedSupabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: null } });
+
+    await expect(fetchMyReviewForBooking('b1')).resolves.toBeNull();
+    expect(mockedSupabase.from).not.toHaveBeenCalled();
+  });
+
+  it('returns the signed-in reviewer own review', async () => {
+    (isMockEnv as jest.Mock).mockReturnValue(false);
+    (mockedSupabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: { id: 'u1' } } });
+    const chain = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: {
+          id: 'db1',
+          booking_id: 'b1',
+          reviewer_id: 'u1',
+          reviewee_id: 'h1',
+          rating: 4,
+          comment: null,
+          created_at: '2026-07-01T00:00:00Z',
+        },
+        error: null,
+      }),
+    };
+    (mockedSupabase.from as jest.Mock).mockReturnValue(chain);
+
+    const result = await fetchMyReviewForBooking('b1');
+
+    expect(chain.eq).toHaveBeenCalledWith('booking_id', 'b1');
+    expect(chain.eq).toHaveBeenCalledWith('reviewer_id', 'u1');
+    expect(result).toMatchObject({ id: 'db1', comment: '' });
   });
 });
 
@@ -216,98 +358,6 @@ describe('hasReviewed', () => {
   });
 });
 
-describe('fetchReviewsForUser', () => {
-  it('filters the mock set by reviewee in mock env', async () => {
-    const result = await fetchReviewsForUser('h1');
-    expect(result.every((review) => review.revieweeId === 'h1')).toBe(true);
-  });
-
-  it('maps rows newest first in real env', async () => {
-    (isMockEnv as jest.Mock).mockReturnValue(false);
-    const chain = {
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      order: jest.fn().mockResolvedValue({
-        data: [
-          {
-            id: 'db1',
-            booking_id: 'b1',
-            reviewer_id: 'c1',
-            reviewee_id: 'h1',
-            rating: 5,
-            comment: 'Great job',
-            is_hidden: false,
-            created_at: '2026-07-01T00:00:00Z',
-            reviewer: { full_name: 'Ishah Bautista', photo_url: 'http://img/1' },
-          },
-        ],
-        error: null,
-      }),
-    };
-    (mockedSupabase.from as jest.Mock).mockReturnValue(chain);
-
-    const result = await fetchReviewsForUser('h1');
-
-    expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false });
-    expect(result[0]).toMatchObject({
-      id: 'db1',
-      reviewerName: 'Ishah Bautista',
-      reviewerPhotoUrl: 'http://img/1',
-      comment: 'Great job',
-    });
-  });
-
-  it('throws on query error', async () => {
-    (isMockEnv as jest.Mock).mockReturnValue(false);
-    (mockedSupabase.from as jest.Mock).mockReturnValue({
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      order: jest.fn().mockResolvedValue({ data: null, error: { message: 'db down' } }),
-    });
-
-    await expect(fetchReviewsForUser('h1')).rejects.toThrow('db down');
-  });
-});
-
-describe('fetchMyReviewForBooking', () => {
-  it('returns null without querying when nobody is signed in', async () => {
-    (isMockEnv as jest.Mock).mockReturnValue(false);
-    (mockedSupabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: null } });
-
-    await expect(fetchMyReviewForBooking('b1')).resolves.toBeNull();
-    expect(mockedSupabase.from).not.toHaveBeenCalled();
-  });
-
-  it('returns the signed-in reviewer own review', async () => {
-    (isMockEnv as jest.Mock).mockReturnValue(false);
-    (mockedSupabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: { id: 'u1' } } });
-    const chain = {
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      maybeSingle: jest.fn().mockResolvedValue({
-        data: {
-          id: 'db1',
-          booking_id: 'b1',
-          reviewer_id: 'u1',
-          reviewee_id: 'h1',
-          rating: 4,
-          comment: null,
-          is_hidden: false,
-          created_at: '2026-07-01T00:00:00Z',
-        },
-        error: null,
-      }),
-    };
-    (mockedSupabase.from as jest.Mock).mockReturnValue(chain);
-
-    const result = await fetchMyReviewForBooking('b1');
-
-    expect(chain.eq).toHaveBeenCalledWith('booking_id', 'b1');
-    expect(chain.eq).toHaveBeenCalledWith('reviewer_id', 'u1');
-    expect(result).toMatchObject({ id: 'db1', comment: '' });
-  });
-});
-
 describe('resolveReviewDirection', () => {
   const booking = { id: 'b1', clientId: 'c1', handymanId: 'h1' } as Booking;
 
@@ -335,5 +385,134 @@ describe('isBookingRateable', () => {
     expect(isBookingRateable(BookingStatus.Paid)).toBe(true);
     expect(isBookingRateable(BookingStatus.Completed)).toBe(false);
     expect(isBookingRateable(BookingStatus.Pending)).toBe(false);
+  });
+});
+
+describe('flagReview', () => {
+  it('is a no-op in mock env', async () => {
+    await expect(flagReview('r1', 'Spam')).resolves.toBeUndefined();
+    expect(mockedSupabase.auth.getSession).not.toHaveBeenCalled();
+  });
+
+  it('calls the flag-review edge function in real env', async () => {
+    (isMockEnv as jest.Mock).mockReturnValue(false);
+    (mockedSupabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: { access_token: 'token-123' } },
+    });
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await flagReview('r1', 'Spam');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/functions/v1/flag-review'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer token-123' }),
+        body: JSON.stringify({ reviewId: 'r1', reason: 'Spam' }),
+      })
+    );
+  });
+
+  it('throws with the server message on a failed response', async () => {
+    (isMockEnv as jest.Mock).mockReturnValue(false);
+    (mockedSupabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: { access_token: 'token-123' } },
+    });
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: async () => ({ message: 'You have already flagged this review' }),
+    }) as unknown as typeof fetch;
+
+    await expect(flagReview('r1', 'Spam')).rejects.toThrow('You have already flagged this review');
+  });
+});
+
+describe('fetchFlaggedReviews', () => {
+  it('returns an empty list in mock env', async () => {
+    const result = await fetchFlaggedReviews();
+    expect(result).toEqual([]);
+  });
+
+  it('maps the admin queue response in real env', async () => {
+    (isMockEnv as jest.Mock).mockReturnValue(false);
+    (mockedSupabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: { access_token: 'token-123' } },
+    });
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          flags: [
+            {
+              id: 'f1',
+              reason: 'Spam',
+              status: 'PENDING',
+              created_at: '2026-07-02T00:00:00Z',
+              flagger: { full_name: 'Ishah Bautista' },
+              review: {
+                id: 'r1',
+                reviewer_id: 'c1',
+                reviewee_id: 'h1',
+                rating: 1,
+                comment: 'Fake review',
+                created_at: '2026-07-01T00:00:00Z',
+                reviewer: { full_name: 'Alice', photo_url: null },
+              },
+            },
+          ],
+        },
+      }),
+    }) as unknown as typeof fetch;
+
+    const result = await fetchFlaggedReviews('PENDING');
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: 'f1',
+      reason: 'Spam',
+      flaggerName: 'Ishah Bautista',
+      review: { id: 'r1', reviewerName: 'Alice', comment: 'Fake review', rating: 1 },
+    });
+  });
+});
+
+describe('resolveReviewFlag', () => {
+  it('is a no-op in mock env', async () => {
+    await expect(resolveReviewFlag('f1', 'RESOLVE')).resolves.toBeUndefined();
+  });
+
+  it('calls the review-flag-action edge function in real env', async () => {
+    (isMockEnv as jest.Mock).mockReturnValue(false);
+    (mockedSupabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: { access_token: 'token-123' } },
+    });
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await resolveReviewFlag('f1', 'DISMISS');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/functions/v1/review-flag-action'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ flagId: 'f1', action: 'DISMISS' }),
+      })
+    );
+  });
+
+  it('throws on a failed response', async () => {
+    (isMockEnv as jest.Mock).mockReturnValue(false);
+    (mockedSupabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: { access_token: 'token-123' } },
+    });
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ message: 'db down' }),
+    }) as unknown as typeof fetch;
+
+    await expect(resolveReviewFlag('f1', 'RESOLVE')).rejects.toThrow('db down');
   });
 });

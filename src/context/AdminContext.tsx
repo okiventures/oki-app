@@ -2,6 +2,11 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { MOCK_ADMIN_USERS, MOCK_DISPUTES } from '../mocks';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
+import {
+  fetchFlaggedReviews,
+  resolveReviewFlag,
+  type FlaggedReviewRow,
+} from '../services/reviewService';
 import { User, DisputeStatus, UserStatus } from '../types';
 
 export interface AdminDispute {
@@ -52,6 +57,12 @@ interface AdminContextValue {
   activeUsersCount: number;
   suspendedUsersCount: number;
   loadingKyc: boolean;
+  flaggedReviews: FlaggedReviewRow[];
+  flagStatus: 'PENDING' | 'RESOLVED' | 'DISMISSED';
+  setFlagStatus: (status: 'PENDING' | 'RESOLVED' | 'DISMISSED') => void;
+  loadingFlags: boolean;
+  flagsError: string | null;
+  resolveFlag: (flagId: string, action: 'RESOLVE' | 'DISMISS') => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextValue>({
@@ -75,6 +86,12 @@ const AdminContext = createContext<AdminContextValue>({
   activeUsersCount: 0,
   suspendedUsersCount: 0,
   loadingKyc: false,
+  flaggedReviews: [],
+  flagStatus: 'PENDING',
+  setFlagStatus: () => {},
+  loadingFlags: false,
+  flagsError: null,
+  resolveFlag: async () => {},
 });
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -239,6 +256,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     setReadError(failures.length > 0 ? `Could not load ${failures.join('; ')}` : null);
   }, [isAdmin]);
 
+  const [flaggedReviews, setFlaggedReviews] = useState<FlaggedReviewRow[]>([]);
+  const [flagStatus, setFlagStatus] = useState<'PENDING' | 'RESOLVED' | 'DISMISSED'>('PENDING');
+  const [loadingFlags, setLoadingFlags] = useState(false);
+  const [flagsError, setFlagsError] = useState<string | null>(null);
+
   useEffect(() => {
     refresh();
   }, [refresh]);
@@ -261,6 +283,25 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       })
       .finally(() => setLoadingKyc(false));
   }, [isAdmin, session, kycStatus]);
+
+  // Flagged reviews queue (Week 13 moderation)
+  useEffect(() => {
+    const isAdmin = session?.user?.userType === 'admin';
+    if (!isAdmin) {
+      setFlaggedReviews([]);
+      setLoadingFlags(false);
+      return;
+    }
+    setLoadingFlags(true);
+    setFlagsError(null);
+    fetchFlaggedReviews(flagStatus)
+      .then(setFlaggedReviews)
+      .catch((err) => {
+        console.error('[Admin] flagged reviews fetch error:', err);
+        setFlagsError(err instanceof Error ? err.message : 'Failed to load flagged reviews');
+      })
+      .finally(() => setLoadingFlags(false));
+  }, [session, flagStatus]);
 
   const suspendUser = useCallback(
     async (userId: string) => {
@@ -415,6 +456,16 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     [disputes]
   );
 
+  const resolveFlag = useCallback(async (flagId: string, action: 'RESOLVE' | 'DISMISS') => {
+    try {
+      await resolveReviewFlag(flagId, action);
+      setFlaggedReviews((prev) => prev.filter((f) => f.id !== flagId));
+    } catch (err) {
+      console.error('[Admin] resolve flag error:', err);
+      throw err;
+    }
+  }, []);
+
   const pendingKycCount = kycRequests.length;
   const activeDisputesCount = disputes.filter(
     (dispute) => dispute.status === DisputeStatus.Open || dispute.status === DisputeStatus.InReview
@@ -444,6 +495,12 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       activeUsersCount,
       suspendedUsersCount,
       loadingKyc,
+      flaggedReviews,
+      flagStatus,
+      setFlagStatus,
+      loadingFlags,
+      flagsError,
+      resolveFlag,
     }),
     [
       users,
@@ -463,6 +520,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       activeUsersCount,
       suspendedUsersCount,
       loadingKyc,
+      flaggedReviews,
+      flagStatus,
+      loadingFlags,
+      flagsError,
+      resolveFlag,
     ]
   );
 
