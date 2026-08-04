@@ -138,7 +138,10 @@ export default function ClientHome() {
 
           <PromoCard promo={MOCK_PROMO} />
 
-          <CategoryGrid categories={filteredCategories} />
+          <CategoryGrid
+            categories={filteredCategories}
+            onCategoryPress={(cat) => router.push(`/(client)/search?category=${cat.id}`)}
+          />
 
           {latestPending ? (
             <View

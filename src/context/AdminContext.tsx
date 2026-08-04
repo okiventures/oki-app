@@ -264,7 +264,8 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
   const suspendUser = useCallback(
     async (userId: string) => {
-      const previous = users;
+      const previousStatus = users.find((user) => user.id === userId)?.status ?? UserStatus.Active;
+
       setUsers((prev) =>
         prev.map((user) => (user.id === userId ? { ...user, status: UserStatus.Suspended } : user))
       );
@@ -278,7 +279,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         setActionError(`Could not suspend user: ${error.message}`);
-        setUsers(previous);
+        // Roll back this row only. Restoring a whole pre-call snapshot discarded
+        // any other suspension that landed while this request was in flight.
+        setUsers((prev) =>
+          prev.map((user) => (user.id === userId ? { ...user, status: previousStatus } : user))
+        );
       } else {
         setActionError(null);
       }
@@ -378,7 +383,8 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
   const resolveDispute = useCallback(
     async (disputeId: string) => {
-      const previous = disputes;
+      const previous = disputes.find((dispute) => dispute.id === disputeId);
+
       setDisputes((prev) =>
         prev.map((dispute) =>
           dispute.id === disputeId
@@ -396,7 +402,12 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         setActionError(`Could not resolve dispute: ${error.message}`);
-        setDisputes(previous);
+        // Roll back this row only, same reason as suspendUser.
+        if (previous) {
+          setDisputes((prev) =>
+            prev.map((dispute) => (dispute.id === disputeId ? previous : dispute))
+          );
+        }
       } else {
         setActionError(null);
       }

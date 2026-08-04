@@ -1,6 +1,13 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Alert } from 'react-native';
-import { MOCK_BOOKINGS } from '../mocks';
 import { Booking, BookingStatus } from '../types';
 import {
   transitionBookingState,
@@ -12,9 +19,14 @@ import {
 } from '../services/bookingService';
 import { getWorkflowAction, canTransition, WorkflowAction } from '../services/bookingFsm';
 import type { CreateBookingInput } from '../services/bookingService';
+import { getFreshMockBookings } from '../mocks/bookings';
 import { useAuth } from './AuthContext';
 
-const STORAGE_KEY = 'oki_bookings_state_v2';
+// Nothing persists bookings any more, so this key only ever gets cleared. Mock
+// mode needs its dates rebuilt relative to now — a restored set renders
+// yesterday's "today at 2pm" — and live rows in localStorage would hand one
+// account's bookings to whoever signs in next.
+const LEGACY_STORAGE_KEY = 'oki_bookings_state_v2';
 
 // Unassigned PENDING bookings match no RLS policy, so realtime can't push a new
 // request to a handyman who isn't on it yet. The inbox polls to close that gap.
@@ -44,7 +56,7 @@ const BookingsContext = createContext<BookingsContextValue>({
   isLoading: false,
   error: null,
   refresh: async () => {},
-  createBooking: async () => MOCK_BOOKINGS[0],
+  createBooking: async () => getFreshMockBookings()[0],
   acceptBooking: async () => {},
   declineBooking: async () => {},
   advanceBooking: async () => {},
@@ -73,7 +85,9 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
   const userId = session?.user?.id;
   const userType = session?.user?.userType;
 
-  const [bookings, setBookings] = useState<Booking[]>(mockMode ? MOCK_BOOKINGS : []);
+  const [bookings, setBookings] = useState<Booking[]>(() =>
+    mockMode ? getFreshMockBookings() : []
+  );
   const [isLoading, setIsLoading] = useState(!mockMode);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,50 +114,41 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [mockMode, userId, userType]);
 
+  // The realtime and polling effects read refresh through a ref. Depending on it
+  // directly tore the channel down and reset the poll timer every time its
+  // identity changed, which is every time userId or userType moves.
+  const refreshRef = useRef(refresh);
+  useEffect(() => {
+    refreshRef.current = refresh;
+  }, [refresh]);
+
   useEffect(() => {
     if (isAuthLoading) return;
     refresh();
   }, [isAuthLoading, refresh]);
 
-  // Offline demo only: restore the locally-mutated mock set. Persisting live
-  // rows to localStorage would leak one account's bookings into the next.
   useEffect(() => {
-    if (!mockMode) return;
     try {
       if (typeof window !== 'undefined') {
-        const saved = window.localStorage.getItem(STORAGE_KEY);
-        if (saved) setBookings(JSON.parse(saved) as Booking[]);
-      }
-    } catch {
-      setBookings(MOCK_BOOKINGS);
-    }
-  }, [mockMode]);
-
-  useEffect(() => {
-    if (!mockMode) return;
-    try {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+        window.localStorage.removeItem(LEGACY_STORAGE_KEY);
       }
     } catch {
       // noop
     }
-  }, [mockMode, bookings]);
+  }, []);
 
   // Refetch when anything the user can see changes: this is what makes the
   // client's screen move when the handyman accepts, and vice versa.
   useEffect(() => {
     if (mockMode || !userId) return;
-    return subscribeToBookingChanges(() => {
-      refresh();
-    });
-  }, [mockMode, userId, refresh]);
+    return subscribeToBookingChanges(() => refreshRef.current());
+  }, [mockMode, userId]);
 
   useEffect(() => {
     if (mockMode || !userId || userType !== 'handyman') return;
-    const timer = setInterval(refresh, HANDYMAN_INBOX_POLL_MS);
+    const timer = setInterval(() => refreshRef.current(), HANDYMAN_INBOX_POLL_MS);
     return () => clearInterval(timer);
-  }, [mockMode, userId, userType, refresh]);
+  }, [mockMode, userId, userType]);
 
   const createBooking = useCallback(async (input: CreateBookingInput) => {
     const booking = await createBookingService(input);
