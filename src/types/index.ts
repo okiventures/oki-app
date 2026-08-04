@@ -174,6 +174,20 @@ export interface Review {
   photos?: string[];
 }
 
+export type ReviewSort = 'recent' | 'rating';
+
+export interface ReviewFlag {
+  id: string;
+  reviewId: string;
+  flaggerId: string;
+  flaggerName?: string;
+  reason: string;
+  status: 'PENDING' | 'RESOLVED' | 'DISMISSED';
+  createdAt: string;
+  resolvedAt?: string;
+  review?: Review;
+}
+
 export interface Message {
   id: string;
   bookingId: string;

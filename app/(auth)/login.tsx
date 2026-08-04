@@ -6,6 +6,8 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,7 +22,17 @@ import { Toast } from '../../src/components/ui/Toast';
 export default function ClientLogin() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { login, isSigningIn, error, clearError } = useAuth();
+  const {
+    login,
+    isSigningIn,
+    isSendingOtp,
+    isGoogleSigningIn,
+    sendEmailOtp,
+    sendPhoneOtp,
+    signInWithGoogle,
+    error,
+    clearError,
+  } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showError, setShowError] = useState(false);
@@ -53,6 +65,38 @@ export default function ClientLogin() {
         phone: !isEmail ? identifier.replace(/\D/g, '') : undefined,
         password: password.trim(),
       });
+      // Navigation happens automatically via AuthContext and root layout
+    } catch {
+      setShowError(true);
+    }
+  };
+
+  const handleOtpLogin = async () => {
+    try {
+      clearError();
+      const isEmail = identifier.includes('@');
+      if (isEmail) {
+        await sendEmailOtp(identifier.trim());
+        router.push({
+          pathname: '/(auth)/otp-verify',
+          params: { identifier: identifier.trim(), type: 'email' },
+        });
+      } else {
+        await sendPhoneOtp(phoneDigits);
+        router.push({
+          pathname: '/(auth)/otp-verify',
+          params: { identifier: phoneDigits, type: 'sms' },
+        });
+      }
+    } catch {
+      setShowError(true);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      clearError();
+      await signInWithGoogle();
       // Navigation happens automatically via AuthContext and root layout
     } catch {
       setShowError(true);
@@ -120,6 +164,40 @@ export default function ClientLogin() {
             loading={isSigningIn}
             disabled={!canContinue}
           />
+
+          <View className="my-1 flex-row items-center gap-3">
+            <View className="h-px flex-1 bg-gray-200" />
+            <Text className="text-[11px] text-gray-400">OR</Text>
+            <View className="h-px flex-1 bg-gray-200" />
+          </View>
+
+          <Button
+            label="Continue with Google"
+            variant="tertiary"
+            fullWidth
+            loading={isGoogleSigningIn}
+            onPress={handleGoogleSignIn}
+            leftIcon={<Ionicons name="logo-google" size={16} color="#4285F4" />}
+          />
+
+          <Pressable
+            accessibilityLabel="Sign in with a one-time code"
+            onPress={handleOtpLogin}
+            disabled={!identifierIsValid || isSendingOtp}
+            android_ripple={{ color: 'rgba(0,0,0,0.06)' }}
+            style={({ pressed }) => ({
+              opacity: pressed || !identifierIsValid || isSendingOtp ? 0.6 : 1,
+            })}
+            className="mt-1 flex-row items-center justify-center gap-2 rounded-full border border-gray-200 py-3">
+            {isSendingOtp ? (
+              <ActivityIndicator size="small" color={colors.primary['600']} />
+            ) : (
+              <Ionicons name="keypad-outline" size={16} color={colors.primary['600']} />
+            )}
+            <Text className="text-[13px] font-semibold" style={{ color: colors.primary['600'] }}>
+              {identifier.includes('@') ? 'Send me an email code' : 'Send me an SMS code'}
+            </Text>
+          </Pressable>
 
           <View className="items-center">
             <Text className="text-center text-[13px] text-gray-600">

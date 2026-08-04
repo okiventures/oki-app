@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -125,6 +127,65 @@ export async function login(payload: LoginPayload) {
   if (!data.session) throw new Error('No session returned from login');
 
   return formatSession(data.session);
+}
+
+// ─── One-Time Codes (Email / SMS OTP) ────────────────────────────────────────
+
+export async function sendEmailOtp(email: string): Promise<void> {
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true },
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function sendPhoneOtp(phone: string): Promise<void> {
+  const { error } = await supabase.auth.signInWithOtp({ phone });
+  if (error) throw new Error(error.message);
+}
+
+export async function verifyOtp(params: { email?: string; phone?: string; token: string }) {
+  const { email, phone, token } = params;
+  if (!email && !phone) {
+    throw new Error('Either email or phone is required for OTP verification');
+  }
+
+  const otpRequest = email
+    ? { email, token, type: 'email' as const }
+    : { phone: phone!, token, type: 'sms' as const };
+
+  const { data, error } = await supabase.auth.verifyOtp(otpRequest);
+  if (error) throw new Error(error.message);
+  if (!data.session) throw new Error('No session returned from OTP verification');
+
+  return formatSession(data.session);
+}
+
+// ─── Google OAuth ─────────────────────────────────────────────────────────────
+
+export async function signInWithGoogle(): Promise<void> {
+  const redirectTo = Linking.createURL('/login');
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo, skipBrowserRedirect: true },
+  });
+  if (error) throw new Error(error.message);
+  if (!data?.url) throw new Error('No OAuth URL returned from provider');
+
+  // Open the provider consent screen in the system browser and wait for the
+  // redirect back to the app (oki://login?code=...).
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+  if (result.type === 'success' && result.url) {
+    const code = new URL(result.url).searchParams.get('code');
+    if (code) {
+      // Exchange the PKCE auth code for a session (also persists it via the
+      // configured secure storage).
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (exchangeError) throw new Error(exchangeError.message);
+    }
+  }
 }
 
 // ─── Logout ───────────────────────────────────────────────────────────────────

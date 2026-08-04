@@ -427,14 +427,14 @@
   - [ ] Weighted rolling average of last 50 reviews stored as `trust_score` on `handymen` and `users`
   - [ ] Score recomputed asynchronously via a Supabase Function trigger on new review insert
   - [ ] Trust Score exposed in search results and profile cards
-- [ ] Review display on profiles
-  - [ ] Handyman profile screen: aggregate star display, total review count, paginated review list
-  - [ ] Each review card: reviewer avatar, star rating, comment, relative timestamp
-  - [ ] Default sort: most recent first; secondary sort option by rating
-- [ ] Moderation flags for reviews
-  - [ ] `POST /reviews/:id/flag` endpoint: any authenticated user can flag a review with a reason
-  - [ ] Flagged reviews hidden from public profile pending admin decision
-  - [ ] Admin review queue shows flagged reviews with flag reason and original content
+- [x] Review display on profiles
+  - [x] Handyman profile screen: aggregate star display, total review count, paginated review list
+  - [x] Each review card: reviewer avatar, star rating, comment, relative timestamp
+  - [x] Default sort: most recent first; secondary sort option by rating
+- [x] Moderation flags for reviews
+  - [x] `POST /reviews/:id/flag` endpoint: any authenticated user can flag a review with a reason
+  - [x] Flagged reviews hidden from public profile pending admin decision
+  - [x] Admin review queue shows flagged reviews with flag reason and original content
 
 ### [PASS] Week 13 Success Criteria
 

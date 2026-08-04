@@ -21,6 +21,9 @@ interface AuthContextType {
   isLoading: boolean;
   isSigningIn: boolean;
   isSigningUp: boolean;
+  isSendingOtp: boolean;
+  isVerifyingOtp: boolean;
+  isGoogleSigningIn: boolean;
   error: string | null;
   signup: (params: {
     email?: string;
@@ -33,6 +36,10 @@ interface AuthContextType {
   }) => Promise<SignupResult>;
   login: (params: { email?: string; phone?: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
+  sendEmailOtp: (email: string) => Promise<void>;
+  sendPhoneOtp: (phone: string) => Promise<void>;
+  verifyOtp: (params: { email?: string; phone?: string; token: string }) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<{ emailSent: boolean }>;
   confirmPasswordReset: (tokenHash: string, newPassword: string) => Promise<void>;
   clearError: () => void;
@@ -66,6 +73,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Bootstrap: check for existing session, then listen for changes
@@ -186,6 +196,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const handleSendEmailOtp = useCallback(async (email: string) => {
+    setIsSendingOtp(true);
+    setError(null);
+    try {
+      await authService.sendEmailOtp(email);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to send email code';
+      setError(message);
+      throw e;
+    } finally {
+      setIsSendingOtp(false);
+    }
+  }, []);
+
+  const handleSendPhoneOtp = useCallback(async (phone: string) => {
+    setIsSendingOtp(true);
+    setError(null);
+    try {
+      await authService.sendPhoneOtp(phone);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to send SMS code';
+      setError(message);
+      throw e;
+    } finally {
+      setIsSendingOtp(false);
+    }
+  }, []);
+
+  const handleVerifyOtp = useCallback(
+    async (params: { email?: string; phone?: string; token: string }) => {
+      setIsVerifyingOtp(true);
+      setError(null);
+      try {
+        const newSession = await authService.verifyOtp(params);
+        setSession(newSession);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Code verification failed';
+        setError(message);
+        throw e;
+      } finally {
+        setIsVerifyingOtp(false);
+      }
+    },
+    []
+  );
+
+  const handleGoogleSignIn = useCallback(async () => {
+    setIsGoogleSigningIn(true);
+    setError(null);
+    try {
+      await authService.signInWithGoogle();
+      // The session is established inside signInWithGoogle (code exchange);
+      // pull the persisted session to update state.
+      const { data } = await supabase.auth.getSession();
+      setSession(formatSessionFromSupabase(data.session));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Google sign-in failed';
+      setError(message);
+      throw e;
+    } finally {
+      setIsGoogleSigningIn(false);
+    }
+  }, []);
+
   const handleClearError = useCallback(() => {
     setError(null);
   }, []);
@@ -195,10 +269,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     isSigningIn,
     isSigningUp,
+    isSendingOtp,
+    isVerifyingOtp,
+    isGoogleSigningIn,
     error,
     signup: handleSignup,
     login: handleLogin,
     logout: handleLogout,
+    sendEmailOtp: handleSendEmailOtp,
+    sendPhoneOtp: handleSendPhoneOtp,
+    verifyOtp: handleVerifyOtp,
+    signInWithGoogle: handleGoogleSignIn,
     requestPasswordReset: handleRequestPasswordReset,
     confirmPasswordReset: handleConfirmPasswordReset,
     clearError: handleClearError,
