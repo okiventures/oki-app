@@ -5,7 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@react-native/jest-preset@0.85.3': 7b495e14a6f6b83175391b19bb9814aadaf3479e557851104723ccda5bfe27fc
+  '@react-native/jest-preset@0.85.3':
+    hash: 7b495e14a6f6b83175391b19bb9814aadaf3479e557851104723ccda5bfe27fc
+    path: patches/@react-native__jest-preset@0.85.3.patch
 
 importers:
 
@@ -7667,9 +7669,7 @@ snapshots:
       metro-runtime: 0.84.4
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.74.89': {}
 
