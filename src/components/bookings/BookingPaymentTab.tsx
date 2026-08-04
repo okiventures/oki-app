@@ -3,6 +3,7 @@ import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { BookingDetail } from '../../mocks/bookingDetails';
+import { PLATFORM_FEE_PERCENT } from '../../constants/theme';
 import { Button } from '../ui/Button';
 import { formatDate, SectionLabel } from './BookingShared';
 
@@ -198,7 +199,7 @@ export function BookingPaymentTab({
         <Text className="flex-1 text-[12px] leading-[18px]" style={{ color: colors.ui.textMuted }}>
           A{' '}
           <Text className="font-semibold" style={{ color: colors.ui.text }}>
-            5% platform fee
+            {PLATFORM_FEE_PERCENT}% platform fee
           </Text>{' '}
           is applied to support OKI&apos;s secure payment processing and worker vetting program.
         </Text>

@@ -100,7 +100,10 @@ export function ActiveJobWorkflowCard({
   );
 }
 
-export function ActiveJobWorkflowCardOverview({ booking, onAdvance }: ActiveJobWorkflowCardProps) {
+// The whole card links through to the requests screen, where the advance button
+// lives, so this variant takes no callbacks. It required an unused `onAdvance`
+// and every call site passed an empty function to satisfy it.
+export function ActiveJobWorkflowCardOverview({ booking }: { booking: Booking }) {
   return (
     <Link href={`/(handyman)/requests`} asChild>
       <TouchableOpacity>

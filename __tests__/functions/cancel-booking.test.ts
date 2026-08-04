@@ -1,4 +1,4 @@
-import { requireClient } from '../../supabase/functions/_shared/rbac';
+import { requireClient, serviceClient } from '../../supabase/functions/_shared/rbac';
 import { __getHandler } from '../__mocks__/deno-serve';
 import '../../supabase/functions/cancel-booking/index';
 
@@ -8,6 +8,7 @@ jest.mock('../../supabase/functions/_shared/rbac', () => {
 
   return {
     requireClient: jest.fn(),
+    serviceClient: jest.fn(),
     methodNotAllowed: jest.fn(() => resp(405, { error: 'METHOD_NOT_ALLOWED' })),
     badRequest: jest.fn((m: string) => resp(400, { error: 'BAD_REQUEST', message: m })),
     notFound: jest.fn((m: string) => resp(404, { error: 'NOT_FOUND', message: m })),
@@ -88,16 +89,20 @@ function supabaseWith(opts: {
     });
   }
 
-  return {
+  const client = {
     from: jest.fn((table: string) => {
       if (table === 'bookings') return bookingChain;
       return eventsChain ?? mockFrom(table);
     }),
   };
+
+  (serviceClient as jest.Mock).mockReturnValue(client);
+  return client;
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (serviceClient as jest.Mock).mockReturnValue({ from: jest.fn(() => mockFrom('any')) });
 });
 
 describe('module loading', () => {

@@ -11,6 +11,7 @@ import {
 import { Navbar } from '../../src/components/navigation/Navbar';
 import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
+import { ErrorBanner } from '../../src/components/ui/ErrorBanner';
 import { ConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 import { Modal } from '../../src/components/ui/Modal';
 import { Table, TableColumn } from '../../src/components/admin/Table';
@@ -54,6 +55,7 @@ export default function AdminUsers() {
     suspendUser,
     approveHandyman,
     rejectHandyman,
+    error,
   } = useAdmin();
   const [searchValue, setSearchValue] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -191,6 +193,8 @@ export default function AdminUsers() {
     <View className="flex-1 bg-gray-50">
       <Navbar title="User Management" />
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+        <ErrorBanner message={error} />
+
         <View className="flex-row gap-2">
           <Card className="flex-1 p-3">
             <Text className="text-[11px] font-medium text-gray-500">Total Users</Text>

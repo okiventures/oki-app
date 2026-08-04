@@ -13,6 +13,7 @@ import { Modal } from '../../src/components/ui/Modal';
 import { Button } from '../../src/components/ui/Button';
 import { ProfileMenuRow } from '../../src/components/profile/ProfileMenuRow';
 import { MOCK_CLIENT } from '../../src/mocks';
+import { isMockEnv } from '../../src/services/bookingService';
 
 const ACCOUNT_ITEMS = [
   {
@@ -91,10 +92,12 @@ export default function ClientProfile() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Use real profile data when available, fall back to mock for dev/testing
-  const displayName = profile?.user?.full_name ?? MOCK_CLIENT.name;
-  const displayPhoto = profile?.user?.photo_url ?? MOCK_CLIENT.photoUrl;
-  const memberSince = profile?.user?.created_at ?? MOCK_CLIENT.memberSince;
-  const memberYear = new Date(memberSince).getFullYear();
+  // MOCK_CLIENT is the offline-demo identity only. Against a live backend an
+  // unresolved profile must render blank rather than someone else's name.
+  const displayName = profile?.user?.full_name ?? (isMockEnv() ? MOCK_CLIENT.name : '');
+  const displayPhoto = profile?.user?.photo_url ?? (isMockEnv() ? MOCK_CLIENT.photoUrl : undefined);
+  const memberSince = profile?.user?.created_at ?? (isMockEnv() ? MOCK_CLIENT.memberSince : null);
+  const memberYear = memberSince ? new Date(memberSince).getFullYear() : null;
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -144,9 +147,13 @@ export default function ClientProfile() {
             <Text className="mt-3 text-[18px] font-bold" style={{ color: colors.ui.text }}>
               {displayName}
             </Text>
-            <Text className="mt-0.5 text-[12px] font-normal" style={{ color: colors.ui.textMuted }}>
-              Member since {memberYear}
-            </Text>
+            {memberYear ? (
+              <Text
+                className="mt-0.5 text-[12px] font-normal"
+                style={{ color: colors.ui.textMuted }}>
+                Member since {memberYear}
+              </Text>
+            ) : null}
 
             <View className="mt-3">
               <Button

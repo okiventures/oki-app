@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -11,9 +11,12 @@ import { RequestInboxCard } from '../../src/components/handyman/RequestInboxCard
 import { ConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 import { EmptyState } from '../../src/components/ui/EmptyState';
 import { useAuth } from '../../src/context/AuthContext';
+import { isMockEnv } from '../../src/services/bookingService';
 
-// Falls back to the seeded demo handyman when running without a live session
-// (mock mode), so the prototype inbox still populates from MOCK_BOOKINGS.
+// Offline demo only: MOCK_BOOKINGS are keyed to this handyman, so the inbox
+// still populates with no session. Against a live backend there is no fallback
+// identity — bookings come from RLS + list_available_bookings() and an
+// unauthenticated user must see nothing.
 const DEMO_HANDYMAN_ID = 'h1';
 
 type PendingAction = {
@@ -27,8 +30,9 @@ export default function HandymanRequests() {
   const { session } = useAuth();
   const { bookings, acceptBooking, declineBooking, advanceBooking } = useBookings();
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handymanId = session?.user?.id ?? DEMO_HANDYMAN_ID;
+  const handymanId = session?.user?.id ?? (isMockEnv() ? DEMO_HANDYMAN_ID : '');
 
   const myBookings = useMemo(
     () =>
@@ -59,18 +63,35 @@ export default function HandymanRequests() {
       ? '1 new booking is waiting for your response.'
       : `${incomingRequests.length} new bookings are waiting for your response.`;
 
-  const confirmPendingAction = () => {
-    if (!pendingAction) {
+  // acceptBooking/declineBooking reject when the edge function refuses the
+  // transition — wrong service category, KYC not approved, offline, or the job
+  // taken by someone else in the meantime. Unawaited, those rejections were
+  // unhandled promises: the dialog closed and the card disappeared as if the
+  // accept had worked, and the booking only reappeared on the next refresh.
+  const confirmPendingAction = async () => {
+    if (!pendingAction || isSubmitting) {
       return;
     }
 
-    if (pendingAction.type === 'accept') {
-      acceptBooking(pendingAction.booking.id);
-    } else {
-      declineBooking(pendingAction.booking.id);
-    }
+    const { booking, type } = pendingAction;
+    setIsSubmitting(true);
 
-    setPendingAction(null);
+    try {
+      if (type === 'accept') {
+        await acceptBooking(booking.id);
+      } else {
+        await declineBooking(booking.id);
+      }
+      setPendingAction(null);
+    } catch (err) {
+      setPendingAction(null);
+      Alert.alert(
+        type === 'accept' ? 'Could not accept request' : 'Could not decline request',
+        err instanceof Error ? err.message : 'Please try again.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -135,6 +156,7 @@ export default function HandymanRequests() {
         confirmLabel={pendingAction?.type === 'accept' ? 'Accept request' : 'Decline request'}
         cancelLabel="Keep reviewing"
         danger={pendingAction?.type === 'decline'}
+        loading={isSubmitting}
         onConfirm={confirmPendingAction}
         onCancel={() => setPendingAction(null)}
       />

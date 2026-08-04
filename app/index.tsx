@@ -1,222 +1,154 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import { Link } from 'expo-router';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Redirect, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../src/context/ThemeContext';
 import { useAuth } from '../src/context/AuthContext';
+import { Button } from '../src/components/ui/Button';
 
-const DEMO_CREDS = {
-  admin: { email: 'demo-admin@oki.test', password: 'Demo@123' },
-  handyman: { email: 'demo-hm@oki.test', password: 'Demo@123' },
-};
+const VALUE_PROPS = [
+  {
+    icon: 'shield-checkmark-outline' as const,
+    title: 'Verified pros',
+    body: 'Every handyman passes ID and skill checks before taking jobs.',
+  },
+  {
+    icon: 'pricetag-outline' as const,
+    title: 'Price up front',
+    body: 'See the full quote before you book. No surprises at the door.',
+  },
+  {
+    icon: 'navigate-outline' as const,
+    title: 'Track the job',
+    body: 'Follow your handyman from accepted to on the way to finished.',
+  },
+];
+
+// The shared password comes from the environment, not from source. A literal
+// here would survive into a production bundle even with the __DEV__ guard below:
+// the guard removes the JSX, and dropping the now-unreferenced constant is then
+// up to the minifier. An unset EXPO_PUBLIC_ var inlines to undefined at build
+// time, so a build without it cannot ship the string at all.
+const SEED_PASSWORD = process.env.EXPO_PUBLIC_SEED_PASSWORD;
+
+const SEED_ACCOUNTS = [
+  { email: 'princess@example.com', role: 'client' },
+  { email: 'mara@example.com', role: 'client' },
+  { email: 'kyle@example.com', role: 'handyman · electrical' },
+  { email: 'cef@example.com', role: 'handyman · plumbing' },
+  { email: 'rico@example.com', role: 'handyman · kyc pending' },
+  { email: 'admin@oki.app', role: 'admin' },
+];
 
 export default function LandingPage() {
   const { colors } = useTheme();
-  const { session, logout, login } = useAuth();
-  const [loggingIn, setLoggingIn] = useState<string | null>(null);
-  const [loginError, setLoginError] = useState<string | null>(null);
+  const { session, isLoading } = useAuth();
+  const router = useRouter();
+  const [showAccounts, setShowAccounts] = useState(false);
 
-  const userType = session?.user?.userType;
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color={colors.primary['600']} />
+      </View>
+    );
+  }
 
-  const handleDemoLogin = async (role: 'admin' | 'handyman') => {
-    setLoggingIn(role);
-    setLoginError(null);
-    try {
-      await login({ email: DEMO_CREDS[role].email, password: DEMO_CREDS[role].password });
-    } catch {
-      setLoginError(`Failed to login as ${role}. The demo account may need setup.`);
-    } finally {
-      setLoggingIn(null);
+  // The root layout only redirects out of the (auth) group, so an already
+  // signed-in user landing here would otherwise sit on the marketing page.
+  if (session) {
+    const userType = session.user.userType;
+    if (userType === 'admin') {
+      return <Redirect href="/(admin)/" />;
     }
-  };
+    if (userType === 'handyman') {
+      return <Redirect href="/(handyman)/" />;
+    }
+    return <Redirect href="/(client)/" />;
+  }
 
   return (
-    <ScrollView
-      className="flex-1 bg-white"
-      contentContainerStyle={{ padding: 24, paddingVertical: 64, alignItems: 'center' }}>
-      <Text className="font-heading mb-2 text-3xl text-gray-900">Oki App</Text>
-      <Text className="mb-5 text-center font-sans text-[13px] text-gray-500">
-        {session ? `Logged in as ${userType}` : 'Select a flow to test the UI.'}
-      </Text>
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}>
+        <View className="flex-1 justify-center py-10">
+          <View
+            style={{ backgroundColor: colors.primary['600'] }}
+            className="mb-6 h-16 w-16 items-center justify-center rounded-2xl">
+            <Ionicons name="construct" size={30} color="#FFFFFF" />
+          </View>
 
-      {(!session || userType === 'client') && (
-        <View className="mb-5 w-full gap-2">
-          <Text className="font-heading mb-1 text-[13px] tracking-wider text-gray-700 uppercase">
-            Client Flow
+          <Text className="font-heading text-[34px] leading-[40px] text-gray-900">
+            Home repairs,{'\n'}handled.
           </Text>
-          {!session && (
-            <Link href="/(auth)/auth-client" asChild>
-              <TouchableOpacity
-                style={{ backgroundColor: colors.primary['50'] }}
-                className="w-full items-center rounded-lg py-2">
-                <Text style={{ color: colors.primary['700'] }} className="font-semibold">
-                  Auth Entry
-                </Text>
-              </TouchableOpacity>
-            </Link>
-          )}
-          <Link href="/(verification)/client/onboarding" asChild>
+          <Text className="mt-3 text-[15px] leading-[22px] text-gray-500">
+            Oki connects you with trusted handymen nearby — book in a few taps and follow the job
+            through to done.
+          </Text>
+
+          <View className="mt-9 gap-6">
+            {VALUE_PROPS.map((prop) => (
+              <View key={prop.title} className="flex-row gap-3.5">
+                <View
+                  style={{ backgroundColor: colors.primary['50'] }}
+                  className="h-10 w-10 items-center justify-center rounded-xl">
+                  <Ionicons name={prop.icon} size={19} color={colors.primary['600']} />
+                </View>
+                <View className="flex-1">
+                  <Text className="font-heading text-[15px] text-gray-900">{prop.title}</Text>
+                  <Text className="mt-0.5 text-[13px] leading-[19px] text-gray-500">
+                    {prop.body}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className="gap-3">
+          <Button label="Log in" onPress={() => router.push('/(auth)/login')} fullWidth />
+          <Button
+            label="Create an account"
+            variant="tertiary"
+            onPress={() => router.push('/(auth)/onboarding')}
+            fullWidth
+          />
+          <Text className="mt-1 text-center text-[11px] text-gray-400">
+            Preview build · Cebu pilot
+          </Text>
+        </View>
+
+        {__DEV__ && SEED_PASSWORD && (
+          <View className="mt-6 border-t border-gray-100 pt-4">
             <TouchableOpacity
-              style={{ backgroundColor: colors.primary['50'] }}
-              className="w-full items-center rounded-lg py-2">
-              <Text style={{ color: colors.primary['700'] }} className="font-semibold">
-                Client Verification
+              onPress={() => setShowAccounts((prev) => !prev)}
+              className="flex-row items-center justify-center gap-1.5">
+              <Ionicons
+                name={showAccounts ? 'chevron-up' : 'chevron-down'}
+                size={13}
+                color="#9CA3AF"
+              />
+              <Text className="text-[11px] font-semibold tracking-wide text-gray-400 uppercase">
+                Test accounts
               </Text>
             </TouchableOpacity>
-          </Link>
-          <Link href="/(client)" asChild>
-            <TouchableOpacity
-              style={{ backgroundColor: colors.primary['600'] }}
-              className="w-full items-center rounded-lg py-2">
-              <Text className="font-semibold text-white">Client Home</Text>
-            </TouchableOpacity>
-          </Link>
-          <Link href="/(client)/bookings" asChild>
-            <TouchableOpacity
-              style={{ backgroundColor: colors.primary['50'] }}
-              className="w-full items-center rounded-lg py-2">
-              <Text style={{ color: colors.primary['700'] }} className="font-semibold">
-                Client Bookings
-              </Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
-      )}
 
-      {(!session || userType === 'handyman') && (
-        <View className="mb-5 w-full gap-2">
-          <Text className="font-heading mb-1 text-[13px] tracking-wider text-gray-700 uppercase">
-            Handyman Flow
-          </Text>
-          {!session && (
-            <Link href="/(auth)/auth-handyman" asChild>
-              <TouchableOpacity className="w-full items-center rounded-lg bg-blue-50 py-2">
-                <Text className="font-semibold text-blue-700">Auth Entry</Text>
-              </TouchableOpacity>
-            </Link>
-          )}
-          <Link href="/(verification)/handyman/onboarding" asChild>
-            <TouchableOpacity className="w-full items-center rounded-lg bg-blue-50 py-2">
-              <Text className="font-semibold text-blue-700">Handyman Verification</Text>
-            </TouchableOpacity>
-          </Link>
-          <Link href="/(handyman)" asChild>
-            <TouchableOpacity className="w-full items-center rounded-lg bg-blue-600 py-2">
-              <Text className="font-semibold text-white">Handyman Dashboard</Text>
-            </TouchableOpacity>
-          </Link>
-          <Link href="/(handyman)/requests" asChild>
-            <TouchableOpacity className="w-full items-center rounded-lg bg-blue-50 py-2">
-              <Text className="font-semibold text-blue-700">Incoming Requests</Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
-      )}
-
-      {(!session || userType === 'admin') && (
-        <View className="w-full gap-2">
-          <Text className="font-heading mb-1 text-[13px] tracking-wider text-gray-700 uppercase">
-            Admin Flow
-          </Text>
-          {!session && (
-            <Link href="/(auth)/auth-admin" asChild>
-              <TouchableOpacity className="w-full items-center rounded-lg bg-gray-100 py-2">
-                <Text className="font-semibold text-gray-700">Auth Entry</Text>
-              </TouchableOpacity>
-            </Link>
-          )}
-          <Link href="/(verification)/admin/onboarding" asChild>
-            <TouchableOpacity className="w-full items-center rounded-lg bg-gray-100 py-2">
-              <Text className="font-semibold text-gray-700">Admin Verification</Text>
-            </TouchableOpacity>
-          </Link>
-          <Link href="/(admin)" asChild>
-            <TouchableOpacity className="w-full items-center rounded-lg bg-gray-800 py-2">
-              <Text className="font-semibold text-white">Admin Dashboard</Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
-      )}
-
-      {/* Booking Lifecycle Demo */}
-      <View className="mt-6 w-full gap-2">
-        <Text className="font-heading mb-1 text-[13px] tracking-wider text-purple-700 uppercase">
-          Development
-        </Text>
-        <Link href="/lifecycle-demo" asChild>
-          <TouchableOpacity className="w-full items-center rounded-lg bg-purple-600 py-2">
-            <View className="flex-row items-center gap-2">
-              <Ionicons name="git-branch-outline" size={16} color="white" />
-              <Text className="font-semibold text-white">Booking Lifecycle Demo</Text>
-            </View>
-          </TouchableOpacity>
-        </Link>
-      </View>
-
-      {/* Demo Access — one-click login for testing */}
-      <View className="mt-6 w-full gap-2">
-        <Text className="font-heading mb-1 text-[13px] tracking-wider text-emerald-700 uppercase">
-          Demo Access (one-click)
-        </Text>
-        <Text className="mb-1 text-[11px] text-gray-500">
-          These accounts are pre-configured with known passwords for testing.
-        </Text>
-
-        <TouchableOpacity
-          onPress={() => handleDemoLogin('admin')}
-          disabled={loggingIn !== null}
-          className="w-full items-center rounded-lg bg-gray-800 py-3">
-          <View className="flex-row items-center gap-2">
-            {loggingIn === 'admin' ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Ionicons name="shield-checkmark-outline" size={16} color="white" />
+            {showAccounts && (
+              <View className="mt-3 gap-1.5 rounded-xl bg-gray-50 px-4 py-3">
+                {SEED_ACCOUNTS.map((account) => (
+                  <View key={account.email} className="flex-row justify-between">
+                    <Text className="text-[11px] text-gray-600">{account.email}</Text>
+                    <Text className="text-[11px] text-gray-400">{account.role}</Text>
+                  </View>
+                ))}
+                <Text className="mt-1 text-[11px] text-gray-400">password: {SEED_PASSWORD}</Text>
+              </View>
             )}
-            <Text className="font-semibold text-white">
-              {loggingIn === 'admin' ? 'Signing in...' : 'Sign in as Demo Admin'}
-            </Text>
           </View>
-          <Text className="mt-0.5 text-[10px] text-gray-400">{DEMO_CREDS.admin.email}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => handleDemoLogin('handyman')}
-          disabled={loggingIn !== null}
-          className="w-full items-center rounded-lg bg-blue-600 py-3">
-          <View className="flex-row items-center gap-2">
-            {loggingIn === 'handyman' ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Ionicons name="hammer-outline" size={16} color="white" />
-            )}
-            <Text className="font-semibold text-white">
-              {loggingIn === 'handyman' ? 'Signing in...' : 'Sign in as Demo Handyman'}
-            </Text>
-          </View>
-          <Text className="mt-0.5 text-[10px] text-blue-300">{DEMO_CREDS.handyman.email}</Text>
-        </TouchableOpacity>
-
-        {loginError ? (
-          <View className="rounded-lg bg-red-50 px-4 py-3">
-            <Text className="text-[12px] text-red-600">{loginError}</Text>
-          </View>
-        ) : null}
-      </View>
-
-      {/* Logout */}
-      {session && (
-        <View className="mt-8 w-full">
-          <TouchableOpacity
-            onPress={() => logout()}
-            className="flex-row items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-3">
-            <Ionicons name="log-out-outline" size={18} color="#DC2626" />
-            <Text className="font-semibold text-red-600">Log Out</Text>
-          </TouchableOpacity>
-          <Text className="mt-2 text-center text-[11px] text-gray-400">
-            Logged in as {session.user.email || session.user.phone}
-          </Text>
-        </View>
-      )}
-    </ScrollView>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }

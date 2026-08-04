@@ -1,12 +1,18 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, useWindowDimensions } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  useWindowDimensions,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
+import { useEarnings } from '../../src/hooks/useEarnings';
 import {
-  MOCK_EARNINGS,
-  MOCK_HANDYMAN_WALLET,
   filterEarningsByRange,
   getDailyAggregates,
   fillHourlyTotals,
@@ -59,6 +65,7 @@ function dateStr(d: Date) {
 export default function HandymanEarnings() {
   const { colors } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
+  const { earnings, wallet, isLoading } = useEarnings();
   const [selectedPreset, setSelectedPreset] = useState<Preset>('This Week');
   const [chartMode, setChartMode] = useState<ChartMode>('bar');
   const [customStart, setCustomStart] = useState(() => {
@@ -85,8 +92,8 @@ export default function HandymanEarnings() {
   }, [selectedPreset, customStart, customEnd]);
 
   const filteredEntries = useMemo(
-    () => filterEarningsByRange(MOCK_EARNINGS, range.start, range.end),
-    [range.start, range.end]
+    () => filterEarningsByRange(earnings, range.start, range.end),
+    [earnings, range.start, range.end]
   );
 
   const rangeTotal = useMemo(
@@ -94,7 +101,10 @@ export default function HandymanEarnings() {
     [filteredEntries]
   );
 
-  const lifetimeTotal = useMemo(() => MOCK_EARNINGS.reduce((sum, e) => sum + e.netEarnings, 0), []);
+  const lifetimeTotal = useMemo(
+    () => earnings.reduce((sum, e) => sum + e.netEarnings, 0),
+    [earnings]
+  );
 
   const isSingleDay = range.start.toDateString() === range.end.toDateString();
 
@@ -131,7 +141,7 @@ export default function HandymanEarnings() {
   /* Day-of-week breakdown (all-time average) */
   const dayOfWeekData = useMemo(() => {
     const buckets = Array.from({ length: 7 }, () => ({ total: 0, count: 0 }));
-    for (const e of MOCK_EARNINGS) {
+    for (const e of earnings) {
       const day = new Date(e.date).getDay();
       buckets[day].total += e.netEarnings;
       buckets[day].count += 1;
@@ -144,7 +154,7 @@ export default function HandymanEarnings() {
       count: b.count,
       pct: values[i] / max,
     }));
-  }, []);
+  }, [earnings]);
 
   const bestDay = useMemo(() => {
     let best = 0;
@@ -167,7 +177,20 @@ export default function HandymanEarnings() {
     []
   );
 
-  const wallet = MOCK_HANDYMAN_WALLET;
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        edges={['top', 'left', 'right']}
+        style={{ flex: 1, backgroundColor: colors.primary['600'] }}>
+        <ScreenHeader title="Earnings" showBack />
+        <View
+          className="flex-1 items-center justify-center rounded-t-[32px]"
+          style={{ backgroundColor: colors.ui.background, marginTop: -32 }}>
+          <ActivityIndicator size="large" color={colors.primary['600']} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView

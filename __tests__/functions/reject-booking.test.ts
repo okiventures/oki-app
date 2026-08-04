@@ -1,4 +1,4 @@
-import { requireHandyman } from '../../supabase/functions/_shared/rbac';
+import { requireHandyman, serviceClient } from '../../supabase/functions/_shared/rbac';
 import { __getHandler } from '../__mocks__/deno-serve';
 import '../../supabase/functions/reject-booking/index';
 
@@ -8,6 +8,7 @@ jest.mock('../../supabase/functions/_shared/rbac', () => {
 
   return {
     requireHandyman: jest.fn(),
+    serviceClient: jest.fn(),
     methodNotAllowed: jest.fn(() => resp(405, { error: 'METHOD_NOT_ALLOWED' })),
     badRequest: jest.fn((m: string) => resp(400, { error: 'BAD_REQUEST', message: m })),
     notFound: jest.fn((m: string) => resp(404, { error: 'NOT_FOUND', message: m })),
@@ -36,6 +37,21 @@ function mockFrom(_table: string, overrides?: Partial<MockChain>): MockChain {
   return chain;
 }
 
+/**
+ * A thenable chain for list queries, which are awaited directly rather than
+ * through .single(). mockFrom's chain returns itself from every method, so
+ * awaiting it would yield the chain instead of a {data, error}.
+ */
+function mockList(resolved: { data: unknown; error: { message: string } | null }) {
+  const chain: any = {
+    select: jest.fn(() => chain),
+    eq: jest.fn(() => chain),
+    then: (onFulfilled?: any, onRejected?: any) =>
+      Promise.resolve(resolved).then(onFulfilled, onRejected),
+  };
+  return chain;
+}
+
 function makeReq(body: unknown): Request {
   return new Request('http://localhost/reject-booking', {
     method: 'POST',
@@ -56,13 +72,22 @@ function supabaseWith(opts: {
   // defaults to an eligible (online, KYC-approved) handyman; pass null to
   // simulate the caller having no handyman row.
   handyman?: object | null;
+  handymanServices?: object[] | null;
+  handymanServicesError?: { message: string } | null;
   insertResolved?: { error: unknown };
 }) {
   const bookingChain = mockFrom('bookings', {
     single: jest.fn().mockResolvedValue({
-      data: opts.booking ?? null,
+      // Spread last so a fixture can override the category. The default keeps
+      // the tests that predate the category guard focused on their own guard.
+      data: opts.booking ? { services: { category: 'Plumbing' }, ...opts.booking } : null,
       error: opts.bookingError ?? null,
     }),
+  });
+
+  const servicesChain = mockList({
+    data: opts.handymanServices ?? [{ service_id: 'sv-1', services: { category: 'Plumbing' } }],
+    error: opts.handymanServicesError ?? null,
   });
 
   const handymanValue =
@@ -81,17 +106,22 @@ function supabaseWith(opts: {
     });
   }
 
-  return {
+  const client = {
     from: jest.fn((table: string) => {
       if (table === 'bookings') return bookingChain;
       if (table === 'handymen') return handymanChain;
+      if (table === 'handyman_services') return servicesChain;
       return eventsChain ?? mockFrom(table);
     }),
   };
+
+  (serviceClient as jest.Mock).mockReturnValue(client);
+  return client;
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (serviceClient as jest.Mock).mockReturnValue({ from: jest.fn(() => mockFrom('any')) });
 });
 
 describe('module loading', () => {
@@ -235,6 +265,78 @@ describe('guard conditions', () => {
   });
 });
 
+describe('service category gating', () => {
+  it('rejects a booking outside the categories the handyman serves', async () => {
+    (requireHandyman as jest.Mock).mockResolvedValue({
+      user: { id: 'hm-1' },
+      supabase: supabaseWith({
+        booking: {
+          id: 'b-1',
+          status: 'PENDING',
+          handyman_id: null,
+          services: { category: 'Electrical' },
+        },
+        handymanServices: [],
+      }),
+    });
+
+    const res = await callHandler(makeReq({ bookingId: 'b-1' }));
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.details.failed_guards).toContain('Handyman does not offer Electrical services');
+  });
+
+  it('filters handyman_services on the booking own category', async () => {
+    const client = supabaseWith({
+      booking: {
+        id: 'b-1',
+        status: 'PENDING',
+        handyman_id: null,
+        services: { category: 'Carpentry' },
+      },
+      handymanServices: [{ service_id: 'sv-9', services: { category: 'Carpentry' } }],
+      insertResolved: { error: null },
+    });
+    (requireHandyman as jest.Mock).mockResolvedValue({ user: { id: 'hm-1' }, supabase: client });
+
+    const res = await callHandler(makeReq({ bookingId: 'b-1' }));
+    expect(res.status).toBe(200);
+    expect(client.from('handyman_services').eq.mock.calls).toEqual(
+      expect.arrayContaining([['services.category', 'Carpentry']])
+    );
+  });
+
+  it('accepts the embed when PostgREST returns it as an array', async () => {
+    (requireHandyman as jest.Mock).mockResolvedValue({
+      user: { id: 'hm-1' },
+      supabase: supabaseWith({
+        booking: {
+          id: 'b-1',
+          status: 'PENDING',
+          handyman_id: null,
+          services: [{ category: 'Plumbing' }],
+        },
+        insertResolved: { error: null },
+      }),
+    });
+
+    const res = await callHandler(makeReq({ bookingId: 'b-1' }));
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 500 when the booking has no service category', async () => {
+    (requireHandyman as jest.Mock).mockResolvedValue({
+      user: { id: 'hm-1' },
+      supabase: supabaseWith({
+        booking: { id: 'b-1', status: 'PENDING', handyman_id: null, services: null },
+      }),
+    });
+
+    const res = await callHandler(makeReq({ bookingId: 'b-1' }));
+    expect(res.status).toBe(500);
+  });
+});
+
 describe('audit event logging', () => {
   let consoleSpy: jest.SpyInstance;
 
@@ -280,5 +382,21 @@ describe('success path', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.status).toBe('PENDING');
+  });
+
+  it('never returns the client PostGIS location', async () => {
+    const client = supabaseWith({
+      booking: { id: 'b-1', status: 'PENDING', handyman_id: null },
+      insertResolved: { error: null },
+    });
+    (requireHandyman as jest.Mock).mockResolvedValue({ user: { id: 'hm-1' }, supabase: client });
+
+    const res = await callHandler(makeReq({ bookingId: 'b-1' }));
+    const body = await res.json();
+    expect(body.data).not.toHaveProperty('location');
+    // The column list is what enforces it — `select('*')` would have included it.
+    const selected = client.from('bookings').select.mock.calls[0][0] as string;
+    expect(selected).not.toBe('*');
+    expect(selected).not.toMatch(/\blocation\b/);
   });
 });

@@ -20,6 +20,7 @@ import { Avatar } from '../../src/components/ui/Avatar';
 import { Input } from '../../src/components/ui/Input';
 import { Toast } from '../../src/components/ui/Toast';
 import { MOCK_CLIENT } from '../../src/mocks';
+import { isMockEnv } from '../../src/services/bookingService';
 
 export default function EditProfile() {
   const { colors } = useTheme();
@@ -56,10 +57,13 @@ export default function EditProfile() {
         setHourlyRate(profile.handyman.hourly_rate?.toString() ?? '');
         setYearsExperience(profile.handyman.years_experience?.toString() ?? '');
       }
-    } else if (!session) {
-      // Fallback to mock data for dev/testing
+    } else if (!session && isMockEnv()) {
+      // Offline-demo identity only. `!session` alone also seeded these against a
+      // live backend, so a signed-out user was handed someone else's name and
+      // contact details in a form whose save button writes them.
+      // MOCK_CLIENT carries no email or phone, hence the literals.
       setName(MOCK_CLIENT.name);
-      setEmail('ceferino.v@example.com');
+      setEmail('ishah.b@example.com');
       setPhone('+63 912 345 6789');
       setPhotoUrl(MOCK_CLIENT.photoUrl);
     }

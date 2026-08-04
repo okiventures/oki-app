@@ -1,51 +1,8 @@
-import { BookingStatus, BookingType, ServiceCategory } from '../types';
+import { BookingDetail, BookingStatus, BookingType, ServiceCategory } from '../types';
 
-export interface TimelineEvent {
-  id: string;
-  status: BookingStatus;
-  label: string;
-  description: string;
-  timestamp: string | null; // null = future/pending
-}
-
-export interface OrderDetail {
-  label: string;
-  value: string;
-}
-
-export interface BookingDetail {
-  id: string;
-  reference: string;
-  clientId: string;
-  clientName: string;
-  handymanId: string;
-  handymanName: string;
-  handymanPhotoUrl?: string;
-  handymanRating: number;
-  handymanJobsCompleted: number;
-  serviceCategory: ServiceCategory;
-  bookingType: BookingType;
-  status: BookingStatus;
-  description: string;
-  location: string;
-  fullAddress: string;
-  latitude: number;
-  longitude: number;
-  amount: number;
-  platformFee: number;
-  netAmount: number;
-  scheduledAt?: string;
-  createdAt: string;
-  updatedAt: string;
-  photos?: string[];
-  paymentMethod: 'GCash' | 'Credit Card' | 'Cash' | 'Maya';
-  paymentStatus: 'Paid' | 'Pending' | 'Refunded' | 'Failed';
-  paymentRef?: string;
-  paidAt?: string;
-  notes?: string;
-  orderDetails: OrderDetail[];
-  timeline: TimelineEvent[];
-}
+// These types moved to src/types once the detail screen started reading live
+// data. Re-exported so the existing import sites keep working.
+export type { BookingDetail, OrderDetail, TimelineEvent } from '../types';
 
 const now = Date.now();
 

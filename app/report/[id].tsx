@@ -1,15 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, ScrollView, TextInput, Pressable, Animated } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TextInput,
+  Pressable,
+  Animated,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useAuth } from '../../src/context/AuthContext';
 import { Button } from '../../src/components/ui/Button';
+import { Toast } from '../../src/components/ui/Toast';
 import { ReportReasonSelector } from '../../src/components/report/ReportReasonSelector';
-import { MOCK_BOOKING_DETAILS } from '../../src/mocks/bookingDetails';
-import { addReport } from '../../src/mocks/reports';
-import type { ReportReason } from '../../src/types';
+import { useBookingDetail } from '../../src/hooks/useBookingDetail';
+import { submitReport } from '../../src/services/reportService';
+import type { ReportReason, ToastMessage } from '../../src/types';
 
 const MAX_DESCRIPTION_LENGTH = 500;
 
@@ -19,7 +28,7 @@ export default function ReportUserScreen() {
   const { colors } = useTheme();
   const { session } = useAuth();
 
-  const booking = MOCK_BOOKING_DETAILS.find((b) => b.id === id);
+  const { detail: booking, isLoading } = useBookingDetail(id);
   const viewerRole = session?.user?.userType ?? 'client';
   const isClient = viewerRole === 'client';
   const targetName = booking ? (isClient ? booking.handymanName : booking.clientName) : '';
@@ -28,6 +37,7 @@ export default function ReportUserScreen() {
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -50,27 +60,26 @@ export default function ReportUserScreen() {
 
   const canSubmit = selectedReason !== null && description.trim().length > 0;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit || !booking || !selectedReason) return;
     setSubmitting(true);
 
-    const targetId = isClient ? booking.handymanId : booking.clientId;
-
-    addReport({
-      reporterId: isClient ? booking.clientId : booking.handymanId,
-      reporterName: isClient ? booking.clientName : booking.handymanName,
-      reporterType: isClient ? 'client' : 'handyman',
-      targetId,
-      targetName,
-      bookingId: booking.id,
-      reason: selectedReason,
-      description,
-    });
-
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      await submitReport({
+        bookingId: booking.id,
+        reason: selectedReason,
+        description,
+      });
       setShowSuccess(true);
-    }, 800);
+    } catch (e) {
+      setToast({
+        id: `report-error-${Date.now()}`,
+        type: 'error',
+        message: e instanceof Error ? e.message : 'Failed to submit report.',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (showSuccess) {
@@ -98,6 +107,16 @@ export default function ReportUserScreen() {
             We&apos;ll review your report and get back to you within 24–48 hours.
           </Text>
         </Animated.View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: colors.ui.background }}
+        className="items-center justify-center">
+        <ActivityIndicator size="large" color={colors.primary['600']} />
       </SafeAreaView>
     );
   }
@@ -208,6 +227,8 @@ export default function ReportUserScreen() {
           />
         </View>
       </View>
+
+      {toast && <Toast toast={toast} onDismiss={() => setToast(null)} />}
     </SafeAreaView>
   );
 }
