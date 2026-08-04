@@ -14,6 +14,7 @@ describe('rankHandymen', () => {
     is_online: true,
     distance_meters: 1000,
     trust_score: null,
+    review_count: 0,
   };
 
   it('sorts by distance ascending', () => {

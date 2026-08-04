@@ -9,7 +9,7 @@ import { Button } from '../../src/components/ui/Button';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { StarRatingInput } from '../../src/components/ui/StarRatingInput';
 import { MOCK_BOOKING_DETAILS } from '../../src/mocks/bookingDetails';
-import { addReview } from '../../src/mocks/reviews';
+import { submitReview } from '../../src/services/reviewService';
 
 const MAX_COMMENT_LENGTH = 500;
 
@@ -30,6 +30,7 @@ export default function ReviewBookingScreen() {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -52,25 +53,33 @@ export default function ReviewBookingScreen() {
 
   const canSubmit = rating > 0;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit || !booking) return;
     setSubmitting(true);
+    setError(null);
 
-    const revieweeId = isClient ? booking.handymanId : booking.clientId;
+    const isClientViewer = isClient;
+    const meId = isClientViewer ? booking.clientId : booking.handymanId;
+    const meName = isClientViewer ? booking.clientName : booking.handymanName;
+    const revieweeId = isClientViewer ? booking.handymanId : booking.clientId;
+    const targetPhoto = isClientViewer ? booking.handymanPhotoUrl : undefined;
 
-    addReview({
-      bookingId: booking.id,
-      reviewerId: isClient ? booking.clientId : booking.handymanId,
-      reviewerName: isClient ? booking.clientName : booking.handymanName,
-      revieweeId,
-      rating,
-      comment,
-    });
-
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      await submitReview({
+        bookingId: booking.id,
+        reviewerId: meId,
+        reviewerName: meName,
+        reviewerPhotoUrl: targetPhoto,
+        revieweeId,
+        rating,
+        comment,
+      });
       setShowSuccess(true);
-    }, 800);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to submit review';
+      setError(message);
+      setSubmitting(false);
+    }
   };
 
   if (showSuccess) {
@@ -206,6 +215,12 @@ export default function ReviewBookingScreen() {
         <View
           className="border-t px-0 pt-3 pb-6"
           style={{ borderColor: colors.ui.border, backgroundColor: colors.ui.background }}>
+          {error ? (
+            <View className="mb-3 flex-row items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5">
+              <Ionicons name="alert-circle-outline" size={16} color="#EF4444" />
+              <Text className="flex-1 text-[13px] leading-4 text-red-600">{error}</Text>
+            </View>
+          ) : null}
           <Button
             label="Submit Review"
             variant="primary"
