@@ -121,7 +121,7 @@ export default function ClientLogin() {
             </View>
             <Text className="font-heading text-2xl text-gray-900">Oki, Welcome!</Text>
             <Text className="mt-2 text-center text-[13px] text-gray-500">
-              Sign in to continue your onboarding.
+              Sign in to your account to continue.
             </Text>
           </View>
           <Form gap={3}>

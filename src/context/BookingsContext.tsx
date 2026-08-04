@@ -11,50 +11,59 @@ import { Alert } from 'react-native';
 import { Booking, BookingStatus } from '../types';
 import {
   transitionBookingState,
-  subscribeToBooking,
+  subscribeToBookingChanges,
   createBooking as createBookingService,
-  BookingTransitionError,
+  fetchBookings,
   isMockEnv,
+  BookingTransitionError,
 } from '../services/bookingService';
 import { getWorkflowAction, canTransition, WorkflowAction } from '../services/bookingFsm';
 import type { CreateBookingInput } from '../services/bookingService';
 import { getFreshMockBookings } from '../mocks/bookings';
+import { useAuth } from './AuthContext';
 
-const MOCK_BOOKINGS = getFreshMockBookings();
+// Nothing persists bookings any more, so this key only ever gets cleared. Mock
+// mode needs its dates rebuilt relative to now — a restored set renders
+// yesterday's "today at 2pm" — and live rows in localStorage would hand one
+// account's bookings to whoever signs in next.
+const LEGACY_STORAGE_KEY = 'oki_bookings_state_v2';
 
-const STORAGE_KEY = 'oki_bookings_state_v2';
+// Unassigned PENDING bookings match no RLS policy, so realtime can't push a new
+// request to a handyman who isn't on it yet. The inbox polls to close that gap.
+const HANDYMAN_INBOX_POLL_MS = 20_000;
 
 export type CancelBookingResult = { ok: true } | { ok: false; message: string };
 
 interface BookingsContextValue {
   bookings: Booking[];
+  isLoading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
   createBooking: (input: CreateBookingInput) => Promise<Booking>;
-  acceptBooking: (bookingId: string) => void;
-  declineBooking: (bookingId: string) => void;
-  advanceBooking: (bookingId: string) => void;
+  // These three are async and acceptBooking/declineBooking reject on a failed
+  // transition. Typed as void, callers could not await or catch them, so a
+  // rejection surfaced as an unhandled promise and the UI carried on.
+  acceptBooking: (bookingId: string) => Promise<void>;
+  declineBooking: (bookingId: string) => Promise<void>;
+  advanceBooking: (bookingId: string) => Promise<void>;
   cancelBooking: (bookingId: string) => Promise<CancelBookingResult>;
   getBookingById: (bookingId: string) => Booking | undefined;
   getNextHandymanAction: (status: BookingStatus) => WorkflowAction | null;
 }
 
 const BookingsContext = createContext<BookingsContextValue>({
-  bookings: MOCK_BOOKINGS,
-  createBooking: async () => MOCK_BOOKINGS[0],
-  acceptBooking: () => {},
-  declineBooking: () => {},
-  advanceBooking: () => {},
+  bookings: [],
+  isLoading: false,
+  error: null,
+  refresh: async () => {},
+  createBooking: async () => getFreshMockBookings()[0],
+  acceptBooking: async () => {},
+  declineBooking: async () => {},
+  advanceBooking: async () => {},
   cancelBooking: async () => ({ ok: false, message: 'This booking cannot be cancelled.' }),
   getBookingById: () => undefined,
   getNextHandymanAction: () => null,
 });
-
-function updateBooking(booking: Booking, status: BookingStatus): Booking {
-  return {
-    ...booking,
-    status,
-    updatedAt: new Date().toISOString(),
-  };
-}
 
 // A state transition only changes status/assignment/photos. Merge just those
 // from the API response so we don't clobber richer local fields (clientName,
@@ -71,92 +80,75 @@ function mergeTransition(existing: Booking, updated: Booking): Booking {
 }
 
 export function BookingsProvider({ children }: { children: React.ReactNode }) {
-  const [bookings, setBookings] = useState<Booking[]>(() => getFreshMockBookings());
-  const subsRef = useRef<Map<string, () => void>>(new Map());
+  const { session, isLoading: isAuthLoading } = useAuth();
+  const mockMode = isMockEnv();
+  const userId = session?.user?.id;
+  const userType = session?.user?.userType;
 
-  useEffect(() => {
-    if (isMockEnv()) {
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem(STORAGE_KEY);
-      }
+  const [bookings, setBookings] = useState<Booking[]>(() =>
+    mockMode ? getFreshMockBookings() : []
+  );
+  const [isLoading, setIsLoading] = useState(!mockMode);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (mockMode) return;
+
+    // Signed out against a live backend: RLS would return nothing anyway, and
+    // showing the previous account's bookings after a logout would be wrong.
+    if (!userId) {
+      setBookings([]);
+      setIsLoading(false);
       return;
     }
 
+    setError(null);
     try {
-      if (typeof window !== 'undefined') {
-        const saved = window.localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          setBookings(JSON.parse(saved) as Booking[]);
-        }
-      }
-    } catch {
-      setBookings(getFreshMockBookings());
+      setBookings(await fetchBookings(userType));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to load bookings';
+      setError(message);
+      console.warn('BookingsContext: refresh failed:', message);
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }, [mockMode, userId, userType]);
+
+  // The realtime and polling effects read refresh through a ref. Depending on it
+  // directly tore the channel down and reset the poll timer every time its
+  // identity changed, which is every time userId or userType moves.
+  const refreshRef = useRef(refresh);
+  useEffect(() => {
+    refreshRef.current = refresh;
+  }, [refresh]);
 
   useEffect(() => {
-    if (isMockEnv()) return;
+    if (isAuthLoading) return;
+    refresh();
+  }, [isAuthLoading, refresh]);
 
+  useEffect(() => {
     try {
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+        window.localStorage.removeItem(LEGACY_STORAGE_KEY);
       }
     } catch {
       // noop
     }
-  }, [bookings]);
-
-  // Subscribe to real-time updates for ALL active bookings (a user can have
-  // several in flight at once). Join the ids into a stable key so the effect
-  // only re-runs when the active set actually changes.
-  const activeBookingIds = useMemo(
-    () =>
-      bookings
-        .filter((b) => !['Completed', 'Paid', 'Cancelled', 'Rejected'].includes(b.status))
-        .map((b) => b.id),
-    [bookings]
-  );
-  const activeIdsKey = useMemo(() => [...activeBookingIds].sort().join(','), [activeBookingIds]);
-
-  useEffect(() => {
-    const active = new Set(activeIdsKey ? activeIdsKey.split(',') : []);
-    const subs = subsRef.current;
-
-    // Drop subscriptions for bookings that are no longer active
-    for (const [id, unsub] of subs) {
-      if (!active.has(id)) {
-        unsub();
-        subs.delete(id);
-      }
-    }
-
-    // Add subscriptions for newly-active bookings
-    for (const id of active) {
-      if (!subs.has(id)) {
-        subs.set(
-          id,
-          subscribeToBooking(id, (event) => {
-            setBookings((current) =>
-              current.map((b) =>
-                b.id === event.bookingId
-                  ? { ...b, status: event.toStatus, updatedAt: new Date().toISOString() }
-                  : b
-              )
-            );
-          })
-        );
-      }
-    }
-  }, [activeIdsKey]);
-
-  // Tear down every channel on unmount
-  useEffect(() => {
-    const subs = subsRef.current;
-    return () => {
-      for (const unsub of subs.values()) unsub();
-      subs.clear();
-    };
   }, []);
+
+  // Refetch when anything the user can see changes: this is what makes the
+  // client's screen move when the handyman accepts, and vice versa.
+  useEffect(() => {
+    if (mockMode || !userId) return;
+    return subscribeToBookingChanges(() => refreshRef.current());
+  }, [mockMode, userId]);
+
+  useEffect(() => {
+    if (mockMode || !userId || userType !== 'handyman') return;
+    const timer = setInterval(() => refreshRef.current(), HANDYMAN_INBOX_POLL_MS);
+    return () => clearInterval(timer);
+  }, [mockMode, userId, userType]);
 
   const createBooking = useCallback(async (input: CreateBookingInput) => {
     const booking = await createBookingService(input);
@@ -222,16 +214,19 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
           Alert.alert('Cannot advance booking', message);
           return;
         }
-      }
 
-      setBookings((current) =>
-        current.map((booking) => {
-          if (booking.id !== bookingId) return booking;
-          const action = getWorkflowAction(booking.status);
-          if (!action) return booking;
-          return updateBooking(booking, action.nextStatus);
-        })
-      );
+        // Anything else — network failure, 401, 500 — means the server never
+        // moved the booking. This used to fall through to an optimistic local
+        // update, so the handyman's screen advanced to ARRIVED/WORK_STARTED
+        // while the booking sat unchanged in the database and on the client's
+        // screen, and the next action failed against a status nobody could see.
+        // With no session transitionBookingState resolves against the local
+        // mock instead of throwing, so the offline demo is unaffected.
+        Alert.alert(
+          'Could not update booking',
+          err instanceof Error ? err.message : 'Please check your connection and try again.'
+        );
+      }
     },
     [bookings]
   );
@@ -272,6 +267,9 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(
     () => ({
       bookings,
+      isLoading,
+      error,
+      refresh,
       createBooking,
       acceptBooking,
       declineBooking,
@@ -280,7 +278,17 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
       getBookingById: (bookingId: string) => bookings.find((booking) => booking.id === bookingId),
       getNextHandymanAction: (status: BookingStatus) => getWorkflowAction(status),
     }),
-    [bookings, createBooking, acceptBooking, declineBooking, advanceBooking, cancelBooking]
+    [
+      bookings,
+      isLoading,
+      error,
+      refresh,
+      createBooking,
+      acceptBooking,
+      declineBooking,
+      advanceBooking,
+      cancelBooking,
+    ]
   );
 
   return <BookingsContext.Provider value={value}>{children}</BookingsContext.Provider>;

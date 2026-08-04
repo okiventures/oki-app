@@ -196,11 +196,13 @@ export const SERVICE_CATEGORY_COLORS: Record<string, CategoryPalette> = {
 
 export const SERVICE_CATEGORY_ICONS: Record<string, string> = {
   Plumbing: 'water-outline',
-  Electrical: 'zap-outline',
+  // zap-outline and air-outline are not Ionicons names — they rendered as
+  // nothing wherever this map drives an <Ionicons>.
+  Electrical: 'flash-outline',
   Carpentry: 'hammer-outline',
   Cleaning: 'brush-outline',
   Painting: 'color-fill-outline',
-  HVAC: 'air-outline',
+  HVAC: 'snow-outline',
   Roofing: 'home-outline',
   Landscaping: 'leaf-outline',
   'Appliance Repair': 'construct-outline',

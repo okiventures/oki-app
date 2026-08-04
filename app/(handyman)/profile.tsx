@@ -5,6 +5,7 @@ import { useTheme } from '../../src/context/ThemeContext';
 import { useAuth } from '../../src/context/AuthContext';
 import { useProfile } from '../../src/hooks/useProfile';
 import { useReviews } from '../../src/hooks/useReviews';
+import { useEarnings } from '../../src/hooks/useEarnings';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Card } from '../../src/components/ui/Card';
@@ -18,7 +19,7 @@ import { ReviewFlagModal } from '../../src/components/features/ReviewFlagModal';
 import { flagReview } from '../../src/services/reviewService';
 import { Review } from '../../src/types';
 import { Ionicons } from '@expo/vector-icons';
-import { MOCK_HANDYMAN, MOCK_HANDYMAN_WALLET } from '../../src/mocks';
+import { MOCK_HANDYMAN } from '../../src/mocks';
 import { isMockEnv } from '../../src/services/bookingService';
 import { Link, useRouter } from 'expo-router';
 import { WalletSection } from '../../src/components/handyman/WalletSection';
@@ -31,6 +32,7 @@ export default function HandymanProfile() {
   const { logout } = useAuth();
   const { profile, services, serviceCatalog, addService, updateServicePrice, removeService } =
     useProfile();
+  const { wallet } = useEarnings();
   const router = useRouter();
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -55,17 +57,28 @@ export default function HandymanProfile() {
   const [flagSuccess, setFlagSuccess] = useState(false);
 
   // Use real profile data when available, fall back to mock for dev/testing
-  const displayName = profile?.user?.full_name ?? MOCK_HANDYMAN.name;
-  const displayPhoto = profile?.user?.photo_url ?? MOCK_HANDYMAN.photoUrl;
-  const displayRating = profile?.handyman?.trust_score ?? MOCK_HANDYMAN.rating;
-  const displayReviewCount = profile?.handyman?.review_count ?? MOCK_HANDYMAN.reviewCount;
+  // As on the client side: fall back to the demo handyman only when there is no
+  // backend. A live session with a slow profile fetch must not borrow another
+  // handyman's name, rating, or review count.
+  const mock = isMockEnv();
+  const displayName = profile?.user?.full_name ?? (mock ? MOCK_HANDYMAN.name : '');
+  const displayPhoto = profile?.user?.photo_url ?? (mock ? MOCK_HANDYMAN.photoUrl : undefined);
+  const displayRating = profile?.handyman?.trust_score ?? (mock ? MOCK_HANDYMAN.rating : 0);
+  const displayReviewCount =
+    profile?.handyman?.review_count ?? (mock ? MOCK_HANDYMAN.reviewCount : 0);
   const displaySkills =
     services.length > 0
       ? Array.from(new Set(services.map((s) => s.service.category)))
-      : MOCK_HANDYMAN.skills;
-  const displayBio = profile?.handyman?.bio ?? MOCK_HANDYMAN.bio;
-  const displayHourlyRate = profile?.handyman?.hourly_rate ?? MOCK_HANDYMAN.hourlyRate;
-  const displayLocation = MOCK_HANDYMAN.location; // PostGIS location not parseable on client; use mock
+      : mock
+        ? MOCK_HANDYMAN.skills
+        : [];
+  const displayBio = profile?.handyman?.bio ?? (mock ? MOCK_HANDYMAN.bio : '');
+  const displayHourlyRate = profile?.handyman?.hourly_rate ?? (mock ? MOCK_HANDYMAN.hourlyRate : 0);
+  // handymen.location is a PostGIS geography column, which PostgREST returns as
+  // WKB hex — there is no city text anywhere on the record. Rather than label
+  // every handyman with the demo handyman's city, the row is omitted until the
+  // schema carries a real one.
+  const displayLocation = mock ? MOCK_HANDYMAN.location : '';
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -168,7 +181,7 @@ export default function HandymanProfile() {
           </View>
 
           <View className="mt-6">
-            <WalletSection wallet={MOCK_HANDYMAN_WALLET} />
+            <WalletSection wallet={wallet} />
           </View>
 
           <View className="mt-6">

@@ -1,15 +1,14 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/context/ThemeContext';
-import { useAuth } from '../../src/context/AuthContext';
 import { Badge } from '../../src/components/ui/Badge';
 import { EmptyState } from '../../src/components/ui/EmptyState';
-import { getReportsByUser } from '../../src/mocks/reports';
-import { MOCK_CLIENT, MOCK_HANDYMAN } from '../../src/mocks';
+import { fetchMyReports } from '../../src/services/reportService';
 import { REPORT_STATUS_LABELS, REPORT_STATUS_VARIANTS } from '../../src/constants/reports';
+import type { UserReport } from '../../src/types';
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -19,11 +18,27 @@ function formatDate(dateStr: string): string {
 export default function MyReportsScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { session } = useAuth();
 
-  const viewerRole = session?.user?.userType ?? 'client';
-  const currentUserId = viewerRole === 'client' ? MOCK_CLIENT.id : MOCK_HANDYMAN.id;
-  const reports = getReportsByUser(currentUserId);
+  const [reports, setReports] = useState<UserReport[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchMyReports()
+      .then((rows) => {
+        if (!cancelled) setReports(rows);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load reports');
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.ui.background }}>
@@ -44,12 +59,16 @@ export default function MyReportsScreen() {
           </Text>
         </View>
 
-        {reports.length === 0 ? (
+        {isLoading ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator size="large" color={colors.primary['600']} />
+          </View>
+        ) : reports.length === 0 ? (
           <View className="flex-1 justify-center">
             <EmptyState
               icon="document-text-outline"
               title="No Reports"
-              message="You haven't submitted any reports yet."
+              message={error ?? "You haven't submitted any reports yet."}
             />
           </View>
         ) : (

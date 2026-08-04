@@ -25,6 +25,13 @@ async function getAccessToken(): Promise<string> {
   return data.session.access_token;
 }
 
+export interface SubmitReviewInput {
+  bookingId: string;
+  revieweeId: string;
+  rating: number;
+  comment?: string;
+}
+
 interface ReviewDbRow {
   id: string;
   booking_id: string;
@@ -34,7 +41,7 @@ interface ReviewDbRow {
   comment: string | null;
   created_at: string;
   photos?: string[];
-  reviewer?: { full_name: string; photo_url: string | null } | null;
+  reviewer?: { full_name: string | null; photo_url: string | null } | null;
 }
 
 function mapReviewRow(row: ReviewDbRow): Review {
@@ -51,6 +58,8 @@ function mapReviewRow(row: ReviewDbRow): Review {
     photos: row.photos ?? [],
   };
 }
+
+const REVIEW_SELECT = '*, reviewer:users!reviewer_id(full_name, photo_url)';
 
 // ─── Fetch reviews for a profile (public, hidden ones excluded) ──────────────
 
@@ -96,6 +105,84 @@ export async function fetchReviewsForUser(
 
   const reviews = (data ?? []).map(mapReviewRow);
   return { reviews, hasMore: reviews.length === limit };
+}
+
+/**
+ * The review the signed-in user already left on this booking, if any.
+ *
+ * `reviews_one_per_direction` makes a second one a constraint violation, so the
+ * review screen checks this before offering the form.
+ */
+export async function fetchMyReviewForBooking(bookingId: string): Promise<Review | null> {
+  if (isMockEnv()) {
+    const { MOCK_REVIEWS } = await import('../mocks/reviews');
+    return MOCK_REVIEWS.find((review) => review.bookingId === bookingId) ?? null;
+  }
+
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth.user?.id;
+  if (!userId) return null;
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .select(REVIEW_SELECT)
+    .eq('booking_id', bookingId)
+    .eq('reviewer_id', userId)
+    .maybeSingle();
+
+  if (error) throw new Error(`Failed to check for an existing review: ${error.message}`);
+  return data ? mapReviewRow(data as ReviewDbRow) : null;
+}
+
+/**
+ * Write a review.
+ *
+ * reviewer_id is taken from the session rather than the caller: the RLS insert
+ * policy pins it to auth.uid() anyway, and it also requires the booking to be
+ * COMPLETED or PAID with the caller as a participant. A rejection here means
+ * one of those is untrue.
+ */
+export async function submitReview(input: SubmitReviewInput): Promise<Review> {
+  if (isMockEnv()) {
+    const { addReview } = await import('../mocks/reviews');
+    return addReview({
+      bookingId: input.bookingId,
+      reviewerId: 'mock-reviewer',
+      reviewerName: 'You',
+      revieweeId: input.revieweeId,
+      rating: input.rating,
+      comment: input.comment ?? '',
+    });
+  }
+
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth.user?.id;
+  if (!userId) throw new Error('You must be signed in to leave a review.');
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .insert({
+      booking_id: input.bookingId,
+      reviewer_id: userId,
+      reviewee_id: input.revieweeId,
+      rating: input.rating,
+      comment: input.comment?.trim() ? input.comment.trim() : null,
+    })
+    .select(REVIEW_SELECT)
+    .single();
+
+  if (error) {
+    // reviews_one_per_direction
+    if (error.code === '23505') throw new Error('You have already reviewed this booking.');
+    // reviews_insert_participant refused: not a participant, or the job is not
+    // finished yet.
+    if (error.code === '42501') {
+      throw new Error('This booking cannot be reviewed yet.');
+    }
+    throw new Error(`Failed to submit review: ${error.message}`);
+  }
+
+  return mapReviewRow(data as ReviewDbRow);
 }
 
 // ─── Flag a review (any authenticated user) ──────────────────────────────────

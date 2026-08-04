@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import {
   requireClient,
+  serviceClient,
   methodNotAllowed,
   badRequest,
   notFound,
@@ -65,9 +66,14 @@ serve(async (req: Request) => {
     );
   }
 
+  // The booking read above stays on the caller's client so RLS double-checks
+  // ownership; the write does not, because booking_events grants the
+  // authenticated role no INSERT (the audit log is server-authoritative).
+  const db = serviceClient();
+
   // Conditional update guards against a race where the booking is accepted
   // between our fetch and the write; if 0 rows match, we surface a 409.
-  const { data: updatedBooking, error: updateError } = await supabase
+  const { data: updatedBooking, error: updateError } = await db
     .from('bookings')
     .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
     .eq('id', bookingId)
@@ -97,7 +103,7 @@ serve(async (req: Request) => {
     );
   }
 
-  const { error: eventError } = await supabase.from('booking_events').insert({
+  const { error: eventError } = await db.from('booking_events').insert({
     booking_id: bookingId,
     actor_id: user.id,
     from_status: 'PENDING',

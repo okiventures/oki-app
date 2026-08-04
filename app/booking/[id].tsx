@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, Animated } from 'react-native';
+import { View, Text, ScrollView, Pressable, Animated, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useBookings } from '../../src/context/BookingsContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useAuth } from '../../src/context/AuthContext';
-import { MOCK_BOOKING_DETAILS } from '../../src/mocks/bookingDetails';
+import { useBookingDetail } from '../../src/hooks/useBookingDetail';
 import { BOOKING_STATUS_LABELS } from '../../src/constants/theme';
 import { BookingHeroCard } from '../../src/components/bookings/BookingHeroCard';
 import { BookingOverviewTab } from '../../src/components/bookings/BookingOverviewTab';
@@ -37,41 +37,31 @@ export default function BookingDetailScreen() {
   const prevStatusRef = useRef<BookingStatus | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const detailBooking = MOCK_BOOKING_DETAILS.find((b) => b.id === id) ?? MOCK_BOOKING_DETAILS[0];
+  const { detail, isLoading, error } = useBookingDetail(id);
   const liveBooking = id ? getBookingById(id) : undefined;
-  const booking = liveBooking
-    ? {
-        ...detailBooking,
-        ...liveBooking,
-        reference: detailBooking.reference,
-        fullAddress: detailBooking.fullAddress,
-        latitude: detailBooking.latitude,
-        longitude: detailBooking.longitude,
-        paymentMethod: detailBooking.paymentMethod,
-        paymentStatus: detailBooking.paymentStatus,
-        paymentRef: detailBooking.paymentRef,
-        paidAt: detailBooking.paidAt,
-        notes: detailBooking.notes,
-        orderDetails: detailBooking.orderDetails,
-        timeline: detailBooking.timeline,
-        handymanPhotoUrl: detailBooking.handymanPhotoUrl,
-        handymanRating: detailBooking.handymanRating,
-        handymanJobsCompleted: detailBooking.handymanJobsCompleted,
-      }
-    : detailBooking;
-  const statusLabel = BOOKING_STATUS_LABELS[booking.status] ?? booking.status;
-  const primaryColor = colors.primary['600'];
 
+  // The list row is fresher than the fetched detail during a transition (the
+  // context updates optimistically), so let its status win.
+  const booking = detail
+    ? liveBooking
+      ? { ...detail, status: liveBooking.status }
+      : detail
+    : null;
+
+  const primaryColor = colors.primary['600'];
   const viewerRole = role ?? session?.user?.userType ?? 'client';
   const isHandyman = viewerRole === 'handyman';
 
+  const status = booking?.status;
+
   // Only PENDING bookings can be cancelled by the client; once ACCEPTED, the
   // Week 21 dispute / cancellation-fee flow takes over.
-  const canClientCancel = !isHandyman && booking.status === BookingStatus.Pending;
+  const canClientCancel = !isHandyman && status === BookingStatus.Pending;
 
-  const nextAction = isHandyman ? getNextHandymanAction(booking.status) : null;
+  const nextAction = isHandyman && status ? getNextHandymanAction(status) : null;
 
   const handleConfirmCancel = async () => {
+    if (!booking) return;
     setShowCancelDialog(false);
     setIsCancelling(true);
     const result = await cancelBooking(booking.id);
@@ -90,6 +80,7 @@ export default function BookingDetailScreen() {
   };
 
   const handleSearchingCancel = async () => {
+    if (!booking) return;
     setIsCancelling(true);
     const result = await cancelBooking(booking.id);
     setIsCancelling(false);
@@ -107,16 +98,16 @@ export default function BookingDetailScreen() {
   };
 
   const handleConfirmAdvance = () => {
+    if (!booking) return;
     setShowAdvanceDialog(false);
     advanceBooking(booking.id);
   };
 
   // Detect PENDING → ACCEPTED transition and show confirmation
   useEffect(() => {
-    if (
-      prevStatusRef.current === BookingStatus.Pending &&
-      booking.status === BookingStatus.Accepted
-    ) {
+    if (!status) return;
+
+    if (prevStatusRef.current === BookingStatus.Pending && status === BookingStatus.Accepted) {
       setShowConfirmation(true);
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -134,8 +125,57 @@ export default function BookingDetailScreen() {
 
       return () => clearTimeout(timer);
     }
-    prevStatusRef.current = booking.status;
-  }, [booking.status, fadeAnim]);
+    prevStatusRef.current = status;
+  }, [status, fadeAnim]);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: colors.ui.background }}
+        className="items-center justify-center">
+        <ActivityIndicator size="large" color={primaryColor} />
+      </SafeAreaView>
+    );
+  }
+
+  // Either the booking does not exist or the signed-in user is not a
+  // participant — RLS makes those indistinguishable, and deliberately so.
+  if (!booking) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.ui.background }}>
+        <View className="px-5 pt-4">
+          <Pressable
+            onPress={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace('/');
+            }}
+            android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true }}
+            style={({ pressed }) => ({
+              opacity: pressed ? 0.7 : 1,
+              backgroundColor: colors.ui.surface,
+            })}
+            className="h-9 w-9 items-center justify-center rounded-full">
+            <Ionicons name="arrow-back" size={20} color={colors.ui.text} />
+          </Pressable>
+        </View>
+        <View className="flex-1 items-center justify-center px-10">
+          <Ionicons name="receipt-outline" size={40} color={colors.ui.textLight} />
+          <Text
+            className="mt-4 text-center text-[15px] font-semibold"
+            style={{ color: colors.ui.text }}>
+            Booking not found
+          </Text>
+          <Text
+            className="mt-1.5 text-center text-[13px] leading-5"
+            style={{ color: colors.ui.textMuted }}>
+            {error ?? 'This booking may have been removed, or it belongs to another account.'}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const statusLabel = BOOKING_STATUS_LABELS[booking.status] ?? booking.status;
 
   // Searching state (PENDING)
   if (booking.status === BookingStatus.Pending) {
