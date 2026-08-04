@@ -152,7 +152,10 @@ $$;
 -- Changing the RETURN TABLE shape requires DROP (CREATE OR REPLACE cannot
 -- alter a function's return type). CASCADE also drops notify_nearby_handymen,
 -- which depends on this function — recreate it below with an identical body.
--- Body keeps 016's NULL-category handling ("All Services").
+-- Body keeps 016's NULL-category handling ("All Services"), with two fixes:
+-- the category filter is an EXISTS so p_category NULL no longer fans a
+-- handyman out onto one row per service (which could fill LIMIT 20 with a
+-- handful of distinct people), and ties have a trust_score tiebreak.
 
 DROP FUNCTION IF EXISTS public.search_nearest_handymen(
   double precision, double precision, float, service_category
@@ -192,18 +195,25 @@ BEGIN
   FROM handymen h
   JOIN users u ON h.id = u.id
   JOIN handyman_locations hl ON h.id = hl.id
-  JOIN handyman_services hs ON h.id = hs.handyman_id
-  JOIN services s ON hs.service_id = s.id
   WHERE h.is_online = true
     AND h.kyc_status = 'APPROVED'
     AND hl.location IS NOT NULL
-    AND (p_category IS NULL OR s.category = p_category)
+    AND (
+      p_category IS NULL
+      OR EXISTS (
+        SELECT 1
+        FROM handyman_services hs
+        JOIN services s ON hs.service_id = s.id
+        WHERE hs.handyman_id = h.id
+          AND s.category = p_category
+      )
+    )
     AND st_dwithin(
       hl.location,
       st_setsrid(st_makepoint(p_client_lng, p_client_lat), 4326)::geography,
       p_radius_meters
     )
-  ORDER BY distance_meters ASC
+  ORDER BY distance_meters ASC, trust_score DESC NULLS LAST
   LIMIT 20;
 END;
 $$;
