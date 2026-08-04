@@ -1,14 +1,16 @@
 import {
   fetchReviewsForUser,
+  submitReview,
   flagReview,
   fetchFlaggedReviews,
   resolveReviewFlag,
 } from '../../src/services/reviewService';
 import { isMockEnv } from '../../src/services/bookingService';
+import { Review } from '../../src/types';
 
 jest.mock('../../src/lib/supabase', () => ({
   supabase: {
-    auth: { getSession: jest.fn() },
+    auth: { getSession: jest.fn(), getUser: jest.fn() },
     from: jest.fn(),
   },
 }));
@@ -31,6 +33,17 @@ function buildRangeChain(resolved: { data: unknown; error: { message: string } |
     range: jest.fn().mockResolvedValue(resolved),
   };
   return chain;
+}
+
+function buildInsertChain(resolved: {
+  data: unknown;
+  error: { code: string; message: string } | null;
+}) {
+  return {
+    insert: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    single: jest.fn().mockResolvedValue(resolved),
+  };
 }
 
 beforeEach(() => {
@@ -124,6 +137,123 @@ describe('fetchReviewsForUser (real env)', () => {
 
     expect(result).toEqual({ reviews: [], hasMore: false });
     expect(mockedSupabase.from).not.toHaveBeenCalled();
+  });
+});
+
+describe('submitReview (real env)', () => {
+  beforeEach(() => {
+    (isMockEnv as jest.Mock).mockReturnValue(false);
+    // The reviewer is taken from the session, never from the caller.
+    (mockedSupabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: { id: 'u1' } } });
+  });
+
+  it('inserts a review pinned to the session user and maps the returned row', async () => {
+    const chain = buildInsertChain({
+      data: {
+        id: 'rev-1',
+        booking_id: 'b1',
+        reviewer_id: 'u1',
+        reviewee_id: 'h1',
+        rating: 5,
+        comment: 'Great work',
+        is_hidden: false,
+        created_at: '2026-08-04T12:00:00.000Z',
+      },
+      error: null,
+    });
+    (mockedSupabase.from as jest.Mock).mockReturnValue(chain);
+
+    const result = await submitReview({
+      bookingId: 'b1',
+      revieweeId: 'h1',
+      rating: 5,
+      comment: 'Great work',
+    });
+
+    expect(mockedSupabase.from).toHaveBeenCalledWith('reviews');
+    expect(chain.insert).toHaveBeenCalledWith({
+      booking_id: 'b1',
+      reviewer_id: 'u1',
+      reviewee_id: 'h1',
+      rating: 5,
+      comment: 'Great work',
+    });
+    expect(result).toMatchObject<Partial<Review>>({
+      id: 'rev-1',
+      bookingId: 'b1',
+      reviewerId: 'u1',
+      revieweeId: 'h1',
+      rating: 5,
+      comment: 'Great work',
+      createdAt: '2026-08-04T12:00:00.000Z',
+    });
+  });
+
+  it('throws when no user is signed in', async () => {
+    (mockedSupabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: null } });
+
+    await expect(
+      submitReview({
+        bookingId: 'b1',
+        revieweeId: 'h1',
+        rating: 4,
+        comment: '',
+      })
+    ).rejects.toThrow('You must be signed in to leave a review.');
+  });
+
+  it('translates duplicate-review unique violation into a friendly error', async () => {
+    (mockedSupabase.from as jest.Mock).mockReturnValue(
+      buildInsertChain({
+        data: null,
+        error: { code: '23505', message: 'duplicate key value violates unique constraint' },
+      })
+    );
+
+    await expect(
+      submitReview({
+        bookingId: 'b1',
+        revieweeId: 'h1',
+        rating: 4,
+        comment: '',
+      })
+    ).rejects.toThrow('You have already reviewed this booking.');
+  });
+
+  it('translates RLS rejection into a not-yet-reviewable error', async () => {
+    (mockedSupabase.from as jest.Mock).mockReturnValue(
+      buildInsertChain({
+        data: null,
+        error: { code: '42501', message: 'row-level security: permission denied' },
+      })
+    );
+
+    await expect(
+      submitReview({
+        bookingId: 'b1',
+        revieweeId: 'h1',
+        rating: 4,
+        comment: '',
+      })
+    ).rejects.toThrow('This booking cannot be reviewed yet.');
+  });
+
+  it('rethrows a generic database error with its message', async () => {
+    (mockedSupabase.from as jest.Mock).mockReturnValue(
+      buildInsertChain({
+        data: null,
+        error: { code: '50000', message: 'internal error' },
+      })
+    );
+
+    await expect(
+      submitReview({
+        bookingId: 'b1',
+        revieweeId: 'h1',
+        rating: 4,
+        comment: 'A comment',
+      })
+    ).rejects.toThrow('Failed to submit review: internal error');
   });
 });
 

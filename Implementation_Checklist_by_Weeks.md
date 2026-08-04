@@ -419,14 +419,14 @@
 ### **Week 13 · July 30 – August 5 — Rating & Review Loop**
 
 - [ ] [STANDUP] **Standup 6 — July 29**
-- [ ] Post-job rating (Client → Handyman, Handyman → Client)
-  - [ ] Rating prompt triggers once per completed booking per actor, shown on `PAID` state transition
-  - [ ] Rating schema: `booking_id`, `reviewer_id`, `reviewee_id`, `stars` (1–5), `comment` (optional), `created_at`
-  - [ ] API guard: second submission for the same booking by the same reviewer returns 409
-- [ ] Trust Score computation
-  - [ ] Weighted rolling average of last 50 reviews stored as `trust_score` on `handymen` and `users`
-  - [ ] Score recomputed asynchronously via a Supabase Function trigger on new review insert
-  - [ ] Trust Score exposed in search results and profile cards
+- [x] Post-job rating (Client → Handyman, Handyman → Client)
+  - [x] Rating prompt triggers once per completed booking per actor, shown on `PAID` state transition
+  - [x] Rating schema: `booking_id`, `reviewer_id`, `reviewee_id`, `stars` (1–5), `comment` (optional), `created_at`
+  - [x] API guard: second submission for the same booking by the same reviewer returns 409
+- [x] Trust Score computation
+  - [x] Weighted rolling average of last 50 reviews stored as `trust_score` on `handymen` and `users` — recency-weighted (50 → 1), capped at last 50, `review_count` uncapped
+  - [x] Score recomputed asynchronously via a Supabase Function trigger on new review insert — `AFTER INSERT` trigger `trg_reviews_recompute_trust_score` with advisory-lock serialization
+  - [x] Trust Score exposed in search results and profile cards — `search_nearest_handymen` returns `trust_score` + `review_count`; search + profile cards render both
 - [x] Review display on profiles
   - [x] Handyman profile screen: aggregate star display, total review count, paginated review list
   - [x] Each review card: reviewer avatar, star rating, comment, relative timestamp
