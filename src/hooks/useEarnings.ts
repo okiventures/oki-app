@@ -21,7 +21,6 @@ const EMPTY_WALLET: HandymanWallet = {
   transactions: [],
 };
 
-/** Finished jobs and wallet state for the signed-in handyman. */
 export function useEarnings(): UseEarningsReturn {
   const { session } = useAuth();
   const mockMode = isMockEnv();

@@ -40,9 +40,7 @@ export default function ReportDetailScreen() {
       .then((row) => {
         if (!cancelled) setReport(row);
       })
-      .catch(() => {
-        // Falls through to the not-found state below.
-      })
+      .catch(() => {})
       .finally(() => {
         if (!cancelled) setIsLoading(false);
       });

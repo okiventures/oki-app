@@ -1,4 +1,5 @@
 import {
+  ADMIN_SIGNUP_BLOCKED_MESSAGE,
   signup,
   login,
   logout,
@@ -127,6 +128,15 @@ describe('signup', () => {
     expect(insert).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'u1', full_name: 'Test User', user_type: 'client' })
     );
+  });
+
+  it('refuses an admin signup without touching GoTrue', async () => {
+    await expect(signup({ ...payload, userType: 'admin' })).rejects.toThrow(
+      ADMIN_SIGNUP_BLOCKED_MESSAGE
+    );
+
+    expect(supabase.auth.signUp).not.toHaveBeenCalled();
+    expect(supabase.from).not.toHaveBeenCalled();
   });
 
   it('creates handyman profile for handyman signup', async () => {

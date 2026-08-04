@@ -57,7 +57,20 @@ function formatSession(supabaseSession: any) {
 
 // ─── Signup ───────────────────────────────────────────────────────────────────
 
+export const ADMIN_SIGNUP_BLOCKED_MESSAGE =
+  'Admin accounts cannot be created from the app. Ask an existing admin to provision one.';
+
 export async function signup(payload: SignupPayload): Promise<SignupResult> {
+  // handle_new_user() collapses any self-asserted role other than 'handyman' to
+  // 'client', and nothing validates the company code the admin screens collect.
+  // Left to run, this created an ordinary client account while the UI said
+  // "Register as Admin" and routed to email confirmation, so the user believed
+  // they had admin access. Refusing here covers all three admin signup screens
+  // at once; they already render whatever this throws.
+  if (payload.userType === 'admin') {
+    throw new Error(ADMIN_SIGNUP_BLOCKED_MESSAGE);
+  }
+
   const metadata: Record<string, unknown> = {
     full_name: payload.fullName,
     user_type: payload.userType,

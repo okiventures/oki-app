@@ -1,10 +1,5 @@
 import { ViewStyle } from 'react-native';
 
-/**
- * Shared elevation tokens. Replaces the shadow blocks that were copy-pasted
- * inline across cards/headers (CategoryGrid, QuickBookCards, PromoCard, profile,
- * etc.) with the same values every time.
- */
 export const SHADOW: Record<'sm' | 'md' | 'lg', ViewStyle> = {
   sm: {
     shadowColor: '#000',
@@ -40,13 +35,9 @@ export const SEMANTIC_COLORS = {
   info: '#3b82f6',
 } as const;
 
-/**
- * Layout constants. Screen gutter and card radius were inconsistent
- * (px-4/px-5/px-6 gutters; rounded-lg/xl/2xl cards). Standardize on these.
- */
 export const LAYOUT = {
-  /** Standard screen horizontal padding (matches Tailwind `px-4`). */
+  /** Matches Tailwind `px-4`. */
   screenPadding: 16,
-  /** Standard card corner radius (matches Tailwind `rounded-2xl`). */
+  /** Matches Tailwind `rounded-2xl`. */
   cardRadius: 16,
 } as const;

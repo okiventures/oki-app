@@ -186,28 +186,33 @@ ON CONFLICT (id) DO UPDATE SET
 -- Rico is deliberately offline with PENDING KYC: he is the negative case for
 -- the accept guards (transition_booking_state rejects both).
 -- ---------------------------------------------------------------------------
+-- trust_score and review_count are deliberately not seeded. Migration 022 owns
+-- them: the trigger on reviews derives both, so a hardcoded 4.8 / 45 reviews
+-- here would be overwritten the moment anyone reviewed that handyman and would
+-- disagree with the review list on screen until then. Cef picks up his score
+-- from the seeded review further down; Kyle and Rico start unrated.
 INSERT INTO public.handymen (
   id, bio, hourly_rate, years_experience, location, is_online, kyc_status,
-  membership_tier, trust_score, review_count, jobs_completed, wallet_balance
+  membership_tier, jobs_completed, wallet_balance
 )
 VALUES
   ('a0000000-0000-0000-0000-000000000002',
    'Licensed electrician with 8 years of experience. Fast, reliable, and clean work.',
    350.00, 8,
    ST_SetSRID(ST_MakePoint(123.8948, 10.3181), 4326)::GEOGRAPHY(POINT, 4326),
-   true, 'APPROVED', 'GOLD', 4.8, 45, 120, 8500.00),
+   true, 'APPROVED', 'GOLD', 120, 8500.00),
 
   ('a0000000-0000-0000-0000-000000000004',
    'Expert plumber and general handyman. 5+ years of experience in residential repairs.',
    400.00, 5,
    ST_SetSRID(ST_MakePoint(123.8900, 10.3050), 4326)::GEOGRAPHY(POINT, 4326),
-   true, 'APPROVED', 'SILVER', 4.5, 28, 85, 3200.00),
+   true, 'APPROVED', 'SILVER', 85, 3200.00),
 
   ('a0000000-0000-0000-0000-000000000006',
    'Carpenter and painter, newly joined. Documents under review.',
    280.00, 2,
    ST_SetSRID(ST_MakePoint(123.9050, 10.3300), 4326)::GEOGRAPHY(POINT, 4326),
-   false, 'PENDING', 'BRONZE', NULL, 0, 0, 0.00)
+   false, 'PENDING', 'BRONZE', 0, 0.00)
 ON CONFLICT (id) DO UPDATE SET
   bio              = EXCLUDED.bio,
   hourly_rate      = EXCLUDED.hourly_rate,
@@ -216,8 +221,6 @@ ON CONFLICT (id) DO UPDATE SET
   is_online        = EXCLUDED.is_online,
   kyc_status       = EXCLUDED.kyc_status,
   membership_tier  = EXCLUDED.membership_tier,
-  trust_score      = EXCLUDED.trust_score,
-  review_count     = EXCLUDED.review_count,
   jobs_completed   = EXCLUDED.jobs_completed,
   wallet_balance   = EXCLUDED.wallet_balance,
   updated_at       = now();

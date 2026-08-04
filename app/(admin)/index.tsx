@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Navbar } from '../../src/components/navigation/Navbar';
 import { Card } from '../../src/components/ui/Card';
+import { ErrorBanner } from '../../src/components/ui/ErrorBanner';
 import { Ionicons } from '@expo/vector-icons';
 import { Chart } from '../../src/components/admin/Chart';
 import { useAuth } from '../../src/context/AuthContext';
@@ -11,7 +12,7 @@ import { formatCurrency, formatDateTime } from '../../src/utils';
 
 export default function AdminDashboard() {
   const { logout } = useAuth();
-  const { pendingKycCount, activeUsersCount, activeDisputesCount } = useAdmin();
+  const { pendingKycCount, activeUsersCount, activeDisputesCount, error: adminError } = useAdmin();
   const { metrics, transactions, activity, isLoading, error } = useAdminDashboard();
 
   if (isLoading) {
@@ -25,18 +26,13 @@ export default function AdminDashboard() {
     );
   }
 
-  // Awaiting-capture payments are the ones an admin has to chase.
   const pendingTransactions = transactions.filter((item) => item.status === 'Authorized');
 
   return (
     <View className="flex-1 bg-gray-50">
       <Navbar title="Admin Panel" />
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
-        {error && (
-          <Card className="border border-red-100 bg-red-50 p-3">
-            <Text className="text-[12px] text-red-600">{error}</Text>
-          </Card>
-        )}
+        <ErrorBanner message={error ?? adminError} />
 
         <View className="flex-row gap-2">
           <Card className="flex-1 p-3">

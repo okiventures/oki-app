@@ -100,7 +100,6 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [mockMode, userId, userType]);
 
-  // Load once auth has settled, and again whenever the signed-in user changes.
   useEffect(() => {
     if (isAuthLoading) return;
     refresh();
@@ -140,8 +139,6 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
     });
   }, [mockMode, userId, refresh]);
 
-  // Realtime can't deliver unassigned PENDING bookings (no RLS match), so the
-  // handyman inbox polls for new requests on top of the subscription.
   useEffect(() => {
     if (mockMode || !userId || userType !== 'handyman') return;
     const timer = setInterval(refresh, HANDYMAN_INBOX_POLL_MS);

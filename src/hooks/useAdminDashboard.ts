@@ -19,7 +19,6 @@ interface UseAdminDashboardReturn {
   refresh: () => Promise<void>;
 }
 
-/** Metrics, transactions and the activity feed for the admin console. */
 export function useAdminDashboard(): UseAdminDashboardReturn {
   const { session } = useAuth();
   const mockMode = isMockEnv();

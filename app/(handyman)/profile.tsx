@@ -49,7 +49,7 @@ export default function HandymanProfile() {
   // handymen.location is a PostGIS geography column, which PostgREST returns as
   // WKB hex — there is no city text anywhere on the record. Rather than label
   // every handyman with the demo handyman's city, the row is omitted until the
-  // schema carries a real one. The line below renders conditionally.
+  // schema carries a real one.
   const displayLocation = mock ? MOCK_HANDYMAN.location : '';
 
   const handleLogout = async () => {

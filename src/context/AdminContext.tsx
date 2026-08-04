@@ -35,6 +35,7 @@ interface AdminContextValue {
   users: User[];
   disputes: AdminDispute[];
   kycRequests: AdminKycRequest[];
+  error: string | null;
   refresh: () => Promise<void>;
   suspendUser: (userId: string) => void;
   approveKyc: (requestId: string) => Promise<void>;
@@ -57,6 +58,7 @@ const AdminContext = createContext<AdminContextValue>({
   users: [],
   disputes: [],
   kycRequests: [],
+  error: null,
   refresh: async () => {},
   suspendUser: () => {},
   approveKyc: async () => {},
@@ -91,8 +93,7 @@ async function fetchKycRequests(token: string, status = 'PENDING'): Promise<Admi
     }
   );
   if (!res.ok) {
-    console.error('[Admin] KYC fetch failed:', res.status);
-    return [];
+    throw new Error(`KYC list request failed (${res.status})`);
   }
   const body = await res.json();
   return (body.data ?? []).map((item: Record<string, unknown>) => ({
@@ -179,6 +180,18 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [kycRequests, setKycRequests] = useState<AdminKycRequest[]>([]);
   const [kycStatus, setKycStatus] = useState('PENDING');
   const [loadingKyc, setLoadingKyc] = useState(true);
+  // Every read here is RLS-gated, so a policy regression or a bad embed hint
+  // comes back as an error rather than as fewer rows. Swallowing that into a
+  // console.warn made the console render "0 users, no disputes" and look
+  // healthy, which is the worst possible failure mode for a moderation tool.
+  //
+  // Three slices rather than one, because the table reads and the KYC fetch run
+  // in independent effects: a single setter would let whichever resolved last
+  // clear the other's error.
+  const [readError, setReadError] = useState<string | null>(null);
+  const [kycError, setKycError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const error = actionError ?? readError ?? kycError;
 
   const refresh = useCallback(async () => {
     if (USE_MOCK) return;
@@ -211,17 +224,19 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         .order('created_at', { ascending: false }),
     ]);
 
-    if (usersResult.error) {
-      console.warn('[Admin] users fetch failed:', usersResult.error.message);
-    } else {
+    if (!usersResult.error) {
       setUsers((usersResult.data ?? []).map(mapUserRow));
     }
-
-    if (disputesResult.error) {
-      console.warn('[Admin] disputes fetch failed:', disputesResult.error.message);
-    } else {
+    if (!disputesResult.error) {
       setDisputes((disputesResult.data ?? []).map(mapDisputeRow));
     }
+
+    const failures = [
+      usersResult.error && `users: ${usersResult.error.message}`,
+      disputesResult.error && `disputes: ${disputesResult.error.message}`,
+    ].filter(Boolean);
+
+    setReadError(failures.length > 0 ? `Could not load ${failures.join('; ')}` : null);
   }, [isAdmin]);
 
   useEffect(() => {
@@ -236,8 +251,14 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     }
     setLoadingKyc(true);
     fetchKycRequests(session.accessToken, kycStatus)
-      .then(setKycRequests)
-      .catch((err) => console.error('[Admin] KYC fetch error:', err))
+      .then((requests) => {
+        setKycRequests(requests);
+        setKycError(null);
+      })
+      .catch((err: Error) => {
+        setKycRequests([]);
+        setKycError(`Could not load KYC requests: ${err.message}`);
+      })
       .finally(() => setLoadingKyc(false));
   }, [isAdmin, session, kycStatus]);
 
@@ -256,8 +277,10 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId);
 
       if (error) {
-        console.warn('[Admin] suspend failed:', error.message);
+        setActionError(`Could not suspend user: ${error.message}`);
         setUsers(previous);
+      } else {
+        setActionError(null);
       }
     },
     [users]
@@ -372,8 +395,10 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         .eq('id', disputeId);
 
       if (error) {
-        console.warn('[Admin] resolve dispute failed:', error.message);
+        setActionError(`Could not resolve dispute: ${error.message}`);
         setDisputes(previous);
+      } else {
+        setActionError(null);
       }
     },
     [disputes]
@@ -391,6 +416,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       users,
       disputes,
       kycRequests,
+      error,
       refresh,
       suspendUser,
       approveKyc,
@@ -412,6 +438,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       users,
       disputes,
       kycRequests,
+      error,
       refresh,
       suspendUser,
       resolveDispute,

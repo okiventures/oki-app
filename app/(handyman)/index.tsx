@@ -6,6 +6,10 @@ import { useTheme } from '../../src/context/ThemeContext';
 import { useAuth } from '../../src/context/AuthContext';
 import { getOnlineStatus, updateOnlineStatus } from '../../src/services/profileService';
 import { isMockEnv } from '../../src/services/bookingService';
+import {
+  startBackgroundTracking,
+  stopBackgroundTracking,
+} from '../../src/services/locationService';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { Card } from '../../src/components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
@@ -62,13 +66,28 @@ export default function HandymanDashboard() {
     const previous = isActive;
     setIsActive(next);
     setIsTogglingStatus(true);
+
     try {
       await updateOnlineStatus(next);
     } catch {
       setIsActive(previous);
-    } finally {
       setIsTogglingStatus(false);
+      return;
     }
+
+    // Dispatch filters on handyman_locations, so tracking has to follow the
+    // toggle or going online never puts the handyman on the map. A refused
+    // permission must not flip the switch back: the status write already
+    // landed and they are online, just without proximity filtering.
+    if (!isMockEnv()) {
+      try {
+        await (next ? startBackgroundTracking() : stopBackgroundTracking());
+      } catch (err) {
+        console.error('Location tracking toggle failed:', err);
+      }
+    }
+
+    setIsTogglingStatus(false);
   };
 
   const [selectedPreset, setSelectedPreset] = useState<Preset>('This Week');
@@ -115,11 +134,6 @@ export default function HandymanDashboard() {
     ACTIVE_HANDYMAN_BOOKING_STATUSES.includes(booking.status)
   )[0];
 
-  // The soonest scheduled job that is not the one already rendered above. This
-  // card used to be hardcoded to "Plumbing Fix / Today, 2:00 PM / 123 Main St",
-  // which every handyman saw on every load whether or not they had any work —
-  // indistinguishable from a real booking, and it would have read as live data
-  // during manual testing.
   const nextJob = useMemo(() => {
     const now = Date.now();
     return myBookings
@@ -183,7 +197,7 @@ export default function HandymanDashboard() {
           <View>
             <Text className="font-heading mb-4 text-base text-gray-900">Active Jobs</Text>
             {activeJob ? (
-              <ActiveJobWorkflowCardOverview booking={activeJob} onAdvance={() => {}} />
+              <ActiveJobWorkflowCardOverview booking={activeJob} />
             ) : (
               <Text className="mt-1 text-[13px] text-gray-500">
                 You have no active jobs at the moment.

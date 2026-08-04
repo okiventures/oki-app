@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
-// Tests for supabase/functions/_shared/rbac.ts (Deno edge function middleware)
 // Node.js compat: mock Deno env globals + esm.sh CDN import via jest.config.js moduleNameMapper.
 
 import { getCreateClientMock } from '../__mocks__/supabase-cdn';

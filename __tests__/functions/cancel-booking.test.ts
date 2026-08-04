@@ -96,10 +96,6 @@ function supabaseWith(opts: {
     }),
   };
 
-  // The lifecycle functions read and write through serviceClient(): an unassigned
-  // PENDING booking is invisible to the caller under RLS, and booking_events grants
-  // the authenticated role no INSERT. Point it at the same mock the auth helper
-  // hands back so the existing chain assertions cover both paths.
   (serviceClient as jest.Mock).mockReturnValue(client);
   return client;
 }

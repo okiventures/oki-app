@@ -44,9 +44,8 @@ export default function ClientHome() {
 
   const clientId = session?.user?.id ?? (isMockEnv() ? MOCK_CLIENT.id : '');
 
-  // Header identity comes from the signed-in profile; the mock is the offline
-  // demo fallback only. Rendering MOCK_CLIENT unconditionally meant the
-  // dashboard greeted every account by the same hardcoded name.
+  // The mock is the offline demo fallback only, never a stand-in for a profile
+  // that failed to load: a live account must not be greeted by another's name.
   const displayName = profile?.user?.full_name ?? (isMockEnv() ? MOCK_CLIENT.name : '');
   const displayPhoto = profile?.user?.photo_url ?? (isMockEnv() ? MOCK_CLIENT.photoUrl : undefined);
 
@@ -93,8 +92,8 @@ export default function ClientHome() {
     [myBookings]
   );
 
-  // The badge was hardcoded to 3. There is no notifications table yet, so live
-  // mode shows nothing rather than inventing unread items.
+  // No notifications table exists yet, so live mode shows nothing rather than
+  // inventing unread items.
   const unreadCount = isMockEnv() ? 3 : 0;
 
   const latestPending = myBookings.find((b) => b.status === BookingStatus.Pending);

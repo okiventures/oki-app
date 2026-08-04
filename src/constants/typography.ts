@@ -30,10 +30,7 @@ export type TypeVariant =
   | 'caption'
   | 'overline';
 
-/**
- * The single source of truth for text sizing. Replaces the ~642 ad-hoc
- * `text-[Npx]` usages (13 distinct pixel values) with a 6-step scale.
- */
+/** The single source of truth for text sizing. */
 export const TYPE_SCALE: Record<TypeVariant, TextStyle> = {
   display: { fontFamily: FONT_FAMILY.headingExtra, fontSize: 30, lineHeight: 36 },
   h1: { fontFamily: FONT_FAMILY.heading, fontSize: 24, lineHeight: 30 },

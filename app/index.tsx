@@ -25,9 +25,14 @@ const VALUE_PROPS = [
   },
 ];
 
-// Seeded local accounts, all with the password below. Dev builds only — this block
-// is stripped from production bundles by the __DEV__ guard.
-const TEST_ACCOUNTS = [
+// The shared password comes from the environment, not from source. A literal
+// here would survive into a production bundle even with the __DEV__ guard below:
+// the guard removes the JSX, and dropping the now-unreferenced constant is then
+// up to the minifier. An unset EXPO_PUBLIC_ var inlines to undefined at build
+// time, so a build without it cannot ship the string at all.
+const SEED_PASSWORD = process.env.EXPO_PUBLIC_SEED_PASSWORD;
+
+const SEED_ACCOUNTS = [
   { email: 'princess@example.com', role: 'client' },
   { email: 'mara@example.com', role: 'client' },
   { email: 'kyle@example.com', role: 'handyman · electrical' },
@@ -35,7 +40,6 @@ const TEST_ACCOUNTS = [
   { email: 'rico@example.com', role: 'handyman · kyc pending' },
   { email: 'admin@oki.app', role: 'admin' },
 ];
-const TEST_PASSWORD = 'password123';
 
 export default function LandingPage() {
   const { colors } = useTheme();
@@ -116,7 +120,7 @@ export default function LandingPage() {
           </Text>
         </View>
 
-        {__DEV__ && (
+        {__DEV__ && SEED_PASSWORD && (
           <View className="mt-6 border-t border-gray-100 pt-4">
             <TouchableOpacity
               onPress={() => setShowAccounts((prev) => !prev)}
@@ -133,13 +137,13 @@ export default function LandingPage() {
 
             {showAccounts && (
               <View className="mt-3 gap-1.5 rounded-xl bg-gray-50 px-4 py-3">
-                {TEST_ACCOUNTS.map((account) => (
+                {SEED_ACCOUNTS.map((account) => (
                   <View key={account.email} className="flex-row justify-between">
                     <Text className="text-[11px] text-gray-600">{account.email}</Text>
                     <Text className="text-[11px] text-gray-400">{account.role}</Text>
                   </View>
                 ))}
-                <Text className="mt-1 text-[11px] text-gray-400">password: {TEST_PASSWORD}</Text>
+                <Text className="mt-1 text-[11px] text-gray-400">password: {SEED_PASSWORD}</Text>
               </View>
             )}
           </View>
