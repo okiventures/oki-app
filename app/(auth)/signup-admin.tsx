@@ -16,6 +16,10 @@ import { Input } from '../../src/components/forms/Input';
 import { Button } from '../../src/components/ui/Button';
 import { Toast } from '../../src/components/ui/Toast';
 
+// Nothing navigates here, but expo-router still exposes it as a deep link, so it
+// stays reachable. authService.signup refuses userType 'admin' outright: admin is
+// a service-role-only grant and the company code below is validated by nothing.
+// The submit button reports that rather than quietly creating a client account.
 export default function AdminSignupScreen() {
   const router = useRouter();
   const { signup, isSigningUp, error, clearError } = useAuth();
@@ -90,11 +94,11 @@ export default function AdminSignupScreen() {
               <Ionicons name="shield-checkmark-outline" size={20} color="#D97706" />
               <View className="flex-1">
                 <Text className="text-[13px] font-semibold text-amber-800">
-                  Company Verification Required
+                  Admin accounts are provisioned, not registered
                 </Text>
                 <Text className="mt-1 text-[12px] leading-5 text-amber-700">
-                  You need a valid company/organization code to register as an admin. Contact your
-                  company administrator if you don&apos;t have one.
+                  Admin access is granted by an existing admin. This form cannot create one. Contact
+                  your platform administrator to be added.
                 </Text>
               </View>
             </View>

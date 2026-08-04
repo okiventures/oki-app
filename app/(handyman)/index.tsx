@@ -1,16 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Switch, ScrollView } from 'react-native';
+import { View, Text, Switch, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useAuth } from '../../src/context/AuthContext';
 import { getOnlineStatus, updateOnlineStatus } from '../../src/services/profileService';
+import { isMockEnv } from '../../src/services/bookingService';
+import {
+  startBackgroundTracking,
+  stopBackgroundTracking,
+} from '../../src/services/locationService';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { Card } from '../../src/components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
+import { useEarnings } from '../../src/hooks/useEarnings';
 import {
   MOCK_HANDYMAN,
-  MOCK_EARNINGS,
   filterEarningsByRange,
   getTodayRange,
   getThisWeekRange,
@@ -24,6 +29,7 @@ import { EarningsSummaryCard } from '../../src/components/handyman/EarningsSumma
 import { RatingPromptCard } from '../../src/components/review/RatingPromptCard';
 import { Preset } from '../../src/components/handyman/EarningsDateRangeFilter';
 import { hasReviewed, isBookingRateable } from '../../src/services/reviewService';
+import { formatDateTime } from '../../src/utils';
 
 const PRESET_RANGES: Record<string, () => { start: Date; end: Date }> = {
   'This Day': getTodayRange,
@@ -36,9 +42,12 @@ export default function HandymanDashboard() {
   const { colors } = useTheme();
   const router = useRouter();
   const { session } = useAuth();
-  const [isActive, setIsActive] = useState(MOCK_HANDYMAN.isOnline);
+  // Assume offline until getOnlineStatus reports otherwise — showing "online"
+  // optimistically misrepresents whether the accept guard will let jobs through.
+  const [isActive, setIsActive] = useState(isMockEnv() ? MOCK_HANDYMAN.isOnline : false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const { bookings } = useBookings();
+  const { earnings } = useEarnings();
 
   const handymanId = session?.user.id;
 
@@ -59,13 +68,28 @@ export default function HandymanDashboard() {
     const previous = isActive;
     setIsActive(next);
     setIsTogglingStatus(true);
+
     try {
       await updateOnlineStatus(next);
     } catch {
       setIsActive(previous);
-    } finally {
       setIsTogglingStatus(false);
+      return;
     }
+
+    // Dispatch filters on handyman_locations, so tracking has to follow the
+    // toggle or going online never puts the handyman on the map. A refused
+    // permission must not flip the switch back: the status write already
+    // landed and they are online, just without proximity filtering.
+    if (!isMockEnv()) {
+      try {
+        await (next ? startBackgroundTracking() : stopBackgroundTracking());
+      } catch (err) {
+        console.error('Location tracking toggle failed:', err);
+      }
+    }
+
+    setIsTogglingStatus(false);
   };
 
   const [selectedPreset, setSelectedPreset] = useState<Preset>('This Week');
@@ -91,11 +115,11 @@ export default function HandymanDashboard() {
 
   const filteredTotal = useMemo(
     () =>
-      filterEarningsByRange(MOCK_EARNINGS, range.start, range.end).reduce(
+      filterEarningsByRange(earnings, range.start, range.end).reduce(
         (sum: number, e: { netEarnings: number }) => sum + e.netEarnings,
         0
       ),
-    [range.start, range.end]
+    [earnings, range.start, range.end]
   );
 
   const rangeLabel = useMemo(
@@ -103,7 +127,11 @@ export default function HandymanDashboard() {
     [selectedPreset, range]
   );
 
-  const myBookings = bookings.filter((booking) => booking.handymanId === MOCK_HANDYMAN.id);
+  // Offline demo only: MOCK_BOOKINGS are keyed to the demo handyman. With a
+  // session this must filter on the signed-in id, or the dashboard shows an
+  // empty active job no matter how many jobs the handyman actually has.
+  const activeHandymanId = handymanId ?? (isMockEnv() ? MOCK_HANDYMAN.id : '');
+  const myBookings = bookings.filter((booking) => booking.handymanId === activeHandymanId);
   const activeJob = myBookings.filter((booking) =>
     ACTIVE_HANDYMAN_BOOKING_STATUSES.includes(booking.status)
   )[0];
@@ -123,6 +151,23 @@ export default function HandymanDashboard() {
       cancelled = true;
     };
   }, [myBookings, handymanId]);
+
+  const nextJob = useMemo(() => {
+    const now = Date.now();
+    return myBookings
+      .filter(
+        (booking) =>
+          booking.id !== activeJob?.id &&
+          booking.scheduledAt !== undefined &&
+          new Date(booking.scheduledAt).getTime() > now &&
+          ACTIVE_HANDYMAN_BOOKING_STATUSES.includes(booking.status)
+      )
+      .sort(
+        (left, right) =>
+          new Date(left.scheduledAt as string).getTime() -
+          new Date(right.scheduledAt as string).getTime()
+      )[0];
+  }, [myBookings, activeJob?.id]);
 
   return (
     <SafeAreaView
@@ -179,7 +224,7 @@ export default function HandymanDashboard() {
           <View>
             <Text className="font-heading mb-4 text-base text-gray-900">Active Jobs</Text>
             {activeJob ? (
-              <ActiveJobWorkflowCardOverview booking={activeJob} onAdvance={() => {}} />
+              <ActiveJobWorkflowCardOverview booking={activeJob} />
             ) : (
               <Text className="mt-1 text-[13px] text-gray-500">
                 You have no active jobs at the moment.
@@ -188,11 +233,26 @@ export default function HandymanDashboard() {
           </View>
 
           {/* Upcoming Schedule Snippet */}
-          <Text className="font-heading text-base text-gray-900">Next Job</Text>
-          <Card>
-            <Text className="text-[13px] font-semibold text-gray-800">Plumbing Fix</Text>
-            <Text className="mt-1 text-[11px] text-gray-500">Today, 2:00 PM • 123 Main St</Text>
-          </Card>
+          <View>
+            <Text className="font-heading mb-4 text-base text-gray-900">Next Job</Text>
+            {nextJob ? (
+              <Pressable onPress={() => router.push(`/job/${nextJob.id}`)}>
+                <Card>
+                  <Text className="text-[13px] font-semibold text-gray-800">
+                    {nextJob.serviceCategory}
+                  </Text>
+                  <Text className="mt-1 text-[11px] text-gray-500">
+                    {formatDateTime(nextJob.scheduledAt as string)}
+                    {nextJob.location ? ` • ${nextJob.location}` : ''}
+                  </Text>
+                </Card>
+              </Pressable>
+            ) : (
+              <Text className="mt-1 text-[13px] text-gray-500">
+                You have no upcoming scheduled jobs.
+              </Text>
+            )}
+          </View>
 
           {/* Earnings Overview */}
           <EarningsSummaryCard

@@ -1,5 +1,8 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
-import { createClient } from '@supabase/supabase-js';
+// Pinned URL rather than the bare specifier: every other function imports it
+// this way, and it resolves under `supabase functions serve` without depending
+// on the per-function import_map being picked up.
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.108.2';
 
 interface CreateBookingRequest {
   serviceId: string;
@@ -28,14 +31,17 @@ serve(async (req: Request) => {
 
   const token = authHeader.replace(/^Bearer\s+/i, '');
 
+  // Deliberately NOT forwarding the caller's Authorization header. PostgREST
+  // derives the database role from whatever JWT it receives, so passing the user
+  // token here would downgrade this client to `authenticated` — which has no
+  // EXECUTE on create_booking or notify_nearby_handymen (both service-role only).
+  // The caller is authenticated below via getUser(token) instead, and their id is
+  // passed to the RPC explicitly.
   const supabase = createClient(ampUrl, ampKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
       detectSessionInUrl: false,
-    },
-    global: {
-      headers: { Authorization: authHeader },
     },
   });
 
@@ -85,8 +91,10 @@ serve(async (req: Request) => {
     return bad('ON_DEMAND bookings must not include scheduledAt');
   }
 
-  // Call RPC with service_role key — no client_id/amount passed;
-  // RPC derives both from auth.uid() and services.base_rate respectively.
+  // Called with the service_role key, so auth.uid() is NULL inside the RPC and
+  // p_client_id supplies the identity — taken from the verified token above, not
+  // from the request body. amount/platform_fee stay derived from
+  // services.base_rate server-side and are never accepted from the client.
   const { data: booking, error: rpcError } = await supabase.rpc('create_booking', {
     p_service_id: body.serviceId,
     p_booking_type: body.bookingType,
@@ -96,6 +104,7 @@ serve(async (req: Request) => {
     p_lng: body.lng,
     p_scheduled_at: body.scheduledAt ?? null,
     p_notes: body.notes ?? null,
+    p_client_id: user.id,
   });
 
   if (rpcError) {

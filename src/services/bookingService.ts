@@ -1,5 +1,14 @@
 import { supabase } from '../lib/supabase';
-import { Booking, BookingEvent, BookingStatus, BookingType, ServiceCategory } from '../types';
+import {
+  Booking,
+  BookingDetail,
+  BookingEvent,
+  BookingStatus,
+  BookingType,
+  OrderDetail,
+  ServiceCategory,
+  TimelineEvent,
+} from '../types';
 import { generateId } from '../utils';
 import { transition as fsmTransition, canTransition, FsmError, BookingAction } from './bookingFsm';
 import { MOCK_BOOKINGS } from '../mocks';
@@ -142,26 +151,349 @@ function mapEventRow(row: BookingEventRow): BookingEvent {
 
 // ─── Fetch bookings ───────────────────────────────────────────────────────────
 
-export async function fetchBookings(): Promise<Booking[]> {
+// A row from list_available_bookings(): the same booking columns, flattened,
+// plus the joined fields the RPC resolves on the server (it runs as owner, so
+// it can read the client's name for a booking the handyman isn't part of yet).
+type AvailableBookingRow = BookingRow & {
+  service_category: string;
+  client_name: string;
+  distance_meters: number | null;
+};
+
+// bookings.handyman_id references handymen(id), NOT users(id), so the handyman's
+// display name is two hops away: bookings → handymen → users. Embedding
+// `users!handyman_id` instead fails the request outright with PGRST200.
+const BOOKINGS_SELECT =
+  '*, services!service_id(category), ' +
+  'client:users!client_id(full_name), ' +
+  'handyman:handymen!handyman_id(user:users!id(full_name)), ' +
+  'reviews(rating, reviewer_id)';
+
+function mapAvailableRow(row: AvailableBookingRow): Booking {
+  return {
+    ...mapBookingRow({ ...row, services: { category: row.service_category } }),
+    clientName: row.client_name ?? '',
+    distanceKm:
+      row.distance_meters === null || row.distance_meters === undefined
+        ? undefined
+        : Math.round((row.distance_meters / 1000) * 10) / 10,
+  };
+}
+
+/**
+ * Every booking the signed-in user should see.
+ *
+ * Clients and the assigned handyman are covered by RLS on `bookings`. A PENDING
+ * booking has no handyman yet, so it is invisible to RLS — handymen get that
+ * pool from list_available_bookings(), which filters by the categories they
+ * offer and their reported location. The two sets are merged and de-duplicated
+ * by id (a booking cannot be in both, but the RPC is not transactional with the
+ * select, so guard anyway).
+ */
+export async function fetchBookings(
+  userType?: 'client' | 'handyman' | 'admin'
+): Promise<Booking[]> {
   if (USE_MOCK) {
     const { MOCK_BOOKINGS } = await import('../mocks');
     return MOCK_BOOKINGS;
   }
 
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth.user?.id;
+
   const { data, error } = await supabase
     .from('bookings')
-    .select(
-      '*, services!service_id(category), clients:users!client_id(full_name), handymen:users!handyman_id(full_name)'
-    )
+    .select(BOOKINGS_SELECT)
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(`Failed to fetch bookings: ${error.message}`);
 
-  return (data ?? []).map((row: any) => ({
+  const own: Booking[] = (data ?? []).map((row: any) => ({
     ...mapBookingRow(row),
-    clientName: row.clients?.full_name ?? '',
-    handymanName: row.handymen?.full_name ?? '',
+    clientName: row.client?.full_name ?? '',
+    handymanName: row.handyman?.user?.full_name ?? '',
+    // Both parties can review the same booking, so pick out the caller's own.
+    ratingGiven: (row.reviews ?? []).find((r: any) => r.reviewer_id === userId)?.rating,
   }));
+
+  if (userType !== 'handyman') return own;
+
+  const { data: available, error: availableError } = await supabase.rpc('list_available_bookings');
+
+  // The inbox is additive: a failure here should not blank out the jobs the
+  // handyman already has. Surface it in the log and return what we do have.
+  if (availableError) {
+    console.warn('fetchBookings: list_available_bookings failed:', availableError.message);
+    return own;
+  }
+
+  const seen = new Set(own.map((booking) => booking.id));
+  const pool = ((available ?? []) as AvailableBookingRow[])
+    .filter((row) => !seen.has(row.id))
+    .map(mapAvailableRow);
+
+  return [...pool, ...own];
+}
+
+// ─── Fetch booking detail ─────────────────────────────────────────────────────
+
+// One row from get_booking_detail() (migration 017). The RPC flattens the
+// booking, its service, both party names, the handyman's profile stats and the
+// payment record, and resolves the geography column into plain lat/lng.
+interface BookingDetailRow {
+  id: string;
+  client_id: string;
+  client_name: string | null;
+  client_photo_url: string | null;
+  handyman_id: string | null;
+  handyman_name: string | null;
+  handyman_photo_url: string | null;
+  handyman_rating: number | null;
+  handyman_jobs: number | null;
+  service_category: string;
+  service_name: string;
+  booking_type: 'ON_DEMAND' | 'SCHEDULED';
+  status: string;
+  description: string;
+  address_text: string;
+  latitude: number | null;
+  longitude: number | null;
+  amount: number;
+  platform_fee: number;
+  net_amount: number;
+  scheduled_at: string | null;
+  request_expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+  photos: string[] | null;
+  before_photo_url: string | null;
+  after_photo_url: string | null;
+  notes: string | null;
+  payment_status: string | null;
+  payment_method: string | null;
+  payment_ref: string | null;
+  paid_at: string | null;
+  events: {
+    id: string;
+    from_status: string | null;
+    to_status: string;
+    actor_id: string | null;
+    metadata: Record<string, unknown>;
+    created_at: string;
+  }[];
+}
+
+const PAYMENT_STATUS_TO_UI: Record<string, BookingDetail['paymentStatus']> = {
+  AUTHORIZED: 'Pending',
+  CAPTURED: 'Paid',
+  REFUNDED: 'Refunded',
+  FAILED: 'Failed',
+};
+
+const PAYMENT_METHODS: BookingDetail['paymentMethod'][] = ['GCash', 'Credit Card', 'Cash', 'Maya'];
+
+// The happy path, in order. Steps the booking has not reached yet still render,
+// greyed out, so the client can see what is coming — that is what a null
+// timestamp means to VerticalStepper.
+const TIMELINE_STEPS: {
+  status: BookingStatus;
+  label: string;
+  describe: (who: string) => string;
+}[] = [
+  {
+    status: BookingStatus.Pending,
+    label: 'Booking Placed',
+    describe: () => 'Your request was submitted and is being matched.',
+  },
+  {
+    status: BookingStatus.Accepted,
+    label: 'Accepted by Worker',
+    describe: (who) => `${who} accepted your booking.`,
+  },
+  {
+    status: BookingStatus.InTransit,
+    label: 'Worker In Transit',
+    describe: (who) => `${who} is on the way to your location.`,
+  },
+  {
+    status: BookingStatus.Arrived,
+    label: 'Worker Arrived',
+    describe: (who) => `${who} has arrived at your address.`,
+  },
+  {
+    status: BookingStatus.WorkStarted,
+    label: 'Work In Progress',
+    describe: (who) => `${who} has started the job.`,
+  },
+  {
+    status: BookingStatus.Completed,
+    label: 'Work Completed',
+    describe: () => 'The job was marked complete and is awaiting payment.',
+  },
+  {
+    status: BookingStatus.Paid,
+    label: 'Payment Released',
+    describe: () => 'Payment was captured and released to the worker.',
+  },
+];
+
+const TERMINAL_STEPS: Partial<Record<BookingStatus, { label: string; description: string }>> = {
+  [BookingStatus.Cancelled]: {
+    label: 'Booking Cancelled',
+    description: 'This booking was cancelled before any work started.',
+  },
+  [BookingStatus.Rejected]: {
+    label: 'Booking Declined',
+    description: 'The request was declined and returned to the pool.',
+  },
+};
+
+/**
+ * Turn the raw event trail into stepper rows.
+ *
+ * Events are the source of truth for *when* something happened; the canonical
+ * step list supplies the labels and the not-yet-reached rows. A booking that
+ * ended in CANCELLED or REJECTED stops at the steps it actually reached and
+ * gets the terminal row appended, so a cancelled booking never shows a greyed
+ * out "Payment Released" it will never get to.
+ */
+function buildTimeline(
+  events: BookingDetailRow['events'],
+  status: BookingStatus,
+  handymanName: string
+): TimelineEvent[] {
+  const who = handymanName || 'Your handyman';
+  const reachedAt = new Map<BookingStatus, string>();
+
+  for (const event of events ?? []) {
+    const uiStatus = toUiStatus(event.to_status);
+    // First occurrence wins: a re-entered state (e.g. re-dispatch back to
+    // PENDING) should keep the original timestamp for that step.
+    if (!reachedAt.has(uiStatus)) reachedAt.set(uiStatus, event.created_at);
+  }
+
+  const terminal = TERMINAL_STEPS[status];
+  const steps = terminal
+    ? TIMELINE_STEPS.filter((step) => reachedAt.has(step.status))
+    : TIMELINE_STEPS;
+
+  const timeline: TimelineEvent[] = steps.map((step) => ({
+    id: `step-${step.status}`,
+    status: step.status,
+    label: step.label,
+    description: step.describe(who),
+    timestamp: reachedAt.get(step.status) ?? null,
+  }));
+
+  if (terminal) {
+    timeline.push({
+      id: `step-${status}`,
+      status,
+      label: terminal.label,
+      description: terminal.description,
+      timestamp: reachedAt.get(status) ?? null,
+    });
+  }
+
+  return timeline;
+}
+
+function peso(value: number): string {
+  return `₱${value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// net_amount is a generated column (amount - platform_fee), so `amount` is what
+// the client is charged and the fee comes out of the worker's payout. The last
+// row is rendered bold as the total, so it goes last.
+function buildOrderDetails(row: BookingDetailRow): OrderDetail[] {
+  const details: OrderDetail[] = [
+    {
+      label: 'Service Type',
+      value: `${row.service_name} — ${row.booking_type === 'ON_DEMAND' ? 'On Demand' : 'Scheduled'}`,
+    },
+  ];
+
+  if (row.scheduled_at) {
+    details.push({
+      label: 'Scheduled For',
+      value: new Date(row.scheduled_at).toLocaleString('en-PH', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }),
+    });
+  }
+
+  details.push(
+    { label: 'Job Amount', value: peso(row.amount) },
+    { label: 'Platform Fee', value: `−${peso(row.platform_fee)}` },
+    { label: 'Worker Payout', value: peso(row.net_amount) },
+    { label: 'Total Charged', value: peso(row.amount) }
+  );
+
+  return details;
+}
+
+function mapBookingDetailRow(row: BookingDetailRow): BookingDetail {
+  const status = toUiStatus(row.status);
+  const handymanName = row.handyman_name ?? '';
+  const method = PAYMENT_METHODS.find((m) => m === row.payment_method);
+
+  return {
+    id: row.id,
+    // No human-readable booking number exists in the schema yet; the id prefix
+    // is stable and short enough to read out over the phone.
+    reference: `#OKI-${row.id.slice(0, 8).toUpperCase()}`,
+    clientId: row.client_id,
+    clientName: row.client_name ?? '',
+    handymanId: row.handyman_id ?? '',
+    handymanName,
+    handymanPhotoUrl: row.handyman_photo_url ?? undefined,
+    handymanRating: row.handyman_rating ?? 0,
+    handymanJobsCompleted: row.handyman_jobs ?? 0,
+    serviceCategory: row.service_category as ServiceCategory,
+    bookingType: row.booking_type === 'ON_DEMAND' ? BookingType.OnDemand : BookingType.Scheduled,
+    status,
+    description: row.description,
+    location: row.address_text,
+    fullAddress: row.address_text,
+    latitude: row.latitude ?? 0,
+    longitude: row.longitude ?? 0,
+    amount: row.amount,
+    platformFee: row.platform_fee,
+    netAmount: row.net_amount,
+    scheduledAt: row.scheduled_at ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    photos: row.photos ?? undefined,
+    paymentMethod: method ?? 'GCash',
+    paymentStatus: PAYMENT_STATUS_TO_UI[row.payment_status ?? ''] ?? 'Pending',
+    paymentRef: row.payment_ref ?? undefined,
+    paidAt: row.paid_at ?? undefined,
+    notes: row.notes ?? undefined,
+    orderDetails: buildOrderDetails(row),
+    timeline: buildTimeline(row.events, status, handymanName),
+  };
+}
+
+/**
+ * Full detail for one booking, or null if it does not exist or the signed-in
+ * user is not a participant (get_booking_detail is SECURITY INVOKER, so RLS
+ * turns "not yours" into zero rows rather than an error).
+ */
+export async function fetchBookingDetail(bookingId: string): Promise<BookingDetail | null> {
+  if (USE_MOCK) {
+    const { MOCK_BOOKING_DETAILS } = await import('../mocks/bookingDetails');
+    return MOCK_BOOKING_DETAILS.find((b) => b.id === bookingId) ?? null;
+  }
+
+  const { data, error } = await supabase.rpc('get_booking_detail', { p_booking_id: bookingId });
+
+  if (error) throw new Error(`Failed to fetch booking detail: ${error.message}`);
+
+  const rows = (data ?? []) as BookingDetailRow[];
+  if (rows.length === 0) return null;
+
+  return mapBookingDetailRow(rows[0]);
 }
 
 // ─── Fetch booking events (audit trail) ───────────────────────────────────────
@@ -373,6 +705,32 @@ export function subscribeToBooking(
       (payload) => {
         onStateChange(mapEventRow(payload.new as BookingEventRow));
       }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
+/**
+ * Fires whenever any booking the signed-in user can see changes.
+ *
+ * Realtime applies RLS per subscriber, so each side only receives rows it is
+ * already allowed to read: the client sees their handyman's transitions, the
+ * handyman sees their assigned jobs. Unassigned PENDING bookings match nobody's
+ * policy, which is why the request inbox also polls (see BookingsContext).
+ */
+export function subscribeToBookingChanges(onChange: () => void): () => void {
+  if (USE_MOCK) return () => {};
+
+  const channel = supabase
+    .channel('bookings:all')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, onChange)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'booking_events' },
+      onChange
     )
     .subscribe();
 

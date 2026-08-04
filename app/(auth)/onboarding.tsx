@@ -18,7 +18,11 @@ import { Button } from '../../src/components/ui/Button';
 import { Toast } from '../../src/components/ui/Toast';
 
 type SignupStep = 'role' | 'form';
-type UserRole = 'client' | 'handyman' | 'admin';
+// No admin role. handle_new_user() only honours 'handyman' from signup metadata
+// and collapses everything else to 'client', so the admin card produced a client
+// account labelled "Admin account" on the very next screen. Admins are
+// provisioned with the service role.
+type UserRole = 'client' | 'handyman';
 
 const ROLE_CARDS: { role: UserRole; icon: string; label: string; desc: string }[] = [
   {
@@ -33,12 +37,6 @@ const ROLE_CARDS: { role: UserRole; icon: string; label: string; desc: string }[
     label: "I'm a Handyman",
     desc: 'Offer your services and earn',
   },
-  {
-    role: 'admin',
-    icon: 'shield-outline',
-    label: "I'm an Admin",
-    desc: 'Manage the platform',
-  },
 ];
 
 export default function OnboardingScreen() {
@@ -51,7 +49,6 @@ export default function OnboardingScreen() {
   const [fullName, setFullName] = useState('');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [companyCode, setCompanyCode] = useState('');
   const [showError, setShowError] = useState(false);
 
   const phoneDigits = identifier.replace(/\D/g, '');
@@ -66,10 +63,7 @@ export default function OnboardingScreen() {
 
   const passwordIsValid = password.trim().length >= 8;
   const nameIsValid = fullName.trim().length >= 2;
-  const companyRequired = selectedRole === 'admin';
-  const companyIsValid = !companyRequired || companyCode.trim().length >= 3;
-  const canSubmit =
-    identifierIsValid && passwordIsValid && nameIsValid && companyIsValid && !isSigningUp;
+  const canSubmit = identifierIsValid && passwordIsValid && nameIsValid && !isSigningUp;
 
   const handleSelectRole = (role: UserRole) => {
     setSelectedRole(role);
@@ -86,13 +80,11 @@ export default function OnboardingScreen() {
         password: password.trim(),
         userType: selectedRole,
         fullName: fullName.trim(),
-        companyCode: companyRequired ? companyCode.trim() : undefined,
       });
-      // If email confirmation is required, show the confirmation screen
+      // Otherwise the session is set and the root layout handles routing.
       if (result.emailConfirmationRequired) {
         router.replace('/(auth)/email-confirm');
       }
-      // Otherwise, the session is set and root layout handles routing
     } catch {
       setShowError(true);
     }
@@ -169,12 +161,7 @@ export default function OnboardingScreen() {
           <View>
             <Text className="font-heading text-lg text-gray-900">Create your account</Text>
             <Text className="text-[12px] text-gray-500" style={{ color: colors.primary['600'] }}>
-              {selectedRole === 'client'
-                ? 'Client'
-                : selectedRole === 'handyman'
-                  ? 'Handyman'
-                  : 'Admin'}{' '}
-              account
+              {selectedRole === 'client' ? 'Client' : 'Handyman'} account
             </Text>
           </View>
         </View>
@@ -227,23 +214,6 @@ export default function OnboardingScreen() {
               }
               leftIcon={<Ionicons name="lock-closed-outline" size={18} color="#9CA3AF" />}
             />
-
-            {companyRequired && (
-              <Input
-                label="Company / Organization Code"
-                placeholder="e.g. OKI-ADMIN-2026"
-                value={companyCode}
-                onChangeText={setCompanyCode}
-                autoCapitalize="characters"
-                editable={!isSigningUp}
-                error={
-                  companyCode.length > 0 && !companyIsValid
-                    ? 'Enter a valid company code (3+ characters)'
-                    : undefined
-                }
-                leftIcon={<Ionicons name="business-outline" size={18} color="#9CA3AF" />}
-              />
-            )}
           </Form>
 
           <Button

@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import {
   requireHandyman,
+  serviceClient,
   methodNotAllowed,
   badRequest,
   notFound,
@@ -75,7 +76,11 @@ serve(async (req: Request) => {
     );
   }
 
-  const { data: updatedBooking, error: updateError } = await supabase
+  // RLS pins `status` for the assigned handyman — lifecycle moves are
+  // server-authoritative. Ownership and every guard were checked above.
+  const db = serviceClient();
+
+  const { data: updatedBooking, error: updateError } = await db
     .from('bookings')
     .update({
       status: 'COMPLETED',
@@ -104,7 +109,7 @@ serve(async (req: Request) => {
     );
   }
 
-  const { error: eventError } = await supabase.from('booking_events').insert({
+  const { error: eventError } = await db.from('booking_events').insert({
     booking_id: bookingId,
     actor_id: user.id,
     from_status: 'WORK_STARTED',

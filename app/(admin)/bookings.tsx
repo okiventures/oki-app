@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Navbar } from '../../src/components/navigation/Navbar';
 import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
 import { SearchBar } from '../../src/components/forms/SearchBar';
-import { MOCK_BOOKINGS } from '../../src/mocks';
+import { useBookings } from '../../src/context/BookingsContext';
 import { formatCurrency, formatDate } from '../../src/utils';
 
 const statusVariant = (status: string) => {
@@ -40,13 +40,16 @@ const BOOKING_STATUS_OPTIONS = [
 ];
 
 export default function AdminBookings() {
+  // RLS gives admins every booking through bookings_admin, so the shared
+  // context is already the whole platform when an admin is signed in.
+  const { bookings, isLoading } = useBookings();
   const [searchValue, setSearchValue] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
 
   const filteredBookings = useMemo(
     () =>
-      MOCK_BOOKINGS.filter((booking) => {
+      bookings.filter((booking) => {
         const query = searchValue.toLowerCase();
         const matchesSearch =
           booking.id.toLowerCase().includes(query) ||
@@ -58,7 +61,7 @@ export default function AdminBookings() {
         const matchesStatus = statusFilter === 'All' ? true : booking.status === statusFilter;
         return matchesSearch && matchesStatus;
       }),
-    [searchValue, statusFilter]
+    [bookings, searchValue, statusFilter]
   );
 
   return (
@@ -94,9 +97,13 @@ export default function AdminBookings() {
           </>
         }
         ListEmptyComponent={
-          <Text className="px-1 text-[12px] text-gray-500">
-            No bookings match your search or filter.
-          </Text>
+          isLoading ? (
+            <ActivityIndicator color="#4F46E5" />
+          ) : (
+            <Text className="px-1 text-[12px] text-gray-500">
+              No bookings match your search or filter.
+            </Text>
+          )
         }
         renderItem={({ item }) => {
           const isExpanded = expandedBookingId === item.id;

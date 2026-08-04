@@ -2,9 +2,9 @@
 # test-kyc.sh — End-to-end KYC upload + admin review test
 #
 # Prerequisites:
-#   1. Supabase project with migrations applied (001 + 003)
+#   1. All of supabase/migrations applied (supabase db reset, or db push)
 #   2. Edge functions deployed: kyc-upload, kyc-admin-list, kyc-admin-review
-#   3. Storage bucket 'kyc-documents' created (run 002_storage_kyc.sql)
+#   3. The 'kyc-documents' bucket, which migration 020 now creates — no manual step
 #
 # Usage:
 #   export SUPABASE_URL="https://your-project.supabase.co"

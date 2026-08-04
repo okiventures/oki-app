@@ -25,6 +25,7 @@ export interface HandymanSearchResult {
   is_online: boolean;
   distance_meters: number;
   trust_score: number | null;
+  review_count: number;
 }
 
 interface UseHandymanSearchProps {
@@ -42,6 +43,7 @@ const MOCK_HANDYMAN_RESULTS: HandymanSearchResult[] = [
     is_online: true,
     distance_meters: 1200,
     trust_score: 4.9,
+    review_count: 87,
   },
   {
     handyman_id: 'h2',
@@ -50,6 +52,7 @@ const MOCK_HANDYMAN_RESULTS: HandymanSearchResult[] = [
     is_online: true,
     distance_meters: 2800,
     trust_score: 4.7,
+    review_count: 64,
   },
   {
     handyman_id: 'h3',
@@ -58,6 +61,7 @@ const MOCK_HANDYMAN_RESULTS: HandymanSearchResult[] = [
     is_online: true,
     distance_meters: 3500,
     trust_score: 4.8,
+    review_count: 52,
   },
   {
     handyman_id: 'h4',
@@ -66,6 +70,7 @@ const MOCK_HANDYMAN_RESULTS: HandymanSearchResult[] = [
     is_online: true,
     distance_meters: 800,
     trust_score: 4.6,
+    review_count: 39,
   },
   {
     handyman_id: 'h5',
@@ -74,6 +79,7 @@ const MOCK_HANDYMAN_RESULTS: HandymanSearchResult[] = [
     is_online: false,
     distance_meters: 5200,
     trust_score: 5.0,
+    review_count: 12,
   },
 ];
 

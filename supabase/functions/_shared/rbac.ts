@@ -9,6 +9,30 @@ export type RbacUser = {
 export type AuthSuccess = { user: RbacUser; supabase: SupabaseClient };
 export type AuthFailure = { error: Response };
 
+/**
+ * Owner-privilege client for server-authoritative writes.
+ *
+ * Booking lifecycle transitions and the booking_events audit log are deliberately
+ * not writable by the authenticated role: RLS pins status/money columns on
+ * `bookings` and grants no INSERT on `booking_events` at all, so a client cannot
+ * forge a transition by calling PostgREST directly. The Edge Functions are the
+ * trusted path — they authorise the caller themselves (requireHandyman/
+ * requireClient plus explicit ownership and guard checks) and then write with
+ * this client.
+ *
+ * Only ever use it after those checks have passed, and never for reads that
+ * should stay scoped to the caller.
+ */
+export function serviceClient(): SupabaseClient {
+  const serviceRoleKey =
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY');
+  if (!serviceRoleKey) throw new Error('Missing service role key env var');
+
+  return createClient(Deno.env.get('SUPABASE_URL')!, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 export async function getAuthUser(req: Request): Promise<AuthSuccess | AuthFailure> {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {

@@ -243,7 +243,7 @@
   - [x] `POST /kyc/upload` endpoint: validate file type (JPEG/PNG/PDF), max 5 MB, reject all others — zero-import edge function at `supabase/functions/kyc-upload/index.ts`
   - [x] Store documents in private Supabase Storage bucket (`kyc-documents` bucket with per-user folder)
   - [x] Generate short-lived signed URLs for Admin document review (not publicly accessible) — configurable 3600s expiry via `ALLOWED_ORIGIN` env var for admin functions
-  - [x] KYC status field on `handymen` table: `PENDING / APPROVED / REJECTED` — migration at `backend/migrations/003_kyc_documents.sql`
+  - [x] KYC status field on `handymen` table: `PENDING / APPROVED / REJECTED` — migration at `supabase/migrations/003_kyc_documents.sql`
 - [x] Role-based access control middleware
   - [x] Shared RBAC middleware at `supabase/functions/_shared/rbac.ts`: `getAuthUser`, `requireRole`, `requireAdmin`, `requireHandyman` — reads role from JWT, attaches user + supabase client to request context, returns discriminated `AuthSuccess | AuthFailure` union
   - [x] Frontend RBAC guards at `src/services/rbac.ts`: `assertRole`, `canAccess`, `GUARDS` (client/handyman/admin/staff/authenticated), `RoleAccessError` typed error class
@@ -419,14 +419,14 @@
 ### **Week 13 · July 30 – August 5 — Rating & Review Loop**
 
 - [ ] [STANDUP] **Standup 6 — July 29**
-- [ ] Post-job rating (Client → Handyman, Handyman → Client)
-  - [ ] Rating prompt triggers once per completed booking per actor, shown on `PAID` state transition
-  - [ ] Rating schema: `booking_id`, `reviewer_id`, `reviewee_id`, `stars` (1–5), `comment` (optional), `created_at`
-  - [ ] API guard: second submission for the same booking by the same reviewer returns 409
-- [ ] Trust Score computation
-  - [ ] Weighted rolling average of last 50 reviews stored as `trust_score` on `handymen` and `users`
-  - [ ] Score recomputed asynchronously via a Supabase Function trigger on new review insert
-  - [ ] Trust Score exposed in search results and profile cards
+- [x] Post-job rating (Client → Handyman, Handyman → Client)
+  - [x] Rating prompt triggers once per completed booking per actor, shown on `PAID` state transition
+  - [x] Rating schema: `booking_id`, `reviewer_id`, `reviewee_id`, `stars` (1–5), `comment` (optional), `created_at`
+  - [x] API guard: second submission for the same booking by the same reviewer returns 409
+- [x] Trust Score computation
+  - [x] Weighted rolling average of last 50 reviews stored as `trust_score` on `handymen` and `users` — recency-weighted (50 → 1), capped at last 50, `review_count` uncapped
+  - [x] Score recomputed asynchronously via a Supabase Function trigger on new review insert — `AFTER INSERT` trigger `trg_reviews_recompute_trust_score` with advisory-lock serialization
+  - [x] Trust Score exposed in search results and profile cards — `search_nearest_handymen` returns `trust_score` + `review_count`; search + profile cards render both
 - [ ] Review display on profiles
   - [ ] Handyman profile screen: aggregate star display, total review count, paginated review list
   - [ ] Each review card: reviewer avatar, star rating, comment, relative timestamp

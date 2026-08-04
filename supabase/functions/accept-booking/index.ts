@@ -1,5 +1,13 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
-import { requireHandyman, methodNotAllowed, badRequest, notFound, ok } from '../_shared/rbac.ts';
+import {
+  requireHandyman,
+  serviceClient,
+  methodNotAllowed,
+  badRequest,
+  notFound,
+  internalError,
+  ok,
+} from '../_shared/rbac.ts';
 
 interface AcceptBookingRequest {
   bookingId: string;
@@ -12,12 +20,17 @@ serve(async (req: Request) => {
   if ('error' in auth) return auth.error;
   const { user, supabase } = auth;
 
+  // A PENDING booking has no handyman yet, so it matches no RLS policy for this
+  // caller — the read and the assignment both have to run with owner privilege.
+  // Every guard below is enforced here in the function.
+  const db = serviceClient();
+
   const { bookingId }: AcceptBookingRequest = await req.json();
   if (!bookingId) return badRequest('bookingId required');
 
-  const { data: booking, error: fetchError } = await supabase
+  const { data: booking, error: fetchError } = await db
     .from('bookings')
-    .select('*')
+    .select('*, services!service_id(category)')
     .eq('id', bookingId)
     .single();
 
@@ -36,8 +49,26 @@ serve(async (req: Request) => {
     );
   }
 
+  // list_available_bookings() only *shows* a handyman the categories they serve,
+  // so the category match has never been enforced anywhere: a direct call here
+  // with an arbitrary bookingId could take a job outside them.
+  const bookingCategory = (booking.services as { category: string } | null)?.category;
+  if (!bookingCategory) return internalError('Booking has no service category');
+
+  const { data: matchingServices, error: categoryError } = await db
+    .from('handyman_services')
+    // !inner makes the category a join filter. A plain embed would still return
+    // the row with a null `services`, so every category would look like a match.
+    .select('service_id, services!inner(category)')
+    .eq('handyman_id', user.id)
+    .eq('services.category', bookingCategory);
+
+  if (categoryError) return internalError(categoryError.message);
+
   const guards: string[] = [];
   if (booking.status !== 'PENDING') guards.push('Booking must be PENDING');
+  if (!matchingServices || matchingServices.length === 0)
+    guards.push(`Handyman does not offer ${bookingCategory} services`);
   if (!handyman.is_online) guards.push('Handyman must be online');
   if (handyman.kyc_status !== 'APPROVED') guards.push('KYC must be approved');
   if (booking.handyman_id && booking.handyman_id !== user.id)
@@ -58,7 +89,7 @@ serve(async (req: Request) => {
     );
   }
 
-  const { data: updatedBooking, error: updateError } = await supabase
+  const { data: updatedBooking, error: updateError } = await db
     .from('bookings')
     .update({ status: 'ACCEPTED', handyman_id: user.id, updated_at: new Date().toISOString() })
     .eq('id', bookingId)
@@ -87,7 +118,7 @@ serve(async (req: Request) => {
     );
   }
 
-  const { error: eventError } = await supabase.from('booking_events').insert({
+  const { error: eventError } = await db.from('booking_events').insert({
     booking_id: bookingId,
     actor_id: user.id,
     from_status: 'PENDING',

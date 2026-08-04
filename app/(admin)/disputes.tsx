@@ -5,30 +5,35 @@ import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
 import { SearchBar } from '../../src/components/forms/SearchBar';
 import { Table, TableColumn } from '../../src/components/admin/Table';
+import { ErrorBanner } from '../../src/components/ui/ErrorBanner';
 import { useAdmin } from '../../src/context/AdminContext';
+import { DisputeStatus } from '../../src/types';
 import { formatDateTime } from '../../src/utils';
 
-const statusVariant = (status: string) => {
-  switch (status) {
-    case 'Open':
-      return 'error';
-    case 'Investigating':
-      return 'warning';
-    case 'Resolved':
-      return 'success';
-    case 'Closed':
-      return 'status';
-    default:
-      return 'status';
-  }
+const STATUS_VARIANTS: Record<DisputeStatus, 'error' | 'warning' | 'success' | 'status'> = {
+  [DisputeStatus.Open]: 'error',
+  [DisputeStatus.InReview]: 'warning',
+  [DisputeStatus.Resolved]: 'success',
+  [DisputeStatus.Closed]: 'status',
 };
 
-const DISPUTE_STATUS_OPTIONS = ['All', 'Open', 'Investigating', 'Resolved', 'Closed'];
+// Labels are separate from the enum values because DisputeStatus.InReview is the
+// string 'InReview'. Anything comparing against a hand-written display label
+// silently matches nothing.
+const STATUS_LABELS: Record<DisputeStatus, string> = {
+  [DisputeStatus.Open]: 'Open',
+  [DisputeStatus.InReview]: 'In review',
+  [DisputeStatus.Resolved]: 'Resolved',
+  [DisputeStatus.Closed]: 'Closed',
+};
+
+const ALL = 'All';
+const DISPUTE_STATUS_OPTIONS = [ALL, ...Object.values(DisputeStatus)];
 
 export default function AdminDisputes() {
-  const { disputes } = useAdmin();
+  const { disputes, error } = useAdmin();
   const [searchValue, setSearchValue] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState<string>(ALL);
   const [expandedDisputeId, setExpandedDisputeId] = useState<string | null>(null);
 
   const filteredDisputes = useMemo(
@@ -42,7 +47,7 @@ export default function AdminDisputes() {
           item.handymanName.toLowerCase().includes(query) ||
           item.reason.toLowerCase().includes(query);
 
-        const matchesStatus = statusFilter === 'All' ? true : item.status === statusFilter;
+        const matchesStatus = statusFilter === ALL ? true : item.status === statusFilter;
         return matchesSearch && matchesStatus;
       }),
     [searchValue, statusFilter, disputes]
@@ -53,7 +58,9 @@ export default function AdminDisputes() {
       key: 'status',
       title: 'Status',
       width: 120,
-      render: (item) => <Badge text={item.status} variant={statusVariant(item.status)} />,
+      render: (item) => (
+        <Badge text={STATUS_LABELS[item.status]} variant={STATUS_VARIANTS[item.status]} />
+      ),
     },
     {
       key: 'booking',
@@ -99,7 +106,9 @@ export default function AdminDisputes() {
     <View className="flex-1 bg-gray-50">
       <Navbar title="Disputes" />
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Text className="mb-3 text-[13px] font-bold text-gray-900">Active Resolutions</Text>
+        <ErrorBanner message={error} />
+
+        <Text className="mt-3 mb-3 text-[13px] font-bold text-gray-900">Active Resolutions</Text>
         <SearchBar
           value={searchValue}
           onChangeText={setSearchValue}
@@ -114,7 +123,7 @@ export default function AdminDisputes() {
               className={`rounded-full px-3 py-2 ${statusFilter === status ? 'bg-primary-600' : 'bg-gray-100'}`}>
               <Text
                 className={`${statusFilter === status ? 'text-white' : 'text-gray-700'} text-[12px] font-semibold`}>
-                {status}
+                {status === ALL ? ALL : STATUS_LABELS[status as DisputeStatus]}
               </Text>
             </TouchableOpacity>
           ))}
@@ -140,8 +149,8 @@ export default function AdminDisputes() {
             <View className="mb-3 flex-row items-center justify-between">
               <Text className="text-[15px] font-bold text-gray-900">{expandedDispute.reason}</Text>
               <Badge
-                text={expandedDispute.status}
-                variant={statusVariant(expandedDispute.status)}
+                text={STATUS_LABELS[expandedDispute.status]}
+                variant={STATUS_VARIANTS[expandedDispute.status]}
               />
             </View>
             <Text className="mb-1 text-[12px] text-gray-600">
@@ -155,12 +164,6 @@ export default function AdminDisputes() {
             </Text>
             <Text className="mb-1 text-[12px] text-gray-600">
               Reported at: {formatDateTime(expandedDispute.createdAt)}
-            </Text>
-            <Text className="mt-3 text-[12px] text-gray-600">
-              Evidence: Chat log and uploaded photos available.
-            </Text>
-            <Text className="text-[12px] text-gray-600">
-              Admin actions: Confirm refund, request more information, or close dispute.
             </Text>
           </Card>
         )}

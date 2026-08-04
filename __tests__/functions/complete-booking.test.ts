@@ -1,4 +1,4 @@
-import { requireHandyman } from '../../supabase/functions/_shared/rbac';
+import { requireHandyman, serviceClient } from '../../supabase/functions/_shared/rbac';
 import { __getHandler } from '../__mocks__/deno-serve';
 import '../../supabase/functions/complete-booking/index';
 
@@ -8,6 +8,7 @@ jest.mock('../../supabase/functions/_shared/rbac', () => {
 
   return {
     requireHandyman: jest.fn(),
+    serviceClient: jest.fn(),
     methodNotAllowed: jest.fn(() => resp(405, { error: 'METHOD_NOT_ALLOWED' })),
     badRequest: jest.fn((m: string) => resp(400, { error: 'BAD_REQUEST', message: m })),
     notFound: jest.fn((m: string) => resp(404, { error: 'NOT_FOUND', message: m })),
@@ -89,17 +90,21 @@ function supabaseWith(opts: {
     });
   }
 
-  return {
+  const client = {
     from: jest.fn((table: string) => {
       if (table === 'bookings') return bookingChain;
       if (table === 'booking_events') return eventsChain ?? mockFrom(table);
       return mockFrom(table);
     }),
   };
+
+  (serviceClient as jest.Mock).mockReturnValue(client);
+  return client;
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (serviceClient as jest.Mock).mockReturnValue({ from: jest.fn(() => mockFrom('any')) });
 });
 
 describe('module loading', () => {
@@ -418,6 +423,8 @@ describe('success path', () => {
     };
 
     (requireHandyman as jest.Mock).mockResolvedValue({ user: { id: 'hm-1' }, supabase });
+    // The status write goes through serviceClient(), not the caller's client.
+    (serviceClient as jest.Mock).mockReturnValue(supabase);
 
     await callHandler(makeReq({ bookingId: 'b-1', afterPhotoUrl: 'after.jpg' }));
 

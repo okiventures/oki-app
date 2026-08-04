@@ -288,12 +288,20 @@ Every transition writes one `booking_events` row. `PAID` requires `payments.stat
 
 ## File Layout
 
-| File                                     | Purpose                                          |
-| ---------------------------------------- | ------------------------------------------------ |
-| `backend/migrations/001_core_schema.sql` | Extensions, enums, tables, indexes, triggers     |
-| `backend/rls-policies/001_core_rls.sql`  | RLS enable + policies per table                  |
-| `backend/docs/database-architecture.md`  | This document                                    |
-| `backend/docs/booking-state-machine.md`  | Booking FSM: states, guards, API errors, diagram |
+All schema lives in `supabase/migrations/`, applied with `supabase db reset` (local)
+or `supabase db push` (hosted). `backend/migrations/` and `backend/rls-policies/`
+were a parallel copy of the same schema and were deleted once they had drifted;
+only these docs remain under `backend/`.
+
+| File                                                    | Purpose                                          |
+| ------------------------------------------------------- | ------------------------------------------------ |
+| `supabase/migrations/001_core_schema.sql`               | Extensions, enums, tables, indexes, triggers     |
+| `supabase/migrations/…_015_core_rls_dispatch_realtime.sql` | RLS enable + policies per table, dispatch RPC  |
+| `supabase/migrations/…_018_table_grants.sql`            | Table GRANTs — required alongside every policy   |
+| `supabase/migrations/…_020_storage_buckets.sql`         | `avatars` + `kyc-documents` buckets and policies  |
+| `supabase/seed.sql`                                     | Seeded accounts and demo data                    |
+| `backend/docs/database-architecture.md`                 | This document                                    |
+| `backend/docs/booking-state-machine.md`                 | Booking FSM: states, guards, API errors, diagram |
 
 ---
 

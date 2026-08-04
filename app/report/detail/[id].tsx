@@ -1,14 +1,15 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../src/context/ThemeContext';
 import { Button } from '../../../src/components/ui/Button';
 import { Badge } from '../../../src/components/ui/Badge';
-import { getReportById } from '../../../src/mocks/reports';
-import { MOCK_BOOKING_DETAILS } from '../../../src/mocks/bookingDetails';
+import { fetchReport } from '../../../src/services/reportService';
+import { useBookingDetail } from '../../../src/hooks/useBookingDetail';
 import { REPORT_STATUS_LABELS, REPORT_STATUS_VARIANTS } from '../../../src/constants/reports';
+import type { UserReport } from '../../../src/types';
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -26,8 +27,39 @@ export default function ReportDetailScreen() {
   const router = useRouter();
   const { colors } = useTheme();
 
-  const report = getReportById(id ?? '');
-  const booking = report ? MOCK_BOOKING_DETAILS.find((b) => b.id === report.bookingId) : undefined;
+  const [report, setReport] = useState<UserReport | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    fetchReport(id)
+      .then((row) => {
+        if (!cancelled) setReport(row);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const { detail: booking } = useBookingDetail(report?.bookingId);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: colors.ui.background }}
+        className="items-center justify-center">
+        <ActivityIndicator size="large" color={colors.primary['600']} />
+      </SafeAreaView>
+    );
+  }
 
   if (!report) {
     return (

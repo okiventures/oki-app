@@ -6,8 +6,8 @@ import { Card } from '../ui/Card';
 import { formatCurrency } from '../../utils';
 import { EarningsDateRangeFilter, Preset } from './EarningsDateRangeFilter';
 import { EarningsTrendChart } from './EarningsTrendChart';
+import { useEarnings } from '../../hooks/useEarnings';
 import {
-  MOCK_EARNINGS,
   filterEarningsByRange,
   getDailyAggregates,
   fillHourlyTotals,
@@ -41,11 +41,12 @@ export function EarningsSummaryCard({
 }: EarningsSummaryCardProps) {
   const { colors } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
+  const { earnings } = useEarnings();
 
   const isSingleDay = rangeStart.toDateString() === rangeEnd.toDateString();
 
   const { jobCount, dailyTotals, isHourly } = useMemo(() => {
-    const entries = filterEarningsByRange(MOCK_EARNINGS, rangeStart, rangeEnd);
+    const entries = filterEarningsByRange(earnings, rangeStart, rangeEnd);
     if (isSingleDay) {
       return { jobCount: entries.length, dailyTotals: fillHourlyTotals(entries), isHourly: true };
     }
@@ -54,7 +55,7 @@ export function EarningsSummaryCard({
       dailyTotals: fillDailyTotals(getDailyAggregates(entries), rangeStart, rangeEnd),
       isHourly: false,
     };
-  }, [rangeStart, rangeEnd, isSingleDay]);
+  }, [earnings, rangeStart, rangeEnd, isSingleDay]);
 
   const avgPerJob = jobCount > 0 ? Math.round(totalEarnings / jobCount) : 0;
   const chartWidth = screenWidth - 64;

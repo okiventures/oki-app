@@ -1,5 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, ScrollView, TextInput, Pressable, Animated } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TextInput,
+  Pressable,
+  Animated,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,9 +16,15 @@ import { useAuth } from '../../src/context/AuthContext';
 import { Button } from '../../src/components/ui/Button';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { StarRatingInput } from '../../src/components/ui/StarRatingInput';
-import { MOCK_BOOKING_DETAILS } from '../../src/mocks/bookingDetails';
+import { Toast } from '../../src/components/ui/Toast';
+import { useBookingDetail } from '../../src/hooks/useBookingDetail';
 import { MOCK_CLIENT, MOCK_HANDYMAN } from '../../src/mocks';
-import { submitReview, ReviewSubmissionError } from '../../src/services/reviewService';
+import {
+  fetchMyReviewForBooking,
+  submitReview,
+  ReviewSubmissionError,
+} from '../../src/services/reviewService';
+import { BookingStatus, ToastMessage } from '../../src/types';
 
 const MAX_COMMENT_LENGTH = 500;
 
@@ -20,7 +34,7 @@ export default function ReviewBookingScreen() {
   const { colors } = useTheme();
   const { session } = useAuth();
 
-  const booking = MOCK_BOOKING_DETAILS.find((b) => b.id === id);
+  const { detail: booking, isLoading } = useBookingDetail(id);
   const viewerRole = session?.user?.userType ?? 'client';
   const isClient = viewerRole === 'client';
 
@@ -31,7 +45,25 @@ export default function ReviewBookingScreen() {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+
+  // reviews_one_per_direction allows one review per booking per reviewer, so
+  // check before showing the form rather than failing on submit.
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    fetchMyReviewForBooking(id)
+      .then((existing) => {
+        if (!cancelled && existing) setAlreadyReviewed(true);
+      })
+      .catch(() => {
+        // Non-fatal: the insert is still guarded server-side.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -52,36 +84,46 @@ export default function ReviewBookingScreen() {
     }
   }, [showSuccess, scaleAnim, fadeAnim, router]);
 
-  const canSubmit = rating > 0 && !submitting;
+  // Only a finished job can be reviewed — the RLS insert policy enforces the
+  // same thing, this just keeps the button from lying about it.
+  const isReviewable =
+    booking?.status === BookingStatus.Completed || booking?.status === BookingStatus.Paid;
+  const canSubmit = rating > 0 && isReviewable && !alreadyReviewed && !submitting;
 
   const handleSubmit = async () => {
     if (!canSubmit || !booking) return;
     setSubmitting(true);
-    setErrorMessage(null);
 
-    // Client reviews the handyman; handyman reviews the client.
+    // Client reviews the handyman; handyman reviews the client. reviewerId only
+    // feeds the mock path — the Edge Function derives it from the session.
     const reviewerId = isClient
       ? (session?.user?.id ?? MOCK_CLIENT.id)
       : (session?.user?.id ?? MOCK_HANDYMAN.id);
-    const revieweeId = isClient ? booking.handymanId : booking.clientId;
 
     try {
       await submitReview({
         bookingId: booking.id,
         reviewerId,
-        revieweeId,
+        revieweeId: isClient ? booking.handymanId : booking.clientId,
         rating,
         comment,
       });
       setShowSuccess(true);
     } catch (err) {
+      // The 409 is the one-review-per-direction guard, worth naming explicitly.
       if (err instanceof ReviewSubmissionError && err.status === 409) {
-        setErrorMessage('You have already reviewed this booking.');
-      } else {
-        setErrorMessage(
-          err instanceof Error ? err.message : 'Could not submit review. Please try again.'
-        );
+        setAlreadyReviewed(true);
       }
+      setToast({
+        id: `review-error-${String(rating)}-${booking.id}`,
+        type: 'error',
+        message:
+          err instanceof ReviewSubmissionError && err.status === 409
+            ? 'You have already reviewed this booking.'
+            : err instanceof Error
+              ? err.message
+              : 'Could not submit review. Please try again.',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -120,6 +162,16 @@ export default function ReviewBookingScreen() {
             </Text>
           )}
         </Animated.View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: colors.ui.background }}
+        className="items-center justify-center">
+        <ActivityIndicator size="large" color={colors.primary['600']} />
       </SafeAreaView>
     );
   }
@@ -180,8 +232,38 @@ export default function ReviewBookingScreen() {
             </Text>
           </View>
 
+          {alreadyReviewed ? (
+            <View
+              className="flex-row gap-3 rounded-2xl px-4 py-3.5"
+              style={{ backgroundColor: `${colors.primary['600']}08` }}>
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={18}
+                color={colors.primary['600']}
+                style={{ marginTop: 1 }}
+              />
+              <Text className="flex-1 text-[13px] leading-5" style={{ color: colors.ui.textMuted }}>
+                You have already reviewed this booking. Only one review per booking is allowed.
+              </Text>
+            </View>
+          ) : !isReviewable ? (
+            <View
+              className="flex-row gap-3 rounded-2xl px-4 py-3.5"
+              style={{ backgroundColor: `${colors.primary['600']}08` }}>
+              <Ionicons
+                name="time-outline"
+                size={18}
+                color={colors.primary['600']}
+                style={{ marginTop: 1 }}
+              />
+              <Text className="flex-1 text-[13px] leading-5" style={{ color: colors.ui.textMuted }}>
+                This booking can be reviewed once the job is marked complete.
+              </Text>
+            </View>
+          ) : null}
+
           <Text
-            className="mb-3 text-center text-[15px] font-bold"
+            className="mt-6 mb-3 text-center text-[15px] font-bold"
             style={{ color: colors.ui.text }}>
             Rate your experience
           </Text>
@@ -215,14 +297,6 @@ export default function ReviewBookingScreen() {
               </Text>
             </View>
           )}
-
-          {errorMessage && (
-            <View
-              className="mt-6 rounded-xl border px-4 py-3"
-              style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA' }}>
-              <Text className="text-[13px] font-medium text-red-700">{errorMessage}</Text>
-            </View>
-          )}
         </ScrollView>
 
         <View
@@ -238,6 +312,8 @@ export default function ReviewBookingScreen() {
           />
         </View>
       </View>
+
+      {toast && <Toast toast={toast} onDismiss={() => setToast(null)} />}
     </SafeAreaView>
   );
 }

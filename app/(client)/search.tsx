@@ -168,6 +168,9 @@ export default function SearchResults() {
                             <Text className="text-[12px] font-medium text-gray-700">
                               {hm.trust_score?.toFixed(1) ?? '—'}
                             </Text>
+                            <Text className="text-[12px] text-gray-400">
+                              ({hm.review_count} review{hm.review_count === 1 ? '' : 's'})
+                            </Text>
                           </View>
                           <View className="flex-row items-center gap-1">
                             <Ionicons name="location-outline" size={12} color="#9CA3AF" />

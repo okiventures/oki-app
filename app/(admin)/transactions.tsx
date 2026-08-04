@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Navbar } from '../../src/components/navigation/Navbar';
 import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
 import { SearchBar } from '../../src/components/forms/SearchBar';
-import { MOCK_TRANSACTIONS } from '../../src/mocks';
+import { useAdminDashboard } from '../../src/hooks/useAdminDashboard';
 import { formatCurrency, formatDateTime } from '../../src/utils';
 
 const statusVariant = (status: string) => {
@@ -25,13 +25,14 @@ const statusVariant = (status: string) => {
 const TRANSACTION_STATUS_OPTIONS = ['All', 'Authorized', 'Captured', 'Failed', 'Refunded'];
 
 export default function AdminTransactions() {
+  const { transactions, isLoading } = useAdminDashboard();
   const [searchValue, setSearchValue] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
 
   const filteredTransactions = useMemo(
     () =>
-      MOCK_TRANSACTIONS.filter((item) => {
+      transactions.filter((item) => {
         const query = searchValue.toLowerCase();
         const matchesSearch =
           item.bookingId.toLowerCase().includes(query) ||
@@ -42,7 +43,7 @@ export default function AdminTransactions() {
         const matchesStatus = statusFilter === 'All' ? true : item.status === statusFilter;
         return matchesSearch && matchesStatus;
       }),
-    [searchValue, statusFilter]
+    [transactions, searchValue, statusFilter]
   );
 
   return (
@@ -76,9 +77,13 @@ export default function AdminTransactions() {
           </>
         }
         ListEmptyComponent={
-          <Text className="px-1 text-[12px] text-gray-500">
-            No transactions match your search or filter.
-          </Text>
+          isLoading ? (
+            <ActivityIndicator color="#4F46E5" />
+          ) : (
+            <Text className="px-1 text-[12px] text-gray-500">
+              No transactions match your search or filter.
+            </Text>
+          )
         }
         renderItem={({ item }) => {
           const isExpanded = expandedTransactionId === item.id;
