@@ -13,11 +13,13 @@ import { BookingOverviewTab } from '../../src/components/bookings/BookingOvervie
 import { BookingTimelineTab } from '../../src/components/bookings/BookingTimelineTab';
 import { BookingPaymentTab } from '../../src/components/bookings/BookingPaymentTab';
 import { BookingSearchingState } from '../../src/components/bookings/BookingSearchingState';
+import { RatingPromptCard } from '../../src/components/review/RatingPromptCard';
 import { Tabs } from '../../src/components/ui/Tabs';
 import { ConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 import { Button } from '../../src/components/ui/Button';
 import { Toast } from '../../src/components/ui/Toast';
 import { BookingStatus, ToastMessage } from '../../src/types';
+import { hasReviewed, isBookingRateable } from '../../src/services/reviewService';
 
 const TABS = ['Overview', 'Timeline', 'Payment'] as const;
 type Tab = (typeof TABS)[number];
@@ -34,6 +36,7 @@ export default function BookingDetailScreen() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelToast, setCancelToast] = useState<ToastMessage | null>(null);
+  const [showReviewPrompt, setShowReviewPrompt] = useState(false);
   const prevStatusRef = useRef<BookingStatus | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -51,6 +54,7 @@ export default function BookingDetailScreen() {
   const primaryColor = colors.primary['600'];
   const viewerRole = role ?? session?.user?.userType ?? 'client';
   const isHandyman = viewerRole === 'handyman';
+  const viewerId = session?.user?.id;
 
   const status = booking?.status;
 
@@ -59,6 +63,26 @@ export default function BookingDetailScreen() {
   const canClientCancel = !isHandyman && status === BookingStatus.Pending;
 
   const nextAction = isHandyman && status ? getNextHandymanAction(status) : null;
+
+  // ── Rating prompt: fire once per completed booking per actor on PAID ─────
+  // When the booking reaches PAID and the viewer hasn't reviewed it yet, show
+  // the RatingPromptCard so they can rate the other participant.
+  useEffect(() => {
+    const bookingId = booking?.id;
+    if (!bookingId || !status || !isBookingRateable(status) || !viewerId) return;
+
+    let cancelled = false;
+    (async () => {
+      const reviewed = await hasReviewed(bookingId, viewerId);
+      if (!cancelled && !reviewed) {
+        setShowReviewPrompt(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status, booking?.id, viewerId]);
 
   const handleConfirmCancel = async () => {
     if (!booking) return;
@@ -294,6 +318,15 @@ export default function BookingDetailScreen() {
         <View className="mx-5 mt-4">
           <BookingHeroCard booking={booking} />
         </View>
+
+        {showReviewPrompt && (
+          <RatingPromptCard
+            targetName={isHandyman ? booking.clientName : booking.handymanName}
+            serviceCategory={booking.serviceCategory}
+            onRate={() => router.push(`/review/${booking.id}`)}
+            onDismiss={() => setShowReviewPrompt(false)}
+          />
+        )}
 
         <Tabs
           tabs={TABS}

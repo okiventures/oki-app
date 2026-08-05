@@ -1,16 +1,22 @@
 import {
   fetchReviewsForUser,
+  fetchMyReviewForBooking,
   submitReview,
+  hasReviewed,
+  resolveReviewDirection,
+  isBookingRateable,
   flagReview,
   fetchFlaggedReviews,
   resolveReviewFlag,
+  ReviewSubmissionError,
 } from '../../src/services/reviewService';
 import { isMockEnv } from '../../src/services/bookingService';
-import { Review } from '../../src/types';
+import { Booking, BookingStatus, Review } from '../../src/types';
 
 jest.mock('../../src/lib/supabase', () => ({
   supabase: {
     auth: { getSession: jest.fn(), getUser: jest.fn() },
+    functions: { invoke: jest.fn() },
     from: jest.fn(),
   },
 }));
@@ -35,15 +41,13 @@ function buildRangeChain(resolved: { data: unknown; error: { message: string } |
   return chain;
 }
 
-function buildInsertChain(resolved: {
-  data: unknown;
-  error: { code: string; message: string } | null;
-}) {
-  return {
-    insert: jest.fn().mockReturnThis(),
-    select: jest.fn().mockReturnThis(),
-    single: jest.fn().mockResolvedValue(resolved),
+/** Mirrors the FunctionsHttpError shape the supabase-js client throws. */
+function edgeError(status: number, body: string) {
+  const err = new Error('Edge Function returned a non-2xx status code') as Error & {
+    context: { status: number; text: () => Promise<string> };
   };
+  err.context = { status, text: async () => body };
+  return err;
 }
 
 beforeEach(() => {
@@ -140,28 +144,25 @@ describe('fetchReviewsForUser (real env)', () => {
   });
 });
 
-describe('submitReview (real env)', () => {
+describe('submitReview (real env — submit-review Edge Function)', () => {
   beforeEach(() => {
     (isMockEnv as jest.Mock).mockReturnValue(false);
-    // The reviewer is taken from the session, never from the caller.
-    (mockedSupabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: { id: 'u1' } } });
   });
 
-  it('inserts a review pinned to the session user and maps the returned row', async () => {
-    const chain = buildInsertChain({
-      data: {
-        id: 'rev-1',
-        booking_id: 'b1',
-        reviewer_id: 'u1',
-        reviewee_id: 'h1',
-        rating: 5,
-        comment: 'Great work',
-        is_hidden: false,
-        created_at: '2026-08-04T12:00:00.000Z',
-      },
+  it('invokes the edge function and returns the created review', async () => {
+    const created = {
+      id: 'rev-1',
+      bookingId: 'b1',
+      reviewerId: 'u1',
+      revieweeId: 'h1',
+      rating: 5,
+      comment: 'Great work',
+      createdAt: '2026-08-04T12:00:00.000Z',
+    };
+    (mockedSupabase.functions.invoke as jest.Mock).mockResolvedValue({
+      data: { data: created },
       error: null,
     });
-    (mockedSupabase.from as jest.Mock).mockReturnValue(chain);
 
     const result = await submitReview({
       bookingId: 'b1',
@@ -170,90 +171,220 @@ describe('submitReview (real env)', () => {
       comment: 'Great work',
     });
 
-    expect(mockedSupabase.from).toHaveBeenCalledWith('reviews');
-    expect(chain.insert).toHaveBeenCalledWith({
-      booking_id: 'b1',
-      reviewer_id: 'u1',
-      reviewee_id: 'h1',
-      rating: 5,
-      comment: 'Great work',
+    // reviewerId is deliberately not sent — the function derives it from the JWT.
+    expect(mockedSupabase.functions.invoke).toHaveBeenCalledWith('submit-review', {
+      body: { bookingId: 'b1', revieweeId: 'h1', rating: 5, comment: 'Great work' },
     });
-    expect(result).toMatchObject<Partial<Review>>({
-      id: 'rev-1',
-      bookingId: 'b1',
-      reviewerId: 'u1',
-      revieweeId: 'h1',
-      rating: 5,
-      comment: 'Great work',
-      createdAt: '2026-08-04T12:00:00.000Z',
+    expect(result).toMatchObject<Partial<Review>>({ id: 'rev-1', rating: 5 });
+  });
+
+  it('sends a null comment when none was written', async () => {
+    (mockedSupabase.functions.invoke as jest.Mock).mockResolvedValue({
+      data: { data: {} },
+      error: null,
+    });
+
+    await submitReview({ bookingId: 'b1', revieweeId: 'h1', rating: 4 });
+
+    expect(mockedSupabase.functions.invoke).toHaveBeenCalledWith('submit-review', {
+      body: { bookingId: 'b1', revieweeId: 'h1', rating: 4, comment: null },
     });
   });
 
-  it('throws when no user is signed in', async () => {
+  it('surfaces the duplicate guard as a 409 ReviewSubmissionError', async () => {
+    (mockedSupabase.functions.invoke as jest.Mock).mockRejectedValue(
+      edgeError(
+        409,
+        JSON.stringify({
+          error: 'REVIEW_ALREADY_EXISTS',
+          message: 'You have already reviewed this booking',
+        })
+      )
+    );
+
+    // The review screen keys its "already reviewed" state off status === 409.
+    await expect(
+      submitReview({ bookingId: 'b1', revieweeId: 'h1', rating: 4 })
+    ).rejects.toMatchObject({
+      name: 'ReviewSubmissionError',
+      status: 409,
+      message: 'You have already reviewed this booking',
+      body: { error: 'REVIEW_ALREADY_EXISTS' },
+    });
+  });
+
+  it('surfaces the PAID guard rejection with the server message', async () => {
+    (mockedSupabase.functions.invoke as jest.Mock).mockRejectedValue(
+      edgeError(403, JSON.stringify({ error: 'BOOKING_NOT_PAID', message: 'Booking is not paid' }))
+    );
+
+    await expect(
+      submitReview({ bookingId: 'b1', revieweeId: 'h1', rating: 4 })
+    ).rejects.toMatchObject({ status: 403, message: 'Booking is not paid' });
+  });
+
+  it('falls back to the raw error when the body is not JSON', async () => {
+    (mockedSupabase.functions.invoke as jest.Mock).mockRejectedValue(
+      edgeError(500, '<html>gateway error</html>')
+    );
+
+    const err = await submitReview({ bookingId: 'b1', revieweeId: 'h1', rating: 4 }).catch(
+      (e) => e
+    );
+
+    expect(err).toBeInstanceOf(ReviewSubmissionError);
+    expect(err.status).toBe(500);
+    expect(err.body).toBeUndefined();
+    expect(err.message).toBe('Edge Function returned a non-2xx status code');
+  });
+
+  it('wraps a transport-level error with no context', async () => {
+    (mockedSupabase.functions.invoke as jest.Mock).mockResolvedValue({
+      data: null,
+      error: { message: 'network unreachable' },
+    });
+
+    await expect(
+      submitReview({ bookingId: 'b1', revieweeId: 'h1', rating: 4 })
+    ).rejects.toMatchObject({
+      name: 'ReviewSubmissionError',
+      message: 'network unreachable',
+      status: undefined,
+    });
+  });
+});
+
+describe('submitReview (mock env)', () => {
+  it('appends the review and never touches the backend', async () => {
+    const result = await submitReview({
+      bookingId: 'mock-booking-1',
+      revieweeId: 'mock-h9',
+      rating: 5,
+      comment: 'Nice',
+      reviewerId: 'mock-c9',
+    });
+
+    expect(result).toMatchObject({ bookingId: 'mock-booking-1', reviewerId: 'mock-c9', rating: 5 });
+    expect(mockedSupabase.functions.invoke).not.toHaveBeenCalled();
+  });
+
+  it('simulates the 409 duplicate guard for the same reviewer', async () => {
+    await submitReview({
+      bookingId: 'mock-booking-2',
+      revieweeId: 'mock-h9',
+      rating: 4,
+      reviewerId: 'mock-c9',
+    });
+
+    await expect(
+      submitReview({
+        bookingId: 'mock-booking-2',
+        revieweeId: 'mock-h9',
+        rating: 3,
+        reviewerId: 'mock-c9',
+      })
+    ).rejects.toMatchObject({ name: 'ReviewSubmissionError', status: 409 });
+  });
+});
+
+describe('fetchMyReviewForBooking', () => {
+  it('returns null without querying when nobody is signed in', async () => {
+    (isMockEnv as jest.Mock).mockReturnValue(false);
     (mockedSupabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: null } });
 
-    await expect(
-      submitReview({
-        bookingId: 'b1',
-        revieweeId: 'h1',
-        rating: 4,
-        comment: '',
-      })
-    ).rejects.toThrow('You must be signed in to leave a review.');
+    await expect(fetchMyReviewForBooking('b1')).resolves.toBeNull();
+    expect(mockedSupabase.from).not.toHaveBeenCalled();
   });
 
-  it('translates duplicate-review unique violation into a friendly error', async () => {
-    (mockedSupabase.from as jest.Mock).mockReturnValue(
-      buildInsertChain({
-        data: null,
-        error: { code: '23505', message: 'duplicate key value violates unique constraint' },
-      })
-    );
+  it('returns the signed-in reviewer own review', async () => {
+    (isMockEnv as jest.Mock).mockReturnValue(false);
+    (mockedSupabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: { id: 'u1' } } });
+    const chain = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: {
+          id: 'db1',
+          booking_id: 'b1',
+          reviewer_id: 'u1',
+          reviewee_id: 'h1',
+          rating: 4,
+          comment: null,
+          created_at: '2026-07-01T00:00:00Z',
+        },
+        error: null,
+      }),
+    };
+    (mockedSupabase.from as jest.Mock).mockReturnValue(chain);
 
-    await expect(
-      submitReview({
-        bookingId: 'b1',
-        revieweeId: 'h1',
-        rating: 4,
-        comment: '',
-      })
-    ).rejects.toThrow('You have already reviewed this booking.');
+    const result = await fetchMyReviewForBooking('b1');
+
+    expect(chain.eq).toHaveBeenCalledWith('booking_id', 'b1');
+    expect(chain.eq).toHaveBeenCalledWith('reviewer_id', 'u1');
+    expect(result).toMatchObject({ id: 'db1', comment: '' });
+  });
+});
+
+describe('hasReviewed', () => {
+  it('reads the mock set in mock env', async () => {
+    // MOCK_REVIEWS seeds r1 as booking b2 reviewed by c1.
+    await expect(hasReviewed('b2', 'c1')).resolves.toBe(true);
+    await expect(hasReviewed('b2', 'someone-else')).resolves.toBe(false);
   });
 
-  it('translates RLS rejection into a not-yet-reviewable error', async () => {
-    (mockedSupabase.from as jest.Mock).mockReturnValue(
-      buildInsertChain({
-        data: null,
-        error: { code: '42501', message: 'row-level security: permission denied' },
-      })
-    );
+  it('queries by booking and reviewer in real env', async () => {
+    (isMockEnv as jest.Mock).mockReturnValue(false);
+    const chain = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: { id: 'rev-1' }, error: null }),
+    };
+    (mockedSupabase.from as jest.Mock).mockReturnValue(chain);
 
-    await expect(
-      submitReview({
-        bookingId: 'b1',
-        revieweeId: 'h1',
-        rating: 4,
-        comment: '',
-      })
-    ).rejects.toThrow('This booking cannot be reviewed yet.');
+    await expect(hasReviewed('b1', 'u1')).resolves.toBe(true);
+    expect(chain.eq).toHaveBeenCalledWith('booking_id', 'b1');
+    expect(chain.eq).toHaveBeenCalledWith('reviewer_id', 'u1');
   });
 
-  it('rethrows a generic database error with its message', async () => {
-    (mockedSupabase.from as jest.Mock).mockReturnValue(
-      buildInsertChain({
-        data: null,
-        error: { code: '50000', message: 'internal error' },
-      })
-    );
+  it('fails open so a lookup error cannot block the prompt forever', async () => {
+    (isMockEnv as jest.Mock).mockReturnValue(false);
+    (mockedSupabase.from as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: { message: 'db down' } }),
+    });
 
-    await expect(
-      submitReview({
-        bookingId: 'b1',
-        revieweeId: 'h1',
-        rating: 4,
-        comment: 'A comment',
-      })
-    ).rejects.toThrow('Failed to submit review: internal error');
+    await expect(hasReviewed('b1', 'u1')).resolves.toBe(false);
+  });
+});
+
+describe('resolveReviewDirection', () => {
+  const booking = { id: 'b1', clientId: 'c1', handymanId: 'h1' } as Booking;
+
+  it('points the client at the handyman', () => {
+    expect(resolveReviewDirection(booking, 'c1')).toEqual({
+      reviewerId: 'c1',
+      revieweeId: 'h1',
+    });
+  });
+
+  it('points the handyman at the client', () => {
+    expect(resolveReviewDirection(booking, 'h1')).toEqual({
+      reviewerId: 'h1',
+      revieweeId: 'c1',
+    });
+  });
+
+  it('returns null for a non-participant', () => {
+    expect(resolveReviewDirection(booking, 'stranger')).toBeNull();
+  });
+});
+
+describe('isBookingRateable', () => {
+  it('is true only once the booking is PAID', () => {
+    expect(isBookingRateable(BookingStatus.Paid)).toBe(true);
+    expect(isBookingRateable(BookingStatus.Completed)).toBe(false);
+    expect(isBookingRateable(BookingStatus.Pending)).toBe(false);
   });
 });
 

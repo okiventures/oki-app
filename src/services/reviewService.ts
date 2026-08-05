@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
-import { Review, ReviewFlag, ReviewSort } from '../types';
-import { MOCK_REVIEWS } from '../mocks';
+import { Booking, BookingStatus, Review, ReviewFlag, ReviewSort } from '../types';
+import { addReview, getRatingForBooking, MOCK_REVIEWS } from '../mocks';
 import { isMockEnv } from './bookingService';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -25,11 +25,29 @@ async function getAccessToken(): Promise<string> {
   return data.session.access_token;
 }
 
+/** Input for submitReview. reviewerId is only used in mock mode — the real
+ * backend derives the reviewer from the authenticated user. */
 export interface SubmitReviewInput {
   bookingId: string;
   revieweeId: string;
   rating: number;
   comment?: string;
+  reviewerId?: string;
+}
+
+export class ReviewSubmissionError extends Error {
+  status?: number;
+  body?: Record<string, unknown>;
+
+  constructor(
+    message: string,
+    { status, body }: { status?: number; body?: Record<string, unknown> } = {}
+  ) {
+    super(message);
+    this.name = 'ReviewSubmissionError';
+    this.status = status;
+    this.body = body;
+  }
 }
 
 interface ReviewDbRow {
@@ -60,6 +78,10 @@ function mapReviewRow(row: ReviewDbRow): Review {
 }
 
 const REVIEW_SELECT = '*, reviewer:users!reviewer_id(full_name, photo_url)';
+
+function mockHasReviewed(bookingId: string, reviewerId: string): boolean {
+  return MOCK_REVIEWS.some((r) => r.bookingId === bookingId && r.reviewerId === reviewerId);
+}
 
 // ─── Fetch reviews for a profile (public, hidden ones excluded) ──────────────
 
@@ -115,7 +137,6 @@ export async function fetchReviewsForUser(
  */
 export async function fetchMyReviewForBooking(bookingId: string): Promise<Review | null> {
   if (isMockEnv()) {
-    const { MOCK_REVIEWS } = await import('../mocks/reviews');
     return MOCK_REVIEWS.find((review) => review.bookingId === bookingId) ?? null;
   }
 
@@ -134,55 +155,81 @@ export async function fetchMyReviewForBooking(bookingId: string): Promise<Review
   return data ? mapReviewRow(data as ReviewDbRow) : null;
 }
 
-/**
- * Write a review.
- *
- * reviewer_id is taken from the session rather than the caller: the RLS insert
- * policy pins it to auth.uid() anyway, and it also requires the booking to be
- * COMPLETED or PAID with the caller as a participant. A rejection here means
- * one of those is untrue.
- */
+/** Submit a review for a paid booking. Real path invokes the submit-review Edge
+ * Function (PAID guard, participant check, direction check, rating bounds, 409
+ * duplicate guard). Mock path appends to MOCK_REVIEWS and simulates the guard. */
 export async function submitReview(input: SubmitReviewInput): Promise<Review> {
   if (isMockEnv()) {
-    const { addReview } = await import('../mocks/reviews');
+    const reviewerId = input.reviewerId ?? '';
+    if (mockHasReviewed(input.bookingId, reviewerId)) {
+      throw new ReviewSubmissionError('You have already reviewed this booking', {
+        status: 409,
+        body: { error: 'REVIEW_ALREADY_EXISTS', message: 'You have already reviewed this booking' },
+      });
+    }
+
     return addReview({
       bookingId: input.bookingId,
-      reviewerId: 'mock-reviewer',
-      reviewerName: 'You',
+      reviewerId,
+      reviewerName: 'Local User',
       revieweeId: input.revieweeId,
       rating: input.rating,
       comment: input.comment ?? '',
     });
   }
 
-  const { data: auth } = await supabase.auth.getUser();
-  const userId = auth.user?.id;
-  if (!userId) throw new Error('You must be signed in to leave a review.');
+  try {
+    const { data, error } = await supabase.functions.invoke('submit-review', {
+      body: {
+        bookingId: input.bookingId,
+        revieweeId: input.revieweeId,
+        rating: input.rating,
+        comment: input.comment ?? null,
+      },
+    });
+
+    if (error) throw new Error(error.message);
+
+    return data?.data as Review;
+  } catch (err) {
+    const ctx = (err as any)?.context;
+    let parsedBody: Record<string, unknown> | null = null;
+    let status: number | undefined;
+
+    if (ctx && typeof ctx.status === 'number') {
+      status = ctx.status;
+      try {
+        parsedBody = JSON.parse(await ctx.text());
+      } catch {
+        // body not valid JSON — fall through
+      }
+    }
+
+    const message =
+      typeof parsedBody?.message === 'string'
+        ? parsedBody.message
+        : err instanceof Error
+          ? err.message
+          : String(err);
+
+    throw new ReviewSubmissionError(message, { status, body: parsedBody ?? undefined });
+  }
+}
+
+/** Whether the current user already reviewed a booking. Prevents the rating
+ * prompt from re-showing for the same actor on the same booking. */
+export async function hasReviewed(bookingId: string, reviewerId: string): Promise<boolean> {
+  if (isMockEnv()) return mockHasReviewed(bookingId, reviewerId);
 
   const { data, error } = await supabase
     .from('reviews')
-    .insert({
-      booking_id: input.bookingId,
-      reviewer_id: userId,
-      reviewee_id: input.revieweeId,
-      rating: input.rating,
-      comment: input.comment?.trim() ? input.comment.trim() : null,
-    })
-    .select(REVIEW_SELECT)
-    .single();
+    .select('id')
+    .eq('booking_id', bookingId)
+    .eq('reviewer_id', reviewerId)
+    .maybeSingle();
 
-  if (error) {
-    // reviews_one_per_direction
-    if (error.code === '23505') throw new Error('You have already reviewed this booking.');
-    // reviews_insert_participant refused: not a participant, or the job is not
-    // finished yet.
-    if (error.code === '42501') {
-      throw new Error('This booking cannot be reviewed yet.');
-    }
-    throw new Error(`Failed to submit review: ${error.message}`);
-  }
-
-  return mapReviewRow(data as ReviewDbRow);
+  if (error) return false; // fail open
+  return !!data;
 }
 
 // ─── Flag a review (any authenticated user) ──────────────────────────────────
@@ -260,3 +307,27 @@ export async function resolveReviewFlag(
     throw new Error(body.message ?? `Failed to update review flag (${res.status})`);
   }
 }
+
+/** Resolve the review target ("other participant"). Client reviews handyman;
+ * handyman reviews client. Returns null for non-participants. */
+export function resolveReviewDirection(
+  booking: Booking,
+  viewerId: string
+): { reviewerId: string; revieweeId: string } | null {
+  const isClient = booking.clientId === viewerId;
+  const isHandyman = booking.handymanId === viewerId;
+
+  if (!isClient && !isHandyman) return null;
+
+  return {
+    reviewerId: viewerId,
+    revieweeId: isClient ? booking.handymanId : booking.clientId,
+  };
+}
+
+/** A booking is rateable once it reaches PAID. */
+export function isBookingRateable(status: BookingStatus): boolean {
+  return status === BookingStatus.Paid;
+}
+
+export { getRatingForBooking };

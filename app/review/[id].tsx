@@ -18,7 +18,12 @@ import { Avatar } from '../../src/components/ui/Avatar';
 import { StarRatingInput } from '../../src/components/ui/StarRatingInput';
 import { Toast } from '../../src/components/ui/Toast';
 import { useBookingDetail } from '../../src/hooks/useBookingDetail';
-import { fetchMyReviewForBooking, submitReview } from '../../src/services/reviewService';
+import { MOCK_CLIENT, MOCK_HANDYMAN } from '../../src/mocks';
+import {
+  fetchMyReviewForBooking,
+  submitReview,
+  ReviewSubmissionError,
+} from '../../src/services/reviewService';
 import { BookingStatus, ToastMessage } from '../../src/types';
 
 const MAX_COMMENT_LENGTH = 500;
@@ -83,25 +88,41 @@ export default function ReviewBookingScreen() {
   // same thing, this just keeps the button from lying about it.
   const isReviewable =
     booking?.status === BookingStatus.Completed || booking?.status === BookingStatus.Paid;
-  const canSubmit = rating > 0 && isReviewable && !alreadyReviewed;
+  const canSubmit = rating > 0 && isReviewable && !alreadyReviewed && !submitting;
 
   const handleSubmit = async () => {
     if (!canSubmit || !booking) return;
     setSubmitting(true);
 
+    // Client reviews the handyman; handyman reviews the client. reviewerId only
+    // feeds the mock path — the Edge Function derives it from the session.
+    const reviewerId = isClient
+      ? (session?.user?.id ?? MOCK_CLIENT.id)
+      : (session?.user?.id ?? MOCK_HANDYMAN.id);
+
     try {
       await submitReview({
         bookingId: booking.id,
+        reviewerId,
         revieweeId: isClient ? booking.handymanId : booking.clientId,
         rating,
         comment,
       });
       setShowSuccess(true);
-    } catch (e) {
+    } catch (err) {
+      // The 409 is the one-review-per-direction guard, worth naming explicitly.
+      if (err instanceof ReviewSubmissionError && err.status === 409) {
+        setAlreadyReviewed(true);
+      }
       setToast({
-        id: `review-error-${Date.now()}`,
+        id: `review-error-${String(rating)}-${booking.id}`,
         type: 'error',
-        message: e instanceof Error ? e.message : 'Failed to submit review.',
+        message:
+          err instanceof ReviewSubmissionError && err.status === 409
+            ? 'You have already reviewed this booking.'
+            : err instanceof Error
+              ? err.message
+              : 'Could not submit review. Please try again.',
       });
     } finally {
       setSubmitting(false);
@@ -131,7 +152,7 @@ export default function ReviewBookingScreen() {
             <Text
               className="text-center text-[14px] leading-5"
               style={{ color: colors.ui.textMuted }}>
-              Thank you for your feedback! We&apos;re glad you had a great experience.
+              Thank you for your feedback! We are glad you had a great experience.
             </Text>
           ) : (
             <Text
@@ -164,7 +185,7 @@ export default function ReviewBookingScreen() {
             Booking Not Found
           </Text>
           <Text className="mt-2 text-center text-[14px]" style={{ color: colors.ui.textMuted }}>
-            We couldn&apos;t find the booking you&apos;re looking for.
+            We could not find the booking you are looking for.
           </Text>
           <View className="mt-6 w-full">
             <Button label="Go Back" variant="primary" fullWidth onPress={() => router.back()} />
