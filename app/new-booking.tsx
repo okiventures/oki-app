@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../src/context/ThemeContext';
 import { useBookings } from '../src/context/BookingsContext';
+import { isMockEnv } from '../src/services/bookingService';
 import { BookingType, ServiceCategory } from '../src/types';
 import { useHandymanAvailability } from '../src/hooks/useHandymanAvailability';
 import { Button } from '../src/components/ui/Button';
@@ -118,17 +119,21 @@ export default function NewBookingScreen() {
           ? `${selectedDate}T${String(selectedHour).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}:00`
           : undefined;
 
-      // Look up service ID from slug
-      const slug = SUB_SERVICE_TO_SLUG[subServiceId] ?? 'general-handyman';
+      // Look up service ID from slug. Mock mode has no backend to ask, and the
+      // request would stall on an unreachable host before createBooking falls
+      // back to a local booking anyway.
       let serviceId: string | undefined;
-      const { data: svc } = await supabase
-        .from('services')
-        .select('id')
-        .eq('slug', slug)
-        .maybeSingle();
-      serviceId = svc?.id;
-      if (!serviceId) {
-        console.warn(`createBooking: no service found for slug "${slug}"`);
+      if (!isMockEnv()) {
+        const slug = SUB_SERVICE_TO_SLUG[subServiceId] ?? 'general-handyman';
+        const { data: svc } = await supabase
+          .from('services')
+          .select('id')
+          .eq('slug', slug)
+          .maybeSingle();
+        serviceId = svc?.id;
+        if (!serviceId) {
+          console.warn(`createBooking: no service found for slug "${slug}"`);
+        }
       }
 
       const booking = await createBooking({

@@ -1,10 +1,14 @@
-import { BookingDetail, BookingStatus, BookingType, ServiceCategory } from '../types';
+import { Booking, BookingDetail, BookingStatus, BookingType, ServiceCategory } from '../types';
 
 // These types moved to src/types once the detail screen started reading live
 // data. Re-exported so the existing import sites keep working.
 export type { BookingDetail, OrderDetail, TimelineEvent } from '../types';
 
 const now = Date.now();
+
+// Cebu City — the offline demo has no geolocation to derive a pin from.
+const DEFAULT_LATITUDE = 10.3157;
+const DEFAULT_LONGITUDE = 123.8854;
 
 export const MOCK_BOOKING_DETAILS: BookingDetail[] = [
   {
@@ -442,3 +446,58 @@ export const MOCK_BOOKING_DETAILS: BookingDetail[] = [
     ],
   },
 ];
+
+/**
+ * Register a detail record for a booking created during the offline demo.
+ *
+ * The fixtures above only cover the seeded bookings, so a booking placed in
+ * mock mode has nothing for the detail screen to load — it lands on "Booking
+ * not found" straight after being confirmed. Mirrors `addReview`.
+ */
+export function addMockBookingDetail(booking: Booking): BookingDetail {
+  const detail: BookingDetail = {
+    id: booking.id,
+    reference: `#OKI-${booking.id.slice(0, 6).toUpperCase()}`,
+    clientId: booking.clientId,
+    clientName: booking.clientName,
+    handymanId: booking.handymanId,
+    handymanName: booking.handymanName,
+    handymanRating: 0,
+    handymanJobsCompleted: 0,
+    serviceCategory: booking.serviceCategory,
+    bookingType: booking.bookingType,
+    status: booking.status,
+    description: booking.description,
+    location: booking.location,
+    fullAddress: booking.location,
+    latitude: DEFAULT_LATITUDE,
+    longitude: DEFAULT_LONGITUDE,
+    amount: booking.amount,
+    platformFee: booking.platformFee,
+    netAmount: booking.netAmount,
+    scheduledAt: booking.scheduledAt,
+    createdAt: booking.createdAt,
+    updatedAt: booking.updatedAt,
+    paymentMethod: 'GCash',
+    paymentStatus: 'Pending',
+    notes: booking.notes,
+    orderDetails: [
+      { label: 'Service Type', value: booking.serviceCategory },
+      { label: 'Base Rate', value: `₱${booking.amount.toFixed(2)}` },
+      { label: 'Platform Fee', value: `₱${booking.platformFee.toFixed(2)}` },
+      { label: 'Total Charged', value: `₱${booking.amount.toFixed(2)}` },
+    ],
+    timeline: [
+      {
+        id: `${booking.id}-t1`,
+        status: BookingStatus.Pending,
+        label: 'Booking Placed',
+        description: 'Your request was submitted and is being matched.',
+        timestamp: booking.createdAt,
+      },
+    ],
+  };
+
+  MOCK_BOOKING_DETAILS.push(detail);
+  return detail;
+}

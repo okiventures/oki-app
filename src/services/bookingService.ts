@@ -12,6 +12,7 @@ import {
 import { generateId } from '../utils';
 import { transition as fsmTransition, canTransition, FsmError, BookingAction } from './bookingFsm';
 import { MOCK_BOOKINGS } from '../mocks';
+import { addMockBookingDetail } from '../mocks/bookingDetails';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -782,9 +783,13 @@ function createMockBooking(input: CreateBookingInput): Booking {
 
 export async function createBooking(input: CreateBookingInput): Promise<Booking> {
   const hasSession = await checkSession();
-  // Offline demo only: no session → local mock booking.
+  // Offline demo only: no session → local mock booking. The detail screen reads
+  // its own fixture list, so register a matching record or the redirect that
+  // follows confirmation lands on "Booking not found".
   if (!hasSession) {
-    return createMockBooking(input);
+    const booking = createMockBooking(input);
+    addMockBookingDetail(booking);
+    return booking;
   }
 
   // With a live session, serviceId + coordinates are required to place a real

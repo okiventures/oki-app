@@ -295,4 +295,28 @@ describe('createBooking — no silent mock booking on a live session', () => {
 
     await expect(createBooking(baseInput)).rejects.toThrow('VALIDATION_ERROR');
   });
+
+  it('registers a detail record for the offline booking so the detail screen can load it', async () => {
+    // No session → the offline path. Confirming a booking redirects straight to
+    // /booking/:id, which reads MOCK_BOOKING_DETAILS; without a matching record
+    // that screen renders "Booking not found".
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+
+    const booking = await createBooking(baseInput);
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- read the live fixture array
+    const { MOCK_BOOKING_DETAILS } = require('../../src/mocks/bookingDetails');
+    const detail = MOCK_BOOKING_DETAILS.find((d: { id: string }) => d.id === booking.id);
+
+    expect(detail).toBeDefined();
+    expect(detail).toMatchObject({
+      id: booking.id,
+      clientId: 'c1',
+      description: 'Leaky faucet',
+      location: '123 St',
+      amount: 100,
+      status: BookingStatus.Pending,
+    });
+    expect(mockInvoke).not.toHaveBeenCalled();
+  });
 });
