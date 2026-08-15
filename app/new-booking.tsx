@@ -1,11 +1,14 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { Alert, View, Text, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../src/context/ThemeContext';
 import { useBookings } from '../src/context/BookingsContext';
+import { useAuth } from '../src/context/AuthContext';
+import { useProfile } from '../src/hooks/useProfile';
 import { isMockEnv } from '../src/services/bookingService';
+import { MOCK_CLIENT } from '../src/mocks';
 import { BookingType, ServiceCategory } from '../src/types';
 import { useHandymanAvailability } from '../src/hooks/useHandymanAvailability';
 import { Button } from '../src/components/ui/Button';
@@ -62,7 +65,12 @@ export default function NewBookingScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { createBooking } = useBookings();
+  const { session } = useAuth();
+  const { profile } = useProfile();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const clientId = session?.user?.id ?? (isMockEnv() ? MOCK_CLIENT.id : '');
+  const clientName = profile?.user?.full_name ?? (isMockEnv() ? MOCK_CLIENT.name : '');
 
   const [step, setStep] = useState(0);
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -136,9 +144,12 @@ export default function NewBookingScreen() {
         }
       }
 
+      // create-booking derives the client from the JWT, so these two only
+      // matter for the offline demo — but hardcoding them meant a live booking
+      // came back labelled "Ishah Bautista" until the next refresh.
       const booking = await createBooking({
-        clientId: 'c1',
-        clientName: 'Ishah Bautista',
+        clientId,
+        clientName,
         serviceCategory,
         bookingType: bookingMode === 'now' ? BookingType.OnDemand : BookingType.Scheduled,
         description,
@@ -152,8 +163,14 @@ export default function NewBookingScreen() {
       });
 
       router.replace(`/booking/${booking.id}`);
-    } catch {
-      // Submission failed — stay on review step
+    } catch (err) {
+      // createBooking throws on a failed edge-function call. This used to be a
+      // bare `catch {}`, so Confirm did nothing at all and the user was left on
+      // the review step with no idea the booking never got placed.
+      Alert.alert(
+        'Could not place booking',
+        err instanceof Error ? err.message : 'Please check your connection and try again.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -171,6 +188,8 @@ export default function NewBookingScreen() {
     findAmount,
     createBooking,
     router,
+    clientId,
+    clientName,
   ]);
 
   const handleBack = () => {

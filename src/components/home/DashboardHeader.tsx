@@ -14,6 +14,39 @@ interface DashboardHeaderProps {
   userPhotoUrl?: string;
 }
 
+function LocationBlock({ city, onCityPress }: { city: string; onCityPress?: () => void }) {
+  const label = city || 'Set your location';
+  const isPressable = typeof onCityPress === 'function';
+
+  const body = (
+    <>
+      <Text className="text-xs font-normal text-white/60">Current Location</Text>
+      <View className="mt-0.5 flex-row items-center gap-1">
+        <Ionicons name="location-sharp" size={20} color="rgba(255,255,255,0.85)" />
+        <Text
+          className="text-lg font-semibold"
+          style={{ color: city ? '#FFFFFF' : 'rgba(255,255,255,0.65)' }}>
+          {label}
+        </Text>
+        {isPressable ? (
+          <Ionicons name="chevron-down" size={20} color="rgba(255,255,255,0.6)" />
+        ) : null}
+      </View>
+    </>
+  );
+
+  if (!isPressable) return <View className="flex-1">{body}</View>;
+
+  return (
+    <TouchableOpacity
+      onPress={onCityPress}
+      accessibilityLabel={city ? `Change city, currently ${city}` : 'Set your location'}
+      className="flex-1">
+      {body}
+    </TouchableOpacity>
+  );
+}
+
 export function DashboardHeader({
   city,
   onCityPress,
@@ -33,17 +66,11 @@ export function DashboardHeader({
         backgroundColor: colors.primary['600'],
       }}>
       <View className="flex-row items-center justify-between">
-        <TouchableOpacity
-          onPress={onCityPress}
-          accessibilityLabel={`Change city, currently ${city}`}
-          className="flex-1">
-          <Text className="text-xs font-normal text-white/60">Current Location</Text>
-          <View className="mt-0.5 flex-row items-center gap-1">
-            <Ionicons name="location-sharp" size={20} color="rgba(255,255,255,0.85)" />
-            <Text className="text-lg font-semibold text-white">{city}</Text>
-            <Ionicons name="chevron-down" size={20} color="rgba(255,255,255,0.6)" />
-          </View>
-        </TouchableOpacity>
+        {/* Nothing stores a client address yet (no column on `users`, no
+            addresses table), so with no city we show a prompt instead of a
+            confident-looking location the app doesn't actually know. The
+            chevron only appears when there is somewhere to go. */}
+        <LocationBlock city={city} onCityPress={onCityPress} />
 
         {/* ── right actions ── */}
         <View className="mt-5 flex flex-row items-center gap-3">
