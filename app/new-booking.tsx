@@ -10,6 +10,7 @@ import { useProfile } from '../src/hooks/useProfile';
 import { isMockEnv } from '../src/services/bookingService';
 import { MOCK_CLIENT } from '../src/mocks';
 import { BookingType, ServiceCategory } from '../src/types';
+import { findBookableCategory, type BookableCategoryId } from '../src/constants/bookableCategories';
 import { useHandymanAvailability } from '../src/hooks/useHandymanAvailability';
 import { Button } from '../src/components/ui/Button';
 
@@ -24,13 +25,6 @@ import { NewBookingReviewStep } from '../src/components/bookings/NewBookingRevie
 import { NewBookingStepDots } from '../src/components/bookings/NewBookingStepDots';
 
 import { supabase } from '../src/lib/supabase';
-
-const CATEGORY_TO_SERVICE: Record<string, ServiceCategory> = {
-  massage: ServiceCategory.General,
-  cleaning: ServiceCategory.Cleaning,
-  painting: ServiceCategory.Painting,
-  general: ServiceCategory.General,
-};
 
 const SUB_SERVICE_TO_SLUG: Record<string, string> = {
   // Cleaning
@@ -58,7 +52,15 @@ const DEFAULT_LAT = 10.3157;
 const DEFAULT_LNG = 123.8854;
 
 export default function NewBookingScreen() {
-  const { mode } = useLocalSearchParams<{ mode?: 'now' | 'later' }>();
+  // handymanId / handymanName / category arrive when you get here by tapping a
+  // handyman in search. Only `mode` used to be read, so the entire
+  // browse-then-book path dropped your choice and opened a blank form.
+  const { mode, handymanId, handymanName, category } = useLocalSearchParams<{
+    mode?: 'now' | 'later';
+    handymanId?: string;
+    handymanName?: string;
+    category?: string;
+  }>();
   const [bookingMode, setBookingMode] = useState<'now' | 'later'>(
     mode === 'later' ? 'later' : 'now'
   );
@@ -72,8 +74,16 @@ export default function NewBookingScreen() {
   const clientId = session?.user?.id ?? (isMockEnv() ? MOCK_CLIENT.id : '');
   const clientName = profile?.user?.full_name ?? (isMockEnv() ? MOCK_CLIENT.name : '');
 
+  // Shown so the form stops forgetting who you picked. It is not passed to
+  // createBooking: `create_booking` has no requested-handyman column and
+  // dispatch broadcasts to everyone nearby, so promising a named handyman here
+  // would be a lie. The copy below says what actually happens.
+  const requestedHandyman = handymanId ? handymanName?.trim() || 'your selected handyman' : null;
+
   const [step, setStep] = useState(0);
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState<BookableCategoryId | null>(
+    () => findBookableCategory(category)?.id ?? null
+  );
   const [subServiceId, setSubServiceId] = useState<string | null>(null);
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
@@ -121,7 +131,8 @@ export default function NewBookingScreen() {
 
     setIsSubmitting(true);
     try {
-      const serviceCategory = CATEGORY_TO_SERVICE[categoryId] ?? ServiceCategory.General;
+      const serviceCategory =
+        findBookableCategory(categoryId)?.serviceCategory ?? ServiceCategory.General;
       const scheduledAt =
         bookingMode === 'later'
           ? `${selectedDate}T${String(selectedHour).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}:00`
@@ -236,6 +247,23 @@ export default function NewBookingScreen() {
           contentContainerStyle={{ padding: 24, paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
+          {requestedHandyman ? (
+            <View
+              className="mb-5 flex-row items-start gap-2.5 rounded-2xl border p-3.5"
+              style={{ borderColor: colors.ui.border, backgroundColor: colors.ui.surface }}>
+              <Ionicons name="person-circle-outline" size={20} color={colors.primary['600']} />
+              <View className="flex-1">
+                <Text className="text-[13px] font-semibold" style={{ color: colors.ui.text }}>
+                  Requested: {requestedHandyman}
+                </Text>
+                <Text className="mt-0.5 text-[12px]" style={{ color: colors.ui.textMuted }}>
+                  They will be notified along with other available handymen nearby. Whoever accepts
+                  first takes the job.
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
           {stepIndex === 0 && (
             <NewBookingCategoryStep
               selected={categoryId}

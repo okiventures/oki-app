@@ -5,6 +5,7 @@ import { BookingsProvider } from '../src/context/BookingsContext';
 import { AdminProvider } from '../src/context/AdminContext';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
+import { ErrorBoundary } from '../src/components/ui/ErrorBoundary';
 import { View, ActivityIndicator } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
@@ -59,9 +60,15 @@ function RootNavigator() {
     );
   }
 
+  // Wraps the navigator rather than the providers: a render throw in any screen
+  // used to white-screen the app with no way back, and keeping the boundary
+  // inside the provider tree means Try Again re-renders against live context
+  // instead of remounting auth and refetching everything.
   return (
     <View className={`flex-1 theme-${scheme}`}>
-      <Stack screenOptions={{ headerShown: false }} />
+      <ErrorBoundary fallbackMessage="This screen ran into a problem. Try again, or go back and reopen it.">
+        <Stack screenOptions={{ headerShown: false }} />
+      </ErrorBoundary>
     </View>
   );
 }

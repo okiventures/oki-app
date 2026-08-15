@@ -20,6 +20,19 @@ Legend — [x] works · [!] works but wrong/misleading · [ ] broken or absent
 | Ghost buttons | Track live, Rebook, profile Settings, the location chevron, and profile rows with no destination all rendered live-looking and did nothing. They now hide or dim. |
 | Decline copy was wrong | Said "marked as Rejected and removed from your inbox". REJECT leaves the booking PENDING for re-broadcast — it never becomes REJECTED. |
 
+## Fixed in the follow-up pass
+
+| Issue | Fix |
+| --- | --- |
+| Search → pick handyman → book dropped the choice | `search.tsx` now passes `handymanId`, `handymanName` and `category`; `new-booking.tsx` reads all three, preselects the category and shows a "Requested: …" banner. The id is **not** sent to `create_booking` — there is no requested-handyman column and dispatch broadcasts to everyone nearby, so the banner copy says what actually happens instead of promising a named handyman. |
+| Catalog and booking form disagreed | New `src/constants/bookableCategories.ts` is the single source of truth. The dashboard grid, the search param and the booking form all derive from it, so the grid can no longer advertise a category the form cannot accept. Per product call, the MVP ships the four that have sub-services. |
+| `CATEGORY_PARAM_MAP` missed two ids | Map deleted; `findBookableCategory()` replaces it. The header titles from the category name, so it no longer reads "Appliance-repair". |
+| The "More" tile went nowhere | `MOCK_DASHBOARD_CATEGORIES` deleted. It linked to `search?category=more`, which matched nothing and returned every handyman under a heading that said "More". |
+| `ErrorBoundary` never mounted | Now wraps `<Stack>` in `app/_layout.tsx`, inside the provider tree so Try Again re-renders against live context. |
+| Messages tab | Parked with `href: null`. The screen stays for Week 19; it no longer occupies a quarter of the primary nav. |
+
+**Still open after this pass:** geocoding (owned elsewhere), the `Rejected` decision, notifications/addresses/payments stubs, dead code, and the unaudited auth + verification screens.
+
 ---
 
 ## Client flows
@@ -78,10 +91,14 @@ Also [!]: every booking is submitted with `lat: DEFAULT_LAT, lng: DEFAULT_LNG` (
 
 ## Suggested order
 
-1. **Wire `handymanId` through `new-booking`** — the search→book path is the most visible break.
-2. **Expand `NEW_BOOKING_CATEGORIES` to the full ten** and drop massage, or stop advertising the seven unbookable categories on the dashboard.
-3. **Mount `ErrorBoundary`** in `app/_layout.tsx`.
-4. **Fix `CATEGORY_PARAM_MAP`** for `appliance-repair` / `general-handyman`, and label from the tile name instead of the raw param.
-5. **Decide the `Rejected` question** before Week 15 touches the FSM again.
-6. **Geocode the booking address** instead of `DEFAULT_LAT/LNG` — Week 15 dispatch and Week 17 tracking both depend on it.
-7. Leave addresses (Week 18), payment methods (Week 15/16), messages (Week 19) and notifications as known-missing, but consider hiding the Messages tab until it does something.
+Items 1–4 of the original list are done — see "Fixed in the follow-up pass" above. What remains:
+
+1. **Audit auth and the `(verification)` onboarding screens.** The biggest blind spot: nothing below the login wall has been read, and it is the first thing a new user touches.
+2. **Decide the `Rejected` question** before Week 15 touches the FSM again.
+3. **Give `notifications.tsx` a role check.** It is a stub either way, but right now every role's bell routes to one client's fixtures.
+4. **Collapse the identity-resolution pattern into a `useCurrentUserId()` hook.** The same `session?.user?.id ?? (isMockEnv() ? DEMO : '')` bug was found and fixed in three separate screens; one hook makes the next one impossible to get wrong.
+5. **Delete the dead code** — `lifecycle-demo.tsx` and the 16 orphan components.
+6. **Direct booking needs backend work.** A real "book this handyman" flow wants a `requested_handyman_id` column, an RPC param and a dispatch preference. Until then the search→book banner is the honest ceiling.
+7. Leave addresses (Week 18), payment methods (Week 15/16) and messages (Week 19) as known-missing.
+
+**Geocoding is owned elsewhere** — dispatch and tracking still run off `DEFAULT_LAT/LNG` until that lands.

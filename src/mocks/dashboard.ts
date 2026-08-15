@@ -36,49 +36,11 @@ export const MOCK_ACTIVE_BOOKING: ActiveBooking | null = {
   workerRole: 'Service Professional',
 };
 
-export interface DashboardCategory {
-  id: string;
-  name: string;
-  icon: string;
-  iconColor: string;
-  bgColor: string;
-  borderColor: string;
-}
-
-export const MOCK_DASHBOARD_CATEGORIES: DashboardCategory[] = [
-  {
-    id: 'massage',
-    name: 'Massage',
-    icon: 'leaf-outline',
-    iconColor: SERVICE_CATEGORY_COLORS.massage.icon,
-    bgColor: SERVICE_CATEGORY_COLORS.massage.bg,
-    borderColor: SERVICE_CATEGORY_COLORS.massage.border,
-  },
-  {
-    id: 'cleaning',
-    name: 'Cleaning',
-    icon: 'water-outline',
-    iconColor: SERVICE_CATEGORY_COLORS.cleaning.icon,
-    bgColor: SERVICE_CATEGORY_COLORS.cleaning.bg,
-    borderColor: SERVICE_CATEGORY_COLORS.cleaning.border,
-  },
-  {
-    id: 'painting',
-    name: 'Painting',
-    icon: 'color-palette-outline',
-    iconColor: SERVICE_CATEGORY_COLORS.painting.icon,
-    bgColor: SERVICE_CATEGORY_COLORS.painting.bg,
-    borderColor: SERVICE_CATEGORY_COLORS.painting.border,
-  },
-  {
-    id: 'more',
-    name: 'More',
-    icon: 'grid-outline',
-    iconColor: SERVICE_CATEGORY_COLORS.more.icon,
-    bgColor: SERVICE_CATEGORY_COLORS.more.bg,
-    borderColor: SERVICE_CATEGORY_COLORS.more.border,
-  },
-];
+// MOCK_DASHBOARD_CATEGORIES lived here and is gone. The grid now renders
+// BOOKABLE_CATEGORIES via catalogService in both mock and live mode, so the two
+// can no longer drift — and the "More" tile it used to carry linked to
+// `search?category=more`, which matched nothing and returned every handyman
+// under a heading that said "More".
 
 export interface QuickBookMode {
   id: string;
