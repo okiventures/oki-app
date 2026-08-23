@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { NEW_BOOKING_CATEGORIES } from './NewBookingConstants';
@@ -13,6 +13,7 @@ interface CategoryStepProps {
   subServices: BookableService[];
   isLoadingServices?: boolean;
   servicesError?: string | null;
+  onRetryServices?: () => void;
   onSelect: (id: BookableCategoryId) => void;
   onSelectSubService: (id: string) => void;
 }
@@ -23,6 +24,7 @@ export function NewBookingCategoryStep({
   subServices,
   isLoadingServices = false,
   servicesError = null,
+  onRetryServices,
   onSelect,
   onSelectSubService,
 }: CategoryStepProps) {
@@ -97,9 +99,26 @@ export function NewBookingCategoryStep({
               Loading prices…
             </Text>
           ) : servicesError ? (
-            <Text className="py-3 text-[13px]" style={{ color: '#EF4444' }}>
-              {servicesError}
-            </Text>
+            <View className="py-3">
+              <Text className="text-[13px]" style={{ color: '#EF4444' }}>
+                {servicesError}
+              </Text>
+              {onRetryServices ? (
+                <Pressable
+                  onPress={onRetryServices}
+                  accessibilityRole="button"
+                  accessibilityLabel="Try loading prices again"
+                  style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                  className="mt-2 self-start rounded-lg px-3 py-2"
+                  android_ripple={{ color: 'rgba(0,0,0,0.06)' }}>
+                  <Text
+                    className="text-[13px] font-semibold"
+                    style={{ color: colors.primary['600'] }}>
+                    Try again
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
           ) : subServices.length === 0 ? (
             <Text className="py-3 text-[13px]" style={{ color: colors.ui.textMuted }}>
               Nothing bookable in this category yet.
@@ -133,7 +152,7 @@ export function NewBookingCategoryStep({
                       <Text
                         className="text-[11px] font-medium"
                         style={{ color: colors.ui.textMuted }}>
-                        Starts at
+                        Price
                       </Text>
                       <Text
                         className="text-[15px] font-bold"

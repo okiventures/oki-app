@@ -54,7 +54,7 @@ export function NewBookingReviewStep({
     },
     {
       icon: 'cash-outline',
-      label: 'Starting Price',
+      label: 'Price',
       value: service ? `₱${service.price}` : '—',
     },
   ];
@@ -106,7 +106,8 @@ export function NewBookingReviewStep({
         style={{ backgroundColor: colors.primary['50'] }}>
         <Ionicons name="information-circle-outline" size={18} color={colors.primary['600']} />
         <Text className="flex-1 text-[12px] leading-4" style={{ color: colors.primary['700'] }}>
-          Final price will be quoted by the handyman after assessing the job on-site.
+          This is the price for this service. If the job needs more than that, your handyman will
+          agree it with you before carrying on.
         </Text>
       </View>
     </View>

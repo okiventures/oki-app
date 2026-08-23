@@ -82,7 +82,12 @@ export default function NewBookingScreen() {
   // charge from. The form used to quote a hardcoded constant and map fifteen
   // sub-services onto three catalog rows, so the quote and the charge
   // disagreed on all but one of them.
-  const { services, isLoading: isLoadingServices, error: servicesError } = useBookableServices();
+  const {
+    services,
+    isLoading: isLoadingServices,
+    error: servicesError,
+    retry: retryServices,
+  } = useBookableServices();
 
   const subServices = useMemo(
     () => (categoryId ? services.filter((svc) => svc.categoryId === categoryId) : []),
@@ -243,6 +248,7 @@ export default function NewBookingScreen() {
               subServices={subServices}
               isLoadingServices={isLoadingServices}
               servicesError={servicesError}
+              onRetryServices={retryServices}
               onSelect={(id) => {
                 setCategoryId(id);
                 setSubServiceId(null);

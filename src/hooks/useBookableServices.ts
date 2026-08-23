@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { fetchBookableServices, type BookableService } from '../services/catalogService';
 
 interface UseBookableServicesReturn {
   services: BookableService[];
   isLoading: boolean;
   error: string | null;
+  /** Re-run the fetch. Without this a transient failure stranded the form. */
+  retry: () => void;
 }
 
 /**
@@ -17,9 +19,15 @@ export function useBookableServices(): UseBookableServicesReturn {
   const [services, setServices] = useState<BookableService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   useEffect(() => {
     let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+
     fetchBookableServices()
       .then((rows) => {
         if (!cancelled) setServices(rows);
@@ -41,10 +49,11 @@ export function useBookableServices(): UseBookableServicesReturn {
       .finally(() => {
         if (!cancelled) setIsLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [attempt]);
 
-  return { services, isLoading, error };
+  return { services, isLoading, error, retry };
 }
