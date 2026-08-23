@@ -254,7 +254,12 @@ VALUES
   ('a0000000-0000-0000-0000-000000000004', (SELECT id FROM services WHERE slug = 'plumbing-general'),    450.00),
   ('a0000000-0000-0000-0000-000000000004', (SELECT id FROM services WHERE slug = 'general-handyman'),    280.00),
   ('a0000000-0000-0000-0000-000000000006', (SELECT id FROM services WHERE slug = 'carpentry-furniture'), 320.00),
-  ('a0000000-0000-0000-0000-000000000006', (SELECT id FROM services WHERE slug = 'painting-interior'),  1800.00)
+  ('a0000000-0000-0000-0000-000000000006', (SELECT id FROM services WHERE slug = 'painting-interior'),  1800.00),
+  -- Cleaning had no handyman at all, so one of the four bookable categories
+  -- dispatched to nobody: notify_nearby_handymen matches on service category,
+  -- and no handyman_services row carried one. Booking a clean could never be
+  -- accepted locally, which is exactly the flow week 15 needs to exercise.
+  ('a0000000-0000-0000-0000-000000000004', (SELECT id FROM services WHERE slug = 'cleaning-general'),    320.00)
 ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------

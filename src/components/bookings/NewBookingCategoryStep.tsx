@@ -1,13 +1,19 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { NEW_BOOKING_CATEGORIES } from './NewBookingConstants';
 import type { BookableCategoryId } from '../../constants/bookableCategories';
+import type { BookableService } from '../../services/catalogService';
 
 interface CategoryStepProps {
   selected: BookableCategoryId | null;
   selectedSubService: string | null;
+  /** Catalog-priced sub-services for the selected category. */
+  subServices: BookableService[];
+  isLoadingServices?: boolean;
+  servicesError?: string | null;
+  onRetryServices?: () => void;
   onSelect: (id: BookableCategoryId) => void;
   onSelectSubService: (id: string) => void;
 }
@@ -15,6 +21,10 @@ interface CategoryStepProps {
 export function NewBookingCategoryStep({
   selected,
   selectedSubService,
+  subServices,
+  isLoadingServices = false,
+  servicesError = null,
+  onRetryServices,
   onSelect,
   onSelectSubService,
 }: CategoryStepProps) {
@@ -84,51 +94,82 @@ export function NewBookingCategoryStep({
             <View className="h-px flex-1" style={{ backgroundColor: colors.ui.border }} />
           </View>
 
-          <View className="gap-2">
-            {activeCat.subServices.map((svc) => {
-              const isSelected = selectedSubService === svc.id;
-              return (
-                <TouchableOpacity
-                  key={svc.id}
-                  onPress={() => onSelectSubService(svc.id)}
-                  activeOpacity={0.75}
-                  className="flex-row items-center rounded-2xl border px-4 py-3.5"
-                  style={{
-                    borderColor: isSelected ? activeCat.color : colors.ui.border,
-                    backgroundColor: isSelected ? activeCat.color + '12' : colors.ui.surface,
-                    borderWidth: isSelected ? 1.5 : 1,
-                  }}>
-                  <View className="flex-1">
-                    <Text
-                      className="text-[14px] font-semibold"
-                      style={{ color: isSelected ? activeCat.color : colors.ui.text }}>
-                      {svc.name}
-                    </Text>
-                    <Text className="mt-0.5 text-[12px]" style={{ color: colors.ui.textMuted }}>
-                      {svc.description}
-                    </Text>
-                  </View>
-                  <View className="ml-3 items-end">
-                    <Text
-                      className="text-[11px] font-medium"
-                      style={{ color: colors.ui.textMuted }}>
-                      Starts at
-                    </Text>
-                    <Text
-                      className="text-[15px] font-bold"
-                      style={{ color: isSelected ? activeCat.color : colors.ui.text }}>
-                      ₱{svc.startingPrice}
-                    </Text>
-                  </View>
-                  {isSelected && (
-                    <View className="ml-3">
-                      <Ionicons name="checkmark-circle" size={20} color={activeCat.color} />
+          {isLoadingServices ? (
+            <Text className="py-3 text-[13px]" style={{ color: colors.ui.textMuted }}>
+              Loading prices…
+            </Text>
+          ) : servicesError ? (
+            <View className="py-3">
+              <Text className="text-[13px]" style={{ color: '#EF4444' }}>
+                {servicesError}
+              </Text>
+              {onRetryServices ? (
+                <Pressable
+                  onPress={onRetryServices}
+                  accessibilityRole="button"
+                  accessibilityLabel="Try loading prices again"
+                  style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                  className="mt-2 self-start rounded-lg px-3 py-2"
+                  android_ripple={{ color: 'rgba(0,0,0,0.06)' }}>
+                  <Text
+                    className="text-[13px] font-semibold"
+                    style={{ color: colors.primary['600'] }}>
+                    Try again
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : subServices.length === 0 ? (
+            <Text className="py-3 text-[13px]" style={{ color: colors.ui.textMuted }}>
+              Nothing bookable in this category yet.
+            </Text>
+          ) : (
+            <View className="gap-2">
+              {subServices.map((svc) => {
+                const isSelected = selectedSubService === svc.slug;
+                return (
+                  <TouchableOpacity
+                    key={svc.slug}
+                    onPress={() => onSelectSubService(svc.slug)}
+                    activeOpacity={0.75}
+                    className="flex-row items-center rounded-2xl border px-4 py-3.5"
+                    style={{
+                      borderColor: isSelected ? activeCat.color : colors.ui.border,
+                      backgroundColor: isSelected ? activeCat.color + '12' : colors.ui.surface,
+                      borderWidth: isSelected ? 1.5 : 1,
+                    }}>
+                    <View className="flex-1">
+                      <Text
+                        className="text-[14px] font-semibold"
+                        style={{ color: isSelected ? activeCat.color : colors.ui.text }}>
+                        {svc.name}
+                      </Text>
+                      <Text className="mt-0.5 text-[12px]" style={{ color: colors.ui.textMuted }}>
+                        {svc.description}
+                      </Text>
                     </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                    <View className="ml-3 items-end">
+                      <Text
+                        className="text-[11px] font-medium"
+                        style={{ color: colors.ui.textMuted }}>
+                        Price
+                      </Text>
+                      <Text
+                        className="text-[15px] font-bold"
+                        style={{ color: isSelected ? activeCat.color : colors.ui.text }}>
+                        ₱{svc.price}
+                      </Text>
+                    </View>
+                    {isSelected && (
+                      <View className="ml-3">
+                        <Ionicons name="checkmark-circle" size={20} color={activeCat.color} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
         </View>
       )}
     </View>
