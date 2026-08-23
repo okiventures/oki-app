@@ -27,7 +27,16 @@ export function useBookableServices(): UseBookableServicesReturn {
       .catch((err: unknown) => {
         // No prices means no honest quote, so the form shows nothing to pick
         // rather than falling back to numbers the server will not charge.
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load services');
+        //
+        // The reason goes to the console, not the screen: this message renders
+        // on the booking form, and PostgREST failures read like "permission
+        // denied for table services" or "JWT expired" — no use to the person
+        // booking, and it puts backend detail in front of them.
+        console.warn(
+          'useBookableServices: catalog fetch failed:',
+          err instanceof Error ? err.message : err
+        );
+        if (!cancelled) setError('Could not load prices. Check your connection and try again.');
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
