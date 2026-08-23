@@ -2,12 +2,13 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
-import { NEW_BOOKING_CATEGORIES } from './NewBookingConstants';
+import type { BookableService } from '../../services/catalogService';
 
 interface ReviewStepProps {
   mode: 'now' | 'later';
-  categoryId: string | null;
-  subServiceId: string | null;
+  categoryName: string | null;
+  /** The catalog row being booked — its price is what will be charged. */
+  service: BookableService | null;
   address: string;
   description: string;
   notes: string;
@@ -18,8 +19,8 @@ interface ReviewStepProps {
 
 export function NewBookingReviewStep({
   mode,
-  categoryId,
-  subServiceId,
+  categoryName,
+  service,
   address,
   description,
   notes,
@@ -28,17 +29,14 @@ export function NewBookingReviewStep({
   selectedMinute = 0,
 }: ReviewStepProps) {
   const { colors } = useTheme();
-  const cat = NEW_BOOKING_CATEGORIES.find((c) => c.id === categoryId);
-  const svc = cat?.subServices.find((s) => s.id === subServiceId) ?? null;
-
   const displayHour = selectedHour % 12 === 0 ? 12 : selectedHour % 12;
   const isPm = selectedHour >= 12;
   const ampm = isPm ? 'PM' : 'AM';
   const formattedTime = `${displayHour}:${String(selectedMinute).padStart(2, '0')} ${ampm}`;
 
   const rows: { icon: string; label: string; value: string }[] = [
-    { icon: 'grid-outline', label: 'Category', value: cat?.name ?? '—' },
-    { icon: 'construct-outline', label: 'Service', value: svc?.name ?? '—' },
+    { icon: 'grid-outline', label: 'Category', value: categoryName ?? '—' },
+    { icon: 'construct-outline', label: 'Service', value: service?.name ?? '—' },
     { icon: 'location-outline', label: 'Address', value: address || '—' },
     { icon: 'document-text-outline', label: 'Description', value: description || '—' },
     { icon: 'chatbox-ellipses-outline', label: 'Order Notes', value: notes || '—' },
@@ -57,7 +55,7 @@ export function NewBookingReviewStep({
     {
       icon: 'cash-outline',
       label: 'Starting Price',
-      value: svc ? `₱${svc.startingPrice}` : '—',
+      value: service ? `₱${service.price}` : '—',
     },
   ];
 

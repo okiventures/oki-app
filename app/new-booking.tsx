@@ -18,35 +18,12 @@ import {
   NEW_BOOKING_STEPS,
   NEW_BOOKING_CATEGORIES,
 } from '../src/components/bookings/NewBookingConstants';
+import { useBookableServices } from '../src/hooks/useBookableServices';
 import { NewBookingCategoryStep } from '../src/components/bookings/NewBookingCategoryStep';
 import { NewBookingDetailsStep } from '../src/components/bookings/NewBookingDetailsStep';
 import { NewBookingScheduleStep } from '../src/components/bookings/NewBookingScheduleStep';
 import { NewBookingReviewStep } from '../src/components/bookings/NewBookingReviewStep';
 import { NewBookingStepDots } from '../src/components/bookings/NewBookingStepDots';
-
-import { supabase } from '../src/lib/supabase';
-
-const SUB_SERVICE_TO_SLUG: Record<string, string> = {
-  // Cleaning
-  'cleaning-general': 'cleaning-general',
-  'cleaning-deep': 'cleaning-general',
-  'cleaning-aircon': 'cleaning-general',
-  'cleaning-laundry': 'cleaning-general',
-  // Painting
-  'painting-interior': 'painting-interior',
-  'painting-exterior': 'painting-interior',
-  'painting-touch': 'painting-interior',
-  // Massage → no DB match, use general
-  'massage-swedish': 'general-handyman',
-  'massage-deep': 'general-handyman',
-  'massage-shiatsu': 'general-handyman',
-  'massage-foot': 'general-handyman',
-  // General
-  'general-furniture': 'general-handyman',
-  'general-mounting': 'general-handyman',
-  'general-repair': 'general-handyman',
-  'general-other': 'general-handyman',
-};
 
 const DEFAULT_LAT = 10.3157;
 const DEFAULT_LNG = 123.8854;
@@ -101,25 +78,33 @@ export default function NewBookingScreen() {
 
   const { isTimeSlotBlocked } = useHandymanAvailability({ targetDate });
 
+  // Prices come from the catalog, which is where create_booking derives the
+  // charge from. The form used to quote a hardcoded constant and map fifteen
+  // sub-services onto three catalog rows, so the quote and the charge
+  // disagreed on all but one of them.
+  const { services, isLoading: isLoadingServices, error: servicesError } = useBookableServices();
+
+  const subServices = useMemo(
+    () => (categoryId ? services.filter((svc) => svc.categoryId === categoryId) : []),
+    [services, categoryId]
+  );
+
+  const selectedService = useMemo(
+    () => services.find((svc) => svc.slug === subServiceId) ?? null,
+    [services, subServiceId]
+  );
+
   const isSelectedSlotBlocked = useMemo(() => {
     if (bookingMode !== 'later') return false;
     return isTimeSlotBlocked(selectedHour);
   }, [bookingMode, selectedHour, isTimeSlotBlocked]);
 
   const canAdvance = (): boolean => {
-    if (stepIndex === 0) return categoryId !== null && !!subServiceId;
+    if (stepIndex === 0) return categoryId !== null && selectedService !== null;
     if (stepIndex === 1) return address.trim().length > 0 && description.trim().length > 0;
     if (stepIndex === 2 && bookingMode === 'later') return !isSelectedSlotBlocked;
     return true;
   };
-
-  const findAmount = useCallback((): number => {
-    if (!categoryId || !subServiceId) return 0;
-    const cat = NEW_BOOKING_CATEGORIES.find((c) => c.id === categoryId);
-    if (!cat) return 0;
-    const sub = cat.subServices.find((s) => s.id === subServiceId);
-    return sub?.startingPrice ?? 0;
-  }, [categoryId, subServiceId]);
 
   const handleNext = useCallback(async () => {
     if (stepIndex < NEW_BOOKING_STEPS.length - 1) {
@@ -127,7 +112,7 @@ export default function NewBookingScreen() {
       return;
     }
 
-    if (!categoryId || !subServiceId || !address.trim()) return;
+    if (!categoryId || !subServiceId || !selectedService || !address.trim()) return;
 
     setIsSubmitting(true);
     try {
@@ -138,22 +123,9 @@ export default function NewBookingScreen() {
           ? `${selectedDate}T${String(selectedHour).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}:00`
           : undefined;
 
-      // Look up service ID from slug. Mock mode has no backend to ask, and the
-      // request would stall on an unreachable host before createBooking falls
-      // back to a local booking anyway.
-      let serviceId: string | undefined;
-      if (!isMockEnv()) {
-        const slug = SUB_SERVICE_TO_SLUG[subServiceId] ?? 'general-handyman';
-        const { data: svc } = await supabase
-          .from('services')
-          .select('id')
-          .eq('slug', slug)
-          .maybeSingle();
-        serviceId = svc?.id;
-        if (!serviceId) {
-          console.warn(`createBooking: no service found for slug "${slug}"`);
-        }
-      }
+      // The selected catalog row carries both the id and the price, so there is
+      // no second lookup and no slug translation to get wrong.
+      const serviceId = selectedService?.id || undefined;
 
       // create-booking derives the client from the JWT, so these two only
       // matter for the offline demo — but hardcoding them meant a live booking
@@ -165,7 +137,7 @@ export default function NewBookingScreen() {
         bookingType: bookingMode === 'now' ? BookingType.OnDemand : BookingType.Scheduled,
         description,
         location: address,
-        amount: findAmount(),
+        amount: selectedService?.price ?? 0,
         serviceId,
         lat: DEFAULT_LAT,
         lng: DEFAULT_LNG,
@@ -196,7 +168,7 @@ export default function NewBookingScreen() {
     selectedMinute,
     description,
     notes,
-    findAmount,
+    selectedService,
     createBooking,
     router,
     clientId,
@@ -268,6 +240,9 @@ export default function NewBookingScreen() {
             <NewBookingCategoryStep
               selected={categoryId}
               selectedSubService={subServiceId}
+              subServices={subServices}
+              isLoadingServices={isLoadingServices}
+              servicesError={servicesError}
               onSelect={(id) => {
                 setCategoryId(id);
                 setSubServiceId(null);
@@ -301,8 +276,8 @@ export default function NewBookingScreen() {
           {stepIndex === 3 && (
             <NewBookingReviewStep
               mode={bookingMode}
-              categoryId={categoryId}
-              subServiceId={subServiceId}
+              categoryName={NEW_BOOKING_CATEGORIES.find((c) => c.id === categoryId)?.name ?? null}
+              service={selectedService}
               address={address}
               description={description}
               notes={notes}
