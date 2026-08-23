@@ -1,12 +1,16 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { Alert, View, Text, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../src/context/ThemeContext';
 import { useBookings } from '../src/context/BookingsContext';
+import { useAuth } from '../src/context/AuthContext';
+import { useProfile } from '../src/hooks/useProfile';
 import { isMockEnv } from '../src/services/bookingService';
+import { MOCK_CLIENT } from '../src/mocks';
 import { BookingType, ServiceCategory } from '../src/types';
+import { findBookableCategory, type BookableCategoryId } from '../src/constants/bookableCategories';
 import { useHandymanAvailability } from '../src/hooks/useHandymanAvailability';
 import { Button } from '../src/components/ui/Button';
 
@@ -21,13 +25,6 @@ import { NewBookingReviewStep } from '../src/components/bookings/NewBookingRevie
 import { NewBookingStepDots } from '../src/components/bookings/NewBookingStepDots';
 
 import { supabase } from '../src/lib/supabase';
-
-const CATEGORY_TO_SERVICE: Record<string, ServiceCategory> = {
-  massage: ServiceCategory.General,
-  cleaning: ServiceCategory.Cleaning,
-  painting: ServiceCategory.Painting,
-  general: ServiceCategory.General,
-};
 
 const SUB_SERVICE_TO_SLUG: Record<string, string> = {
   // Cleaning
@@ -55,17 +52,38 @@ const DEFAULT_LAT = 10.3157;
 const DEFAULT_LNG = 123.8854;
 
 export default function NewBookingScreen() {
-  const { mode } = useLocalSearchParams<{ mode?: 'now' | 'later' }>();
+  // handymanId / handymanName / category arrive when you get here by tapping a
+  // handyman in search. Only `mode` used to be read, so the entire
+  // browse-then-book path dropped your choice and opened a blank form.
+  const { mode, handymanId, handymanName, category } = useLocalSearchParams<{
+    mode?: 'now' | 'later';
+    handymanId?: string;
+    handymanName?: string;
+    category?: string;
+  }>();
   const [bookingMode, setBookingMode] = useState<'now' | 'later'>(
     mode === 'later' ? 'later' : 'now'
   );
   const router = useRouter();
   const { colors } = useTheme();
   const { createBooking } = useBookings();
+  const { session } = useAuth();
+  const { profile } = useProfile();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const clientId = session?.user?.id ?? (isMockEnv() ? MOCK_CLIENT.id : '');
+  const clientName = profile?.user?.full_name ?? (isMockEnv() ? MOCK_CLIENT.name : '');
+
+  // Shown so the form stops forgetting who you picked. It is not passed to
+  // createBooking: `create_booking` has no requested-handyman column and
+  // dispatch broadcasts to everyone nearby, so promising a named handyman here
+  // would be a lie. The copy below says what actually happens.
+  const requestedHandyman = handymanId ? handymanName?.trim() || 'your selected handyman' : null;
+
   const [step, setStep] = useState(0);
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState<BookableCategoryId | null>(
+    () => findBookableCategory(category)?.id ?? null
+  );
   const [subServiceId, setSubServiceId] = useState<string | null>(null);
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
@@ -113,7 +131,8 @@ export default function NewBookingScreen() {
 
     setIsSubmitting(true);
     try {
-      const serviceCategory = CATEGORY_TO_SERVICE[categoryId] ?? ServiceCategory.General;
+      const serviceCategory =
+        findBookableCategory(categoryId)?.serviceCategory ?? ServiceCategory.General;
       const scheduledAt =
         bookingMode === 'later'
           ? `${selectedDate}T${String(selectedHour).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}:00`
@@ -136,9 +155,12 @@ export default function NewBookingScreen() {
         }
       }
 
+      // create-booking derives the client from the JWT, so these two only
+      // matter for the offline demo — but hardcoding them meant a live booking
+      // came back labelled "Ishah Bautista" until the next refresh.
       const booking = await createBooking({
-        clientId: 'c1',
-        clientName: 'Ishah Bautista',
+        clientId,
+        clientName,
         serviceCategory,
         bookingType: bookingMode === 'now' ? BookingType.OnDemand : BookingType.Scheduled,
         description,
@@ -152,8 +174,14 @@ export default function NewBookingScreen() {
       });
 
       router.replace(`/booking/${booking.id}`);
-    } catch {
-      // Submission failed — stay on review step
+    } catch (err) {
+      // createBooking throws on a failed edge-function call. This used to be a
+      // bare `catch {}`, so Confirm did nothing at all and the user was left on
+      // the review step with no idea the booking never got placed.
+      Alert.alert(
+        'Could not place booking',
+        err instanceof Error ? err.message : 'Please check your connection and try again.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -171,6 +199,8 @@ export default function NewBookingScreen() {
     findAmount,
     createBooking,
     router,
+    clientId,
+    clientName,
   ]);
 
   const handleBack = () => {
@@ -217,6 +247,23 @@ export default function NewBookingScreen() {
           contentContainerStyle={{ padding: 24, paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
+          {requestedHandyman ? (
+            <View
+              className="mb-5 flex-row items-start gap-2.5 rounded-2xl border p-3.5"
+              style={{ borderColor: colors.ui.border, backgroundColor: colors.ui.surface }}>
+              <Ionicons name="person-circle-outline" size={20} color={colors.primary['600']} />
+              <View className="flex-1">
+                <Text className="text-[13px] font-semibold" style={{ color: colors.ui.text }}>
+                  Requested: {requestedHandyman}
+                </Text>
+                <Text className="mt-0.5 text-[12px]" style={{ color: colors.ui.textMuted }}>
+                  They will be notified along with other available handymen nearby. Whoever accepts
+                  first takes the job.
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
           {stepIndex === 0 && (
             <NewBookingCategoryStep
               selected={categoryId}

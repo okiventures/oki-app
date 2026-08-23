@@ -127,12 +127,16 @@ export function ActiveBookingCard({
             </View>
           </View>
 
-          {/* Track button */}
-          <Button
-            label="Track live"
-            onPress={onTrackPress || (() => {})}
-            leftIcon={<Ionicons name="navigate" size={13} color="#FFF" />}
-          />
+          {/* Track button — hidden without a handler. The `|| (() => {})`
+              fallback used to render a live-looking button that did nothing;
+              real-time tracking lands in Week 17. */}
+          {onTrackPress ? (
+            <Button
+              label="Track live"
+              onPress={onTrackPress}
+              leftIcon={<Ionicons name="navigate" size={13} color="#FFF" />}
+            />
+          ) : null}
         </View>
       </View>
 

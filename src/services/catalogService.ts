@@ -1,14 +1,13 @@
 import { supabase } from '../lib/supabase';
-import { SERVICE_CATEGORY_COLORS, SERVICE_CATEGORY_ICONS } from '../constants/theme';
+import { SERVICE_CATEGORY_COLORS } from '../constants/theme';
+import { BOOKABLE_CATEGORIES, type BookableCategory } from '../constants/bookableCategories';
 import { isMockEnv } from './bookingService';
 
 /**
  * A bookable category, ready to render.
  *
- * The category list comes from the `services` table so the grid only offers
- * work someone can actually book. Icons and colours stay in code — they are
- * presentation, and putting them in the database would mean a migration every
- * time a swatch changes.
+ * Icons and colours stay in code — they are presentation, and putting them in
+ * the database would mean a migration every time a swatch changes.
  */
 export interface ServiceCategoryTile {
   id: string;
@@ -21,40 +20,41 @@ export interface ServiceCategoryTile {
 
 const FALLBACK_PALETTE = { icon: '#334155', bg: '#F8FAFC', border: '#E2E8F0' };
 
-function toTile(category: string): ServiceCategoryTile {
-  const palette = SERVICE_CATEGORY_COLORS[category] ?? FALLBACK_PALETTE;
+function toTile(category: BookableCategory): ServiceCategoryTile {
+  const palette = SERVICE_CATEGORY_COLORS[category.id] ?? FALLBACK_PALETTE;
 
   return {
-    id: category.toLowerCase().replace(/\s+/g, '-'),
-    name: category,
-    icon: SERVICE_CATEGORY_ICONS[category] ?? 'construct-outline',
+    id: category.id,
+    name: category.name,
+    icon: category.icon,
     iconColor: palette.icon,
     bgColor: palette.bg,
     borderColor: palette.border,
   };
 }
 
-/** Every category that has at least one active service, in catalog order. */
+/**
+ * The MVP categories that the catalog can currently serve.
+ *
+ * This used to return every distinct `services.category`, which is how the grid
+ * came to advertise seven categories the booking form has no sub-services for.
+ * It now starts from BOOKABLE_CATEGORIES and intersects with the catalog, so a
+ * tile is only shown when the app can take the booking *and* there is an active
+ * service behind it.
+ */
 export async function fetchServiceCategories(): Promise<ServiceCategoryTile[]> {
+  // Mock mode has no services table to intersect against.
   if (isMockEnv()) {
-    const { MOCK_DASHBOARD_CATEGORIES } = await import('../mocks');
-    return MOCK_DASHBOARD_CATEGORIES;
+    return BOOKABLE_CATEGORIES.map(toTile);
   }
 
-  const { data, error } = await supabase.from('services').select('category').order('category');
+  const { data, error } = await supabase.from('services').select('category');
 
   if (error) throw new Error(`Failed to fetch service categories: ${error.message}`);
 
-  // Several services share a category, so de-duplicate rather than asking
-  // PostgREST for a distinct it cannot express.
-  const seen = new Set<string>();
-  const tiles: ServiceCategoryTile[] = [];
+  const available = new Set((data ?? []).map((row: { category: string }) => row.category));
 
-  for (const row of (data ?? []) as { category: string }[]) {
-    if (seen.has(row.category)) continue;
-    seen.add(row.category);
-    tiles.push(toTile(row.category));
-  }
-
-  return tiles;
+  return BOOKABLE_CATEGORIES.filter((category) => available.has(category.serviceCategory)).map(
+    toTile
+  );
 }

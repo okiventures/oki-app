@@ -322,7 +322,7 @@ export default function HandymanJobDetail() {
         message={
           pendingAction === 'accept'
             ? 'The client will be notified that you accepted and are assigned to this booking.'
-            : 'This job will be marked as Rejected and removed from your inbox. The client is notified so it can be re-offered.'
+            : 'This job leaves your inbox and goes back to the pool for other handymen. The client keeps waiting — their booking is not cancelled.'
         }
         confirmLabel={pendingAction === 'accept' ? 'Accept job' : 'Decline job'}
         cancelLabel="Keep reviewing"

@@ -36,6 +36,9 @@ export type CancelBookingResult = { ok: true } | { ok: false; message: string };
 
 interface BookingsContextValue {
   bookings: Booking[];
+  // Bookings this handyman declined. They stay PENDING for re-broadcast, so the
+  // inbox needs this to hide them rather than the row being deleted.
+  declinedBookingIds: string[];
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -53,6 +56,7 @@ interface BookingsContextValue {
 
 const BookingsContext = createContext<BookingsContextValue>({
   bookings: [],
+  declinedBookingIds: [],
   isLoading: false,
   error: null,
   refresh: async () => {},
@@ -169,16 +173,36 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
     [bookings]
   );
 
+  // REJECT leaves the booking PENDING and unassigned so it can be re-broadcast
+  // (see reject-booking/index.ts and TRANSITIONS in bookingFsm.ts) — it is a
+  // per-handyman decline, not a status change. This used to drop the row from
+  // `bookings` outright, which broke both sides: in mock mode the client's own
+  // booking vanished from their list with no history, and in live mode the next
+  // refresh pulled it straight back into the handyman's inbox as PENDING.
+  // Track the decline locally instead and let the inbox filter on it.
+  const [declinedBookingIds, setDeclinedBookingIds] = useState<string[]>([]);
+
+  // Declines are per-handyman and this provider outlives a logout — it is
+  // mounted in app/_layout.tsx, above the auth-gated routes. Without this, a
+  // handyman who signs in after someone else on the same device inherits their
+  // declines and never sees those jobs. `refresh` already clears `bookings` on
+  // a user change; this keeps the two in step.
+  useEffect(() => {
+    setDeclinedBookingIds([]);
+  }, [userId]);
+
   const declineBooking = useCallback(
     async (bookingId: string) => {
-      const removedBooking = bookings.find((b) => b.id === bookingId);
+      const booking = bookings.find((b) => b.id === bookingId);
 
-      setBookings((current) => current.filter((b) => b.id !== bookingId));
+      setDeclinedBookingIds((current) =>
+        current.includes(bookingId) ? current : [...current, bookingId]
+      );
 
       try {
-        await transitionBookingState(bookingId, 'REJECT', undefined, removedBooking?.status);
+        await transitionBookingState(bookingId, 'REJECT', undefined, booking?.status);
       } catch (err) {
-        if (removedBooking) setBookings((current) => [...current, removedBooking]);
+        setDeclinedBookingIds((current) => current.filter((id) => id !== bookingId));
         throw err;
       }
     },
@@ -267,6 +291,7 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(
     () => ({
       bookings,
+      declinedBookingIds,
       isLoading,
       error,
       refresh,
@@ -280,6 +305,7 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       bookings,
+      declinedBookingIds,
       isLoading,
       error,
       refresh,

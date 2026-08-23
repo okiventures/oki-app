@@ -69,15 +69,14 @@ export default function ClientHome() {
     [bookings, clientId]
   );
 
-  // No city is stored on the user record, so the header shows the city from the
-  // client's most recent booking address rather than a hardcoded one.
-  const city = useMemo(() => {
-    if (isMockEnv()) return MOCK_CLIENT.location;
-    const address = myBookings[0]?.location;
-    if (!address) return '';
-    const parts = address.split(',').map((part) => part.trim());
-    return parts[parts.length - 1] || address;
-  }, [myBookings]);
+  // Nothing stores a client address: `users` has no city/address column and
+  // there is no addresses table (saved addresses are Week 18). This used to
+  // read the last comma-segment of the most recent booking's address_text,
+  // which meant typing a one-off job address in the booking form silently
+  // relabelled the whole dashboard. The header now shows a "Set your location"
+  // prompt instead of inventing one. Mock keeps its value as the offline demo
+  // fallback, the same way displayName does above.
+  const city = isMockEnv() ? MOCK_CLIENT.location : '';
 
   const recentActivity = useMemo<RecentActivityRow[]>(
     () =>
@@ -200,7 +199,6 @@ export default function ClientHome() {
           ) : latestActive ? (
             <ActiveBookingCard
               booking={latestActive}
-              onTrackPress={() => {}}
               onViewDetailsPress={() => router.push(`/booking/${latestActive.id}`)}
             />
           ) : null}

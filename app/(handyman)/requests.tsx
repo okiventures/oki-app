@@ -28,7 +28,8 @@ export default function HandymanRequests() {
   const { colors } = useTheme();
   const router = useRouter();
   const { session } = useAuth();
-  const { bookings, acceptBooking, declineBooking, advanceBooking } = useBookings();
+  const { bookings, declinedBookingIds, acceptBooking, declineBooking, advanceBooking } =
+    useBookings();
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -38,14 +39,16 @@ export default function HandymanRequests() {
     () =>
       bookings.filter(
         (booking) =>
-          booking.handymanId === handymanId ||
+          // `handymanId` is '' when no identity resolved; an unassigned booking
+          // also carries '', so compare only when we actually know who we are.
+          (!!handymanId && booking.handymanId === handymanId) ||
           (booking.handymanId === '' && booking.status === 'Pending')
       ),
     [bookings, handymanId]
   );
 
   const incomingRequests = myBookings
-    .filter((booking) => booking.status === 'Pending')
+    .filter((booking) => booking.status === 'Pending' && !declinedBookingIds.includes(booking.id))
     .sort(
       (left, right) =>
         new Date(left.requestExpiresAt ?? left.createdAt).getTime() -
@@ -151,7 +154,7 @@ export default function HandymanRequests() {
         message={
           pendingAction?.type === 'accept'
             ? 'This request will move to Accepted for both the handyman queue and the client booking list.'
-            : 'This request will be marked as Rejected and removed from your inbox. The client is notified so it can be re-offered.'
+            : 'This request leaves your inbox and goes back to the pool for other handymen. The client keeps waiting — their booking is not cancelled.'
         }
         confirmLabel={pendingAction?.type === 'accept' ? 'Accept request' : 'Decline request'}
         cancelLabel="Keep reviewing"

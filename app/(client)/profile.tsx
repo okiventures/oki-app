@@ -124,7 +124,7 @@ export default function ClientProfile() {
           title="My Profile"
           showSettings
           showNotifications
-          onSettingsPress={() => {}}
+          onSettingsPress={() => router.push('/profile/settings')}
           onNotificationsPress={() => router.push('/notifications')}
         />
 
@@ -193,13 +193,13 @@ export default function ClientProfile() {
                 icon={item.icon}
                 title={item.title}
                 subtitle={item.subtitle}
-                onPress={() => {
-                  if (item.title === 'Theme') {
-                    setThemeModalVisible(true);
-                  } else if (item.route) {
-                    router.push(item.route);
-                  }
-                }}
+                onPress={
+                  item.title === 'Theme'
+                    ? () => setThemeModalVisible(true)
+                    : item.route
+                      ? () => router.push(item.route as never)
+                      : undefined
+                }
                 hideDivider={i === PREFERENCES_ITEMS.length - 1}
               />
             ))}
@@ -212,9 +212,7 @@ export default function ClientProfile() {
                 icon={item.icon}
                 title={item.title}
                 subtitle={item.subtitle}
-                onPress={() => {
-                  if (item.route) router.push(item.route);
-                }}
+                onPress={item.route ? () => router.push(item.route as never) : undefined}
                 hideDivider={i === SUPPORT_ITEMS.length - 1}
               />
             ))}

@@ -36,6 +36,29 @@ export function GreetingBlock({
     return GREETING_TEMPLATES[Math.floor(Math.random() * GREETING_TEMPLATES.length)];
   }, []);
 
+  // Every template is written to wrap a name, so an empty one leaves the
+  // punctuation stranded — "What's on your to-do list, ?". The name is blank
+  // whenever a profile has not resolved, which is the normal signed-out state
+  // against a live backend.
+  if (!firstName) {
+    return (
+      <View className="mt-5 px-5 pt-1 pb-4">
+        <Text
+          className="mb-3.5 text-xl leading-tight font-medium"
+          style={{ color: colors.ui.text }}
+          accessibilityRole="header">
+          What do you need help with?
+        </Text>
+        <SearchBar
+          value={searchValue}
+          onChangeText={onSearchChange}
+          placeholder="Search for a service…"
+          onFilterPress={onFilterPress}
+        />
+      </View>
+    );
+  }
+
   return (
     <View className="mt-5 px-5 pt-1 pb-4">
       <Text

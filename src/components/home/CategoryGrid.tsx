@@ -1,19 +1,19 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { DashboardCategory } from '../../mocks/dashboard';
+import type { ServiceCategoryTile } from '../../services/catalogService';
 import { useTheme } from '../../context/ThemeContext';
 
 interface CategoryGridProps {
-  categories: DashboardCategory[];
-  onCategoryPress?: (category: DashboardCategory) => void;
+  categories: ServiceCategoryTile[];
+  onCategoryPress?: (category: ServiceCategoryTile) => void;
 }
 
 export function CategoryGrid({ categories, onCategoryPress }: CategoryGridProps) {
   const { colors } = useTheme();
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
 
-  const handlePress = (cat: DashboardCategory) => {
+  const handlePress = (cat: ServiceCategoryTile) => {
     setSelectedId((prev) => (prev === cat.id ? null : cat.id));
     onCategoryPress?.(cat);
   };

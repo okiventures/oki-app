@@ -27,14 +27,22 @@ export function ProfileMenuRow({
   const iconColor = danger ? '#EF4444' : colors.primary['600'];
   const titleColor = danger ? '#EF4444' : colors.ui.text;
 
+  // A row with no handler has nowhere to go. It used to render as a normal
+  // tappable row with a chevron and silently do nothing when tapped — dim it
+  // and drop the chevron instead, so an unbuilt destination reads as pending
+  // rather than broken.
+  const isEnabled = typeof onPress === 'function';
+
   return (
     <Pressable
       onPress={onPress}
+      disabled={!isEnabled}
       accessibilityRole="button"
       accessibilityLabel={title}
-      android_ripple={{ color: `${colors.primary['600']}10` }}
+      accessibilityState={{ disabled: !isEnabled }}
+      android_ripple={isEnabled ? { color: `${colors.primary['600']}10` } : undefined}
       style={({ pressed }) => ({
-        opacity: pressed ? 0.72 : 1,
+        opacity: !isEnabled ? 0.45 : pressed ? 0.72 : 1,
       })}
       className={`flex-row items-center px-4 py-3.5 ${hideDivider ? '' : 'border-b border-gray-100'}`}>
       <View className="w-8 items-center justify-center">
@@ -65,7 +73,7 @@ export function ProfileMenuRow({
         </View>
       ) : null}
 
-      <Ionicons name="chevron-forward" size={16} color={colors.ui.textLight} />
+      {isEnabled ? <Ionicons name="chevron-forward" size={16} color={colors.ui.textLight} /> : null}
     </Pressable>
   );
 }

@@ -5,15 +5,30 @@ import { useTheme } from '../../src/context/ThemeContext';
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader';
 import { BookingCard } from '../../src/components/cards/BookingCard';
 import { useBookings } from '../../src/context/BookingsContext';
+import { useAuth } from '../../src/context/AuthContext';
+import { isMockEnv } from '../../src/services/bookingService';
 import { BookingStatus } from '../../src/types';
+
+// Offline demo only: MOCK_BOOKINGS are keyed to this handyman. Matches the
+// fallback in requests.tsx and schedule.tsx.
+const DEMO_HANDYMAN_ID = 'h1';
 
 export default function HandymanPastJobs() {
   const { colors } = useTheme();
   const router = useRouter();
   const { bookings } = useBookings();
-  const HANDYMAN_ID = 'h1';
+  const { session } = useAuth();
 
-  const myBookings = bookings.filter((booking) => booking.handymanId === HANDYMAN_ID);
+  // This was a bare `const HANDYMAN_ID = 'h1'` with no session fallback, so
+  // against a live backend every real handyman's Past Jobs was empty.
+  const handymanId = session?.user?.id ?? (isMockEnv() ? DEMO_HANDYMAN_ID : '');
+
+  // Guard the empty id: mapBookingRow writes `handymanId: ''` for an unassigned
+  // booking, so an unresolved identity would match every unclaimed job by
+  // `'' === ''` rather than matching nothing.
+  const myBookings = handymanId
+    ? bookings.filter((booking) => booking.handymanId === handymanId)
+    : [];
 
   const historyBookings = myBookings.filter(
     (booking) =>

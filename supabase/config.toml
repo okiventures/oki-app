@@ -84,10 +84,6 @@ import_map = "./import_map.json"
 verify_jwt = false
 import_map = "./import_map.json"
 
-[functions.seed]
-verify_jwt = false
-import_map = "./import_map.json"
-
 [functions.create-booking]
 verify_jwt = true
 import_map = "./import_map.json"

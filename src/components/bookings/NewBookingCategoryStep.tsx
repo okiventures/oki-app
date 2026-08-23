@@ -3,11 +3,12 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { NEW_BOOKING_CATEGORIES } from './NewBookingConstants';
+import type { BookableCategoryId } from '../../constants/bookableCategories';
 
 interface CategoryStepProps {
-  selected: string | null;
+  selected: BookableCategoryId | null;
   selectedSubService: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: BookableCategoryId) => void;
   onSelectSubService: (id: string) => void;
 }
 

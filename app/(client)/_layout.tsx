@@ -6,6 +6,9 @@ import { useProtectedRoute } from '../../src/hooks/useProtectedRoute';
 export default function ClientLayout() {
   useProtectedRoute('client');
 
+  // Messaging is Week 19. Its tab is parked rather than deleted — the screen is
+  // a permanent empty state, and giving it a quarter of the primary nav made a
+  // feature that does not exist look like an inbox with nothing in it.
   const items = [
     { key: 'index', label: 'Home', icon: 'home-outline', route: '/(client)' },
     {
@@ -13,12 +16,6 @@ export default function ClientLayout() {
       label: 'Bookings',
       icon: 'calendar-outline',
       route: '/(client)/bookings',
-    },
-    {
-      key: 'messages',
-      label: 'Messages',
-      icon: 'chatbubble-outline',
-      route: '/(client)/messages',
     },
     {
       key: 'profile',
@@ -32,7 +29,7 @@ export default function ClientLayout() {
     <Tabs tabBar={() => <BottomNav items={items} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="index" />
       <Tabs.Screen name="bookings" />
-      <Tabs.Screen name="messages" />
+      <Tabs.Screen name="messages" options={{ href: null }} />
       <Tabs.Screen name="search" options={{ href: null }} />
       <Tabs.Screen name="profile" />
     </Tabs>

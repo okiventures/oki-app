@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useHandymanSearch } from '../../src/hooks/useHandymanSearch';
-import { ServiceCategory } from '../../src/types';
+import { findBookableCategory } from '../../src/constants/bookableCategories';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Card } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
@@ -18,20 +18,6 @@ import { isMockEnv } from '../../src/services/bookingService';
 
 const DEFAULT_LAT = 10.3157;
 const DEFAULT_LNG = 123.8854;
-
-const CATEGORY_PARAM_MAP: Record<string, ServiceCategory> = {
-  massage: ServiceCategory.General,
-  cleaning: ServiceCategory.Cleaning,
-  painting: ServiceCategory.Painting,
-  electrical: ServiceCategory.Electrical,
-  plumbing: ServiceCategory.Plumbing,
-  carpentry: ServiceCategory.Carpentry,
-  hvac: ServiceCategory.HVAC,
-  roofing: ServiceCategory.Roofing,
-  landscaping: ServiceCategory.Landscaping,
-  appliance: ServiceCategory.Appliance,
-  general: ServiceCategory.General,
-};
 
 const HANDYMAN_PROFILE_MAP = isMockEnv() ? new Map(MOCK_HANDYMEN.map((h) => [h.id, h])) : null;
 
@@ -66,7 +52,13 @@ export default function SearchResults() {
     };
   }, []);
 
-  const category = CATEGORY_PARAM_MAP[categoryParam ?? ''] ?? null;
+  // A param that isn't a bookable id means a stale link — search everything
+  // rather than pretending to filter. The old hand-maintained map keyed on
+  // single words (`appliance`, `general`) while the tiles are hyphenated
+  // (`appliance-repair`), so those two silently fell through to unfiltered
+  // results that looked filtered.
+  const bookableCategory = findBookableCategory(categoryParam);
+  const category = bookableCategory?.serviceCategory ?? null;
 
   const { handymen, isLoading, error, refetch } = useHandymanSearch({
     latitude: locationReady ? (coords?.latitude ?? DEFAULT_LAT) : null,
@@ -75,16 +67,27 @@ export default function SearchResults() {
     category,
   });
 
-  const categoryLabel = useMemo(() => {
-    if (!categoryParam) return 'All Services';
-    return categoryParam.charAt(0).toUpperCase() + categoryParam.slice(1);
-  }, [categoryParam]);
+  // Titled from the category itself, not the raw param — that rendered the
+  // hyphenated route id back at the user as "Appliance-repair".
+  const categoryLabel = useMemo(
+    () => bookableCategory?.name ?? 'All Services',
+    [bookableCategory?.name]
+  );
 
   const handleSelect = useCallback(
     (handyman: (typeof handymen)[number]) => {
-      router.push(`/new-booking?handymanId=${handyman.handyman_id}`);
+      // The booking form has no way to look a handyman up — there is no public
+      // handyman profile endpoint on the client yet — so the display name rides
+      // along with the id. Params are in-memory here, not a real URL.
+      const params = new URLSearchParams({ handymanId: handyman.handyman_id });
+      // Only when there is a name to carry — URLSearchParams stringifies a
+      // missing value, which would render the banner as "Requested: undefined".
+      if (handyman.user_name) params.set('handymanName', handyman.user_name);
+      if (bookableCategory) params.set('category', bookableCategory.id);
+
+      router.push(`/new-booking?${params.toString()}`);
     },
-    [router]
+    [router, bookableCategory]
   );
 
   return (
