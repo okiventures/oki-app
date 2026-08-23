@@ -86,13 +86,40 @@ Audited against the current branch. Worth reading before planning any of the wor
 | FSM trigger (`20260724000000_014_booking_fsm_trigger.sql`) | enforces transitions and photo guards, **no payment guard at all** |
 | `pg_cron` + `pg_net` | installed, with an env-driven unschedule-then-schedule pattern already established in `20260730000000_019_notification_cron_env.sql` — reuse it for the release sweeper |
 | `notification_queue` | exists, ready for the payment-failure and escrow-release notifications |
-| Admin transactions page (`apps/admin/app/transactions/page.tsx`) | exists on mock data |
+| Admin transactions — React Native (`app/(admin)/transactions.tsx`) | **live**, via `useAdminDashboard`. This is the console that is actually running |
+| Admin transactions — Next.js (`apps/admin/app/transactions/page.tsx`) | separate app in the pnpm workspace, imports `MOCK_TRANSACTIONS`. Not wired to anything real |
 
-**Migration numbering:** prefixes 015, 016, 017 and 018 are each used twice in `supabase/migrations/` — this branch is `fix/duplicate-migration-version` for a reason. Continue at **025** and do not reuse a number.
+**Migration numbering:** prefixes 010, 012, 015, 016, 017 and 018 are each used twice in `supabase/migrations/`. PR #57 fixed the schema-*version* conflict that broke fresh provisioning; the duplicated numeric prefixes remain and are cosmetic, because the real version Supabase orders on is the 14-digit timestamp. Continue at **025** and do not reuse a number.
 
 ---
 
 ## Part 3 — Day-by-day plan
+
+### Day 0 — reconcile catalog pricing (blocker, do this before anything else)
+
+**The app quotes one price and the server charges another.** The booking form shows `NEW_BOOKING_CATEGORIES[].subServices[].startingPrice`, a hardcoded constant. `create_booking` ignores the client's `amount` and derives it from `services.base_rate` — correct, and the right defence, but `SUB_SERVICE_TO_SLUG` collapses 15 sub-services onto 3 catalog slugs, so the two numbers are unrelated:
+
+| Sub-service | Quoted | Resolves to | Charged | |
+| --- | --- | --- | --- | --- |
+| Touch-Up & Repair | ₱350 | `painting-interior` | ₱2,000 | 5.7× |
+| Interior Painting | ₱800 | `painting-interior` | ₱2,000 | 2.5× |
+| Exterior Painting | ₱1,200 | `painting-interior` | ₱2,000 | 1.7× |
+| Laundry & Ironing | ₱200 | `cleaning-general` | ₱350 | 1.75× |
+| Deep Cleaning | ₱600 | `cleaning-general` | ₱350 | under |
+| Deep Tissue | ₱450 | `general-handyman` | ₱300 | under |
+| Foot Reflexology | ₱250 | `general-handyman` | ₱300 | over |
+| Furniture Assembly | ₱300 | `general-handyman` | ₱300 | only exact match |
+
+14 of 15 sub-services are wrong. Today it is cosmetic because no money moves. Week 15 makes it a billing defect: escrow, disputes and refunds all sit downstream of an amount the client never agreed to. Charging ₱2,000 for a ₱350 touch-up is not a rounding argument, it is a chargeback.
+
+**Fix: make the catalog authoritative, the same way `src/constants/bookableCategories.ts` made the category list authoritative.**
+
+- `20260813000000_025_service_catalog.sql` — one `services` row per bookable sub-service, slug equal to the sub-service id, `base_rate` equal to the price the app currently advertises. Idempotent (`ON CONFLICT (slug) DO UPDATE`) so it corrects the three overlapping slugs (`cleaning-general`, `painting-interior`, `general-handyman`) as well as inserting the twelve missing ones.
+- `catalogService` gains sub-service fetching; the booking form renders prices and passes `serviceId` straight from catalog rows.
+- **Delete `SUB_SERVICE_TO_SLUG`.** That map is the bug.
+- Keep the hardcoded constants as the `isMockEnv()` fallback only, matching the pattern in `src/services/bookingService.ts:77`.
+
+Only three catalog slugs are reachable from the UI today, because the MVP ships four categories. The seeded Plumbing, Electrical, Carpentry and HVAC rows are real but unbookable, so the escrow test matrix exercises three price points unless this step widens it.
 
 ### Day 1 — provider adapter + PayMongo sandbox
 
@@ -107,16 +134,16 @@ Secrets to add (`supabase/config.toml` + a `.env.example`): `PAYMENT_PROVIDER`, 
 
 Client side: `src/services/paymentService.ts` following the existing service shape, and `EXPO_PUBLIC_PAYMONGO_PUBLIC_KEY` in `env.d.ts`.
 
-### Day 1–2 — migration 025/026: escrow schema
+### Day 1–2 — migration 026/027: escrow schema
 
 Split into two files, because `ALTER TYPE ... ADD VALUE` cannot be used in the same transaction that references the new value:
 
-`20260813000000_025_payment_enums.sql`
+`20260813010000_026_payment_enums.sql`
 
 - `ALTER TYPE payment_status ADD VALUE 'PENDING_AUTH'`, `ADD VALUE 'VOIDED'`
 - `CREATE TYPE escrow_status AS ENUM ('HELD', 'RELEASED', 'REFUNDED', 'DISPUTED')`
 
-`20260813010000_026_escrow_foundation.sql`
+`20260813020000_027_escrow_foundation.sql`
 
 - `escrow_holds` — `id`, `booking_id` UNIQUE, `payment_id`, `handyman_id`, `gross_amount`, `platform_fee`, `net_amount`, `status escrow_status`, `held_at`, `release_at` (default `now() + 24h`), `released_at`, `released_by` (nullable admin), `release_reason`.
 - `webhook_events` — `id`, `provider`, `provider_event_id` UNIQUE, `event_type`, `payload jsonb`, `received_at`, `processed_at`, `status`, `error`. **This UNIQUE column is the idempotency key** the checklist asks for.
@@ -128,7 +155,7 @@ Split into two files, because `ALTER TYPE ... ADD VALUE` cannot be used in the s
 
 ### Day 2 — RPC surgery
 
-`20260813020000_027_escrow_rpcs.sql` — split `execute_payment_transaction` into three:
+`20260813030000_028_escrow_rpcs.sql` — split `execute_payment_transaction` into three:
 
 - `record_payment_capture(booking_id, provider_payment_id, amount, platform_fee)` — guards booking is `COMPLETED`, re-derives amounts from `bookings` (keep the existing server-owned-amount check, it's the right defence), sets `payments.status = 'CAPTURED'`, inserts an `escrow_holds` row as `HELD` with `release_at = now() + interval '24 hours'`, transitions the booking `COMPLETED → PAID`. **Does not touch `wallet_balance`.**
 - `release_escrow_hold(hold_id, actor_id, reason)` — `SELECT ... FOR UPDATE` on the hold, guard `status = 'HELD'`, lock the `handymen` row, credit `wallet_balance`, insert the `wallet_transactions` CREDIT, mark the hold `RELEASED`. Idempotent: a second call returns the existing state instead of double-crediting.
@@ -140,11 +167,13 @@ Delete `execute_payment_transaction` in the same PR — `payment-webhook/index.t
 
 ### Day 2–3 — FSM payment guards
 
-`20260813030000_028_payment_guards.sql` extends `check_booking_transition()`:
+`20260813040000_029_payment_guards.sql` extends `check_booking_transition()`:
 
 - `PENDING → ACCEPTED` requires `payments.status IN ('AUTHORIZED', 'CAPTURED')`. The FSM doc already specifies this guard; it was never implemented.
 - `ARRIVED → WORK_STARTED` requires the same. This is the checklist's "payment authorization confirmed before WORK_STARTED".
 - `COMPLETED → PAID` requires `payments.status = 'CAPTURED'`, reason code `PAYMENT_NOT_CAPTURED`.
+
+**These guards apply to rows that already exist.** The seed creates 69 bookings and `create_booking` currently writes a fake `AUTHORIZED` payment; once it writes `PENDING_AUTH` instead, every booking from a fresh `db reset` becomes unacceptable and local dev breaks the day this migration lands. Either grandfather bookings created before the migration timestamp, or update `seed.sql` in the same PR. Decide which and write it down.
 
 Mirror all three in `src/services/bookingFsm.ts` and in `supabase/functions/accept-booking/index.ts` so callers get a structured 422 instead of a raw Postgres exception. Update the escrow-coupling table in `backend/docs/booking-state-machine.md` to cover ledger-escrow mode and the `escrow_holds` lifecycle.
 
@@ -174,9 +203,9 @@ Edge case worth building now: a card auth older than 7 days is already voided, s
 
 ### Day 4–5 — escrow release
 
-- `20260813040000_029_escrow_release_cron.sql` — `cron.schedule('release-due-escrow-holds', '*/5 * * * *', ...)`. Follow the unschedule-first, env-driven pattern from migration 019 so it doesn't double-schedule or hardcode a project ref.
+- `20260813050000_030_escrow_release_cron.sql` — `cron.schedule('release-due-escrow-holds', '*/5 * * * *', ...)`. Follow the unschedule-first, env-driven pattern from migration 019 so it doesn't double-schedule or hardcode a project ref.
 - `supabase/functions/admin-release-escrow/index.ts` — `requireAdmin`, calls `release_escrow_hold(hold_id, admin_id, reason)`, writes a `booking_events` row. This is the checklist's "admin manual release".
-- Admin UI: add an Escrow tab to `apps/admin/app/transactions/page.tsx` listing `HELD` holds with a `release_at` countdown and a Release Now action.
+- Admin UI: add an Escrow tab listing `HELD` holds with a `release_at` countdown and a Release Now action. **Target `app/(admin)/transactions.tsx`, not `apps/admin/`** — the Next.js app under `apps/` runs on `MOCK_TRANSACTIONS` and is not the console anyone is using. Putting a money-movement control there ships it into a mock. If `apps/admin` is meant to be the real console, that decision has to be made before this task, not during it.
 - Enqueue a `notification_queue` entry to the handyman on release.
 
 ### Day 5 — failure and retry
@@ -209,12 +238,25 @@ Edge case worth building now: a card auth older than 7 days is already voided, s
 
 ---
 
-## Part 5 — Open decisions
+## Part 5 — Blockers and open decisions
+
+### Blockers — settle these before the code they touch
+
+1. **Catalog pricing** (Day 0). The app quotes prices the server does not charge. Everything downstream of an amount is wrong until this is fixed.
+2. **`BookingStatus.Rejected` semantics.** Nothing writes it — `bookingFsm.ts:89` and `reject-booking/index.ts` both keep the booking `PENDING` — yet the enum value, theme label, `past-jobs` bucket and `TERMINAL_STEPS` entry all exist. PR #58 added `declinedBookingIds` as client-local, non-persisted state, so a decline is forgotten on app restart. Day 2–3 rewrites `check_booking_transition()`; doing that with this unresolved means doing it twice. Either drop the dead branches or make per-handyman declines a recorded state.
+3. **Which admin console is real** — `app/(admin)/` (live) or `apps/admin/` (mock). Day 4–5 puts an escrow release control in one of them.
+4. **Refund on cancel is required, not optional.** Clients can cancel today and `bookings_handyman_required_after_pending` permits it. In `LEDGER` mode the money is already captured, so the first cancelled booking strands real funds. `provider.refund` for `LEDGER` and a void for `GATEWAY_HOLD` both belong in `cancel-booking/index.ts` this week.
+
+### Open decisions
 
 1. **Provider** — PayMongo for acceptance is the recommendation. The adapter keeps it reversible; nothing else in the plan changes if you pick Xendit.
 2. **OPS/EMI registration** — legal track, start Week 15, gates real-money launch not sandbox work.
 3. **`PAID` semantics** — capture, not release. Locked in above; flag if you disagree, because it ripples into reviews and the FSM doc.
 4. **Payment collected at booking creation, not acceptance** — deviates from the checklist. Recommended.
 5. **Cash on completion** — in or out for Week 15? If in, it needs a handyman-wallet DEBIT path for the platform fee and it has no escrow at all.
-6. **Refund on pre-acceptance cancel** — `LEDGER` mode needs `provider.refund`, `GATEWAY_HOLD` needs a void. Both belong in `cancel-booking/index.ts` this week, though the checklist doesn't list them.
+6. **`app/profile/payments.tsx`** — currently a local-state stub advertising "Payment Methods" from the client profile. Week 15 ships real payments, so it gets wired to saved methods or hidden. Shipping escrow behind a settings screen that lies is worse than not having the screen.
 7. **Migration numbering** — continue at 025, don't reuse.
+
+### Amount handling — get this right once
+
+`PLATFORM_FEE_PERCENT` is 10 and the client currently does `Math.round(amount * 0.1)`. Once `escrow_holds` stores gross, fee and net as three columns, they have to reconcile exactly or the sweeper credits a net that does not match gross minus fee. Derive all three server-side in `record_payment_capture`, never client-side. Send integer centavos to the provider, and check PayMongo's minimum charge (₱100 at time of writing) against the lowest advertised price of ₱200.
