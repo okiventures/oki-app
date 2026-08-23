@@ -29,10 +29,10 @@ const MIGRATION = path.join(
 describe('catalog pricing', () => {
   const sql = fs.readFileSync(MIGRATION, 'utf8');
 
-  // ('slug', 'Name', 'Category', 'Description', 1234.00)
+  // ('slug', 'Name', 'Category', 'Description', 1234.00, interval '1 hour')
   const rows = new Map<string, number>();
   for (const line of sql.split('\n')) {
-    const match = line.match(/^\s*\('([a-z-]+)',.*?,\s*([0-9]+\.[0-9]{2})\)[,;]?\s*$/);
+    const match = line.match(/^\s*\('([a-z-]+)',.*?([0-9]+\.[0-9]{2}),\s*interval\s+'[^']+'\)/);
     if (match) rows.set(match[1], Number(match[2]));
   }
 

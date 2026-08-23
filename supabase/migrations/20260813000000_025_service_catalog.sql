@@ -17,34 +17,35 @@
 -- rates, so this upserts rather than inserting.
 -- ---------------------------------------------------------------------------
 
-INSERT INTO services (slug, name, category, description, base_rate) VALUES
+INSERT INTO services (slug, name, category, description, base_rate, estimated_duration) VALUES
   -- Massage. No massage value in the service_category enum; these are filed as
   -- general work, which is what SUB_SERVICE_TO_SLUG did too.
-  ('massage-swedish',    'Swedish Massage',     'General Handyman', 'Full-body relaxation massage',                 350.00),
-  ('massage-deep',       'Deep Tissue',         'General Handyman', 'Targets muscle knots and tension',             450.00),
-  ('massage-shiatsu',    'Shiatsu',             'General Handyman', 'Pressure-point based Japanese technique',      400.00),
-  ('massage-foot',       'Foot Reflexology',    'General Handyman', 'Focused relief for feet and legs',             250.00),
+  ('massage-swedish',    'Swedish Massage',     'General Handyman', 'Full-body relaxation massage',                 350.00, interval '1 hour'),
+  ('massage-deep',       'Deep Tissue',         'General Handyman', 'Targets muscle knots and tension',             450.00, interval '1 hour 30 minutes'),
+  ('massage-shiatsu',    'Shiatsu',             'General Handyman', 'Pressure-point based Japanese technique',      400.00, interval '1 hour'),
+  ('massage-foot',       'Foot Reflexology',    'General Handyman', 'Focused relief for feet and legs',             250.00, interval '45 minutes'),
 
   -- Cleaning
-  ('cleaning-general',   'General Cleaning',    'Cleaning',         'Sweeping, mopping, and tidying up',            300.00),
-  ('cleaning-deep',      'Deep Cleaning',       'Cleaning',         'Thorough top-to-bottom clean',                 600.00),
-  ('cleaning-aircon',    'Aircon Cleaning',     'Cleaning',         'Filter wash and unit cleaning',                400.00),
-  ('cleaning-laundry',   'Laundry & Ironing',   'Cleaning',         'Wash, dry and press clothes',                  200.00),
+  ('cleaning-general',   'General Cleaning',    'Cleaning',         'Sweeping, mopping, and tidying up',            300.00, interval '2 hours'),
+  ('cleaning-deep',      'Deep Cleaning',       'Cleaning',         'Thorough top-to-bottom clean',                 600.00, interval '4 hours'),
+  ('cleaning-aircon',    'Aircon Cleaning',     'Cleaning',         'Filter wash and unit cleaning',                400.00, interval '1 hour 30 minutes'),
+  ('cleaning-laundry',   'Laundry & Ironing',   'Cleaning',         'Wash, dry and press clothes',                  200.00, interval '2 hours'),
 
   -- Painting
-  ('painting-interior',  'Interior Painting',   'Painting',         'Walls, ceilings, and trim indoors',            800.00),
-  ('painting-exterior',  'Exterior Painting',   'Painting',         'Facade, gates, and outdoor surfaces',         1200.00),
-  ('painting-touch',     'Touch-Up & Repair',   'Painting',         'Minor scuffs, peeling, or patches',            350.00),
+  ('painting-interior',  'Interior Painting',   'Painting',         'Walls, ceilings, and trim indoors',            800.00, interval '4 hours'),
+  ('painting-exterior',  'Exterior Painting',   'Painting',         'Facade, gates, and outdoor surfaces',         1200.00, interval '6 hours'),
+  ('painting-touch',     'Touch-Up & Repair',   'Painting',         'Minor scuffs, peeling, or patches',            350.00, interval '1 hour 30 minutes'),
 
   -- General handyman
-  ('general-furniture',  'Furniture Assembly',  'General Handyman', 'Flat-pack and modular assembly',               300.00),
-  ('general-mounting',   'TV / Shelf Mounting', 'General Handyman', 'Wall-mount installation and wiring',           350.00),
-  ('general-repair',     'Minor Repairs',       'General Handyman', 'Doors, hinges, handles, and fixtures',         250.00),
-  ('general-other',      'Other',               'General Handyman', 'Describe your task and we''ll find the right person', 200.00)
+  ('general-furniture',  'Furniture Assembly',  'General Handyman', 'Flat-pack and modular assembly',               300.00, interval '1 hour'),
+  ('general-mounting',   'TV / Shelf Mounting', 'General Handyman', 'Wall-mount installation and wiring',           350.00, interval '1 hour'),
+  ('general-repair',     'Minor Repairs',       'General Handyman', 'Doors, hinges, handles, and fixtures',         250.00, interval '1 hour'),
+  ('general-other',      'Other',               'General Handyman', 'Describe your task and we''ll find the right person', 200.00, interval '1 hour')
 ON CONFLICT (slug) DO UPDATE SET
   name        = EXCLUDED.name,
   category    = EXCLUDED.category,
   description = EXCLUDED.description,
   base_rate   = EXCLUDED.base_rate,
+  estimated_duration = EXCLUDED.estimated_duration,
   is_active   = true,
   updated_at  = now();
