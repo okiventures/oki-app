@@ -182,6 +182,15 @@ export function BookingsProvider({ children }: { children: React.ReactNode }) {
   // Track the decline locally instead and let the inbox filter on it.
   const [declinedBookingIds, setDeclinedBookingIds] = useState<string[]>([]);
 
+  // Declines are per-handyman and this provider outlives a logout — it is
+  // mounted in app/_layout.tsx, above the auth-gated routes. Without this, a
+  // handyman who signs in after someone else on the same device inherits their
+  // declines and never sees those jobs. `refresh` already clears `bookings` on
+  // a user change; this keeps the two in step.
+  useEffect(() => {
+    setDeclinedBookingIds([]);
+  }, [userId]);
+
   const declineBooking = useCallback(
     async (bookingId: string) => {
       const booking = bookings.find((b) => b.id === bookingId);

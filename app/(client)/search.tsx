@@ -79,10 +79,10 @@ export default function SearchResults() {
       // The booking form has no way to look a handyman up — there is no public
       // handyman profile endpoint on the client yet — so the display name rides
       // along with the id. Params are in-memory here, not a real URL.
-      const params = new URLSearchParams({
-        handymanId: handyman.handyman_id,
-        handymanName: handyman.user_name,
-      });
+      const params = new URLSearchParams({ handymanId: handyman.handyman_id });
+      // Only when there is a name to carry — URLSearchParams stringifies a
+      // missing value, which would render the banner as "Requested: undefined".
+      if (handyman.user_name) params.set('handymanName', handyman.user_name);
       if (bookableCategory) params.set('category', bookableCategory.id);
 
       router.push(`/new-booking?${params.toString()}`);

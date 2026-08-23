@@ -39,7 +39,9 @@ export default function HandymanRequests() {
     () =>
       bookings.filter(
         (booking) =>
-          booking.handymanId === handymanId ||
+          // `handymanId` is '' when no identity resolved; an unassigned booking
+          // also carries '', so compare only when we actually know who we are.
+          (!!handymanId && booking.handymanId === handymanId) ||
           (booking.handymanId === '' && booking.status === 'Pending')
       ),
     [bookings, handymanId]

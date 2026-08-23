@@ -23,7 +23,12 @@ export default function HandymanPastJobs() {
   // against a live backend every real handyman's Past Jobs was empty.
   const handymanId = session?.user?.id ?? (isMockEnv() ? DEMO_HANDYMAN_ID : '');
 
-  const myBookings = bookings.filter((booking) => booking.handymanId === handymanId);
+  // Guard the empty id: mapBookingRow writes `handymanId: ''` for an unassigned
+  // booking, so an unresolved identity would match every unclaimed job by
+  // `'' === ''` rather than matching nothing.
+  const myBookings = handymanId
+    ? bookings.filter((booking) => booking.handymanId === handymanId)
+    : [];
 
   const historyBookings = myBookings.filter(
     (booking) =>
